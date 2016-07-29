@@ -4,9 +4,12 @@ Color Table for FISS instrument
 The color tables are based on the FISS IDL code loadct_ch.pro
 written by Chae, J
 
-Created on Jul 28 2016
+The output variables are ha, ca, ha_r, ca_r
+_r means the reverse color of each color maps
 
-@author: Kang, J
+Example
+plt.imshow(im,cmap=fisspy.cm.ha)
+
 
 """
 from __future__ import absolute_import, print_function, division
@@ -14,7 +17,7 @@ from __future__ import absolute_import, print_function, division
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 
-__author__="Kang, J"
+__author__="Kang, J : jhkang@astro.snu.ac.kr"
 __date__="Jul 28 2016"
 
 def create_cdict(r, g, b):
@@ -89,6 +92,9 @@ def ha():
                  251, 255])
     
     hadic=create_cdict(hr,hg,hb)
+    hardic=create_cdict(hr[::-1],hg[::-1],hb[::-1])
+    global ha_r
+    ha_r=LinearSegmentedColormap('mytables',hardic)
     return LinearSegmentedColormap('mytables',hadic)
 
 def ca():
@@ -148,6 +154,9 @@ def ca():
                  249, 251, 255])
     
     cadic=create_cdict(cr,cg,cb)
+    cardic=create_cdict(cr[::-1],cg[::-1],cb[::-1])
+    global ca_r
+    ca_r=LinearSegmentedColormap('mytables',cardic)
     return LinearSegmentedColormap('mytables',cadic)
 
 
