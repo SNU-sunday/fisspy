@@ -17,7 +17,7 @@ from __future__ import absolute_import, print_function, division
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 
-__author__="Kang, J : jhkang@astro.snu.ac.kr"
+__author__="J. Kang : jhkang@astro.snu.ac.kr"
 __date__="Jul 28 2016"
 
 def create_cdict(r, g, b):
