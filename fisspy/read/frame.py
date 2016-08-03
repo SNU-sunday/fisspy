@@ -11,3 +11,19 @@ __author__="J. Kang : jhkang@astro.snu.ac.kr
 
 import astropy.io import fits
 
+
+
+def frame(file,x1,x2=False,pca=False,ncoeff=False):
+    if not file:
+        raise ValueError('Empty filename: %s' % repr(name))
+    
+    header=fits.getheader(file)
+    pfile=bool(header['pfile'])
+    
+    if not x2:
+        x2=x1
+    
+    if pfile or pca:
+        spec=pca_read(file,x,header,ncoeff=ncoeff)
+    else:
+        spec=fits.getdata(file)
