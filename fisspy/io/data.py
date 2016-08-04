@@ -116,6 +116,49 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     spec*=10.**data[:,:,ncoeff][:,:,np.newaxis]
     return spec
 
-def raster():
+def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
     
+    header=getheader(file)
+    nw=header['NAXIS1']
+    ny=header['NAXIS2']
+    nx=header['NAXIS3']
+    wc=header['CRPIX1']
+    dldw=header['CDELT1']
+    
+    num=wv.shape[0]
+    
+    if not x2:
+        x2=int(nx)
+    if not y2:
+        y2=int(ny)
+    
+    wl=(np.arange(nw)-wc)*dldw
+    if hw < abs(dldw)/2.:
+        hw=abs(dldw)/2.
+    
+    s=np.abs(wl-wv[:,np.newaxis])<=hw
+    sp=frame(file,x1,x2)
+    leng=s.sum(1)
+    img=np.array([])
+    for i in range(num):
+        img=np.append(img,sp[:,y1:y2,s[i,:]].sum(2)/leng[i])
+    img=img.reshape((num,x2-x1,y2-y1)).T
     return img
+
+
+def getheader(file,pca=True):
+    header0=fits.getheader(file)
+    if pca:
+        header={}
+        for i in header0['comment']:
+            tmp=i.split(maxsplit=3)
+            if len(tmp) == 4:
+                try:
+                    header[tmp[0]]=float(tmp[2])
+                except:
+                    header[tmp[0]]=tmp[2]
+            if tmp[0] == 'WAVELEN':
+                header[tmp[0]]=tmp[2][1:]
+    else:
+        header=header0
+    return header
