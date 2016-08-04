@@ -116,3 +116,6 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     spec*=10.**data[:,:,ncoeff][:,:,np.newaxis]
     return spec
 
+def raster():
+    
+    return img
