@@ -7,4 +7,4 @@ __author__="SNU solar group"
 
 
 from fisspy import cm
-from fisspy.io import read
+import fisspy.io.data as read
