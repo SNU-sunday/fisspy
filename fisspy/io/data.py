@@ -1,15 +1,14 @@
 """
 FISS data module
 
-Read FISS data or its PCA file.
-
-Based on the IDL code FISS_READ_FRAME and
-FISS_PCA_READ written by (J. Chae May 2013)
+Read the FISS data
 
 ===========================
 Including functions are
     frame
     pca_read
+    raster
+    getheader
 ===========================
 
 Only input the original fts file or its PCA file '*_c.fts'.
@@ -36,11 +35,7 @@ import os.path
 def frame(file,x1,x2=False,pca=True,ncoeff=False):
     """
     FISS READ FRAME
-    
-    Using the astropy package
-    
-    Based on the IDL code FISS_READ_FRAME written by (J. Chae 2033)
-    
+
     Arguments
         file : string of file name to be read
         x1   : the frame number along the scanning direction
@@ -51,9 +46,14 @@ def frame(file,x1,x2=False,pca=True,ncoeff=False):
         ncoeff : number of coefficients to be used for the construction of data
                  in a pca file
     ===========================================================      
-    example
+    Example)
     >>> import fisspy
     >>> data=fisspy.read.frame(file,70,100,ncoeff=10)
+    ===========================================================
+        
+    Using the astropy package
+    
+    Based on the IDL code FISS_READ_FRAME written by (J. Chae 2013)
     """
     global header
     
@@ -77,20 +77,19 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     """
     FISS READ PCA FILE
     
-    Using the astropy package
-    
-    Based on the IDL code FISS_PCA_READ written by (J. Chae 2013)
-    
     Arguments
         file : string of file name to be read
         header : the fts file header
-        x1   : the frame number along the scanning direction
+        x1   : the starting frame number along the scanning direction
         x2   : the end of the frame number (optional)
         
     Keywords
         ncoeff : number of coefficients to be used for the construction of data
                  in a pca file
-                 
+    
+    Using the astropy package
+    
+    Based on the IDL code FISS_PCA_READ written by (J. Chae 2013)
     """
     if not file:
         raise ValueError('Empty filename: %s' % repr(file))
@@ -100,7 +99,7 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     dir=os.path.dirname(file)
     pfile=header['pfile']
     
-    if bool(dir):
+    if dir:
         pfile=dir+'/'+pfile
         
     pdata=fits.getdata(pfile)
@@ -117,7 +116,29 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     return spec
 
 def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
+    """
+    FISS Raster
     
+    Make raster images for a given file at wv of wavelength within width hw
+    
+    Argument
+        file : string of file name to be read
+        wv   : wavelengths
+        hw   : A half-width for wavelength integration
+               in unit of Angstrom
+        x1   : the starting frame number along the scanning direction (optional)
+        x2   : the end of the frame number (optional)
+        y1   : the starting slit position (optional)
+        y2   : the end of the slit position (optional)
+        
+    Keyword
+        pca : if set, data are read from the PCA file
+              default default is set
+    ==========================================
+    Example)
+    >>> import fisspy
+    >>> raster=fisspy.read.raster(file[0],np.array([-1,0,1]),0.05)
+    """
     header=getheader(file)
     nw=header['NAXIS1']
     ny=header['NAXIS2']
@@ -147,6 +168,31 @@ def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
 
 
 def getheader(file,pca=True):
+    """
+    FISS Get Header
+    
+    Load the header file of the FISS file.
+    
+    Since FISS file header is unusal other fits file,
+    
+    use this function to get header file.
+    
+    Argument
+        file : string of file name to be read
+        
+    Keyword
+        pca  : if set, data are read from the PCA file
+               default set true.
+    ======================================
+    Example)
+    
+    >>> import fisspy
+    >>> header=fisspy.read.getheader(file[0])
+    >>> print(header['NAXIS1'])
+    ======================================
+    
+    Using astropy package
+    """
     header0=fits.getheader(file)
     if pca:
         header={}
