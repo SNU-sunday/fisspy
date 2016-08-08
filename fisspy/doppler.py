@@ -13,7 +13,9 @@ from scipy.interpolate import interp1d
 
 def wavecalib(band,profile,method=True,pca=True):
     """
+    FISS Wavecalibration
     
+    Based on the IDL code written by (J. Chae 2013)
     """
     band=band[0:4]
     nw=profile.shape[0]
@@ -71,12 +73,80 @@ def wavecalib(band,profile,method=True,pca=True):
     
     return wavelength
 
-def lambdameter(wv,data,hw):
+def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     """
     FISS Doppler Lambdameter
     """
     
+    shape=data.shape
+    nw=shape[-1]
+    reshape=shape[:-1]
+    if wv.shape[0] != nw:
+        raise ValueError('The dimensions of %s and %s are not equal.'%(repr(wv),repr(data)))
+    
+    na=int(data.size/nw)
+    data=data.reshape((na,nw))
+    
     s=data.argmin(axis=-1)
-    sp0inter=interp1d(wv,data,axis=-1)
-#    sp0=0.5*(sp0inter(wv[s]+hw)+sp0inter(wv[s]-hw))
-
+    wc=np.zeros(na)
+    intc=np.zeros(na)
+    
+    if wvinput and hw == 0.:
+        wtmp=wv[np.array((s-5,s-4,s-3,s-2,s-1,s,s+1,s+2,s+3,s+4,s+5))]
+        mwtmp=np.median(wtmp,axis=0)
+        for i in range(na):
+            sp0=data[i,s[i]-5:s[i]+6]
+            c=np.polyfit(wtmp[:,i]-mwtmp[i],sp0,2)
+            wc[i]=mwtmp[i]-c[1]/(2*c[0])
+            p=np.poly1d(c)
+            intc[i]=p(wc[i]-mwtmp[i])
+        wc=wc.reshape(reshape).T
+        intc=intc.reshape(reshape).T
+        return wc, intc
+    
+    if wvinput:
+        interp=[]
+        for i in range(na):
+            interp+=[interp1d(wv,data[i,:])]
+            intc[i]=0.5*(interp[i](wv[s[i]]-hw)+interp[i](wv[s[i]]+hw))
+    else:
+        intc=np.ones(na)*sp
+    
+    hwc=np.zeros(na)
+    ref=1    
+    rep=0
+    
+    while ref > 0.001:
+        sp1=data-intc[:,np.newaxis]*np.ones(nw)
+        comp=sp1[:,0:nw-1]*sp1[:,1:nw]
+    
+        for i in range(na):
+#        for k,i in enumerate(na):
+            s=np.where(comp[i,:] <= 0.)[0]
+            nsol=s.size
+            j=int(nsol/2)
+            l=s[j-1]
+            r=s[j]
+            wl=wv[l]-(wv[l+1]-wv[l])/(sp1[i,l+1]-sp1[i,l])*sp1[i,l]
+            wr=wv[r]-(wv[r+1]-wv[r])/(sp1[i,r+1]-sp1[i,r])*sp1[i,r]
+            wc[i]=0.5*(wl+wr)
+            hwc[i]=0.5*np.abs(wr-wl)
+            
+            if wvinput:
+                intc[i]=0.5*(interp[i](wc[i]-hw)+interp[i](wc[i]+hw))
+        if wvinput:
+            ref=np.abs(hwc-hw).max()
+        else:
+            ref=0
+        
+        rep+=1
+        if rep == 5:
+            break
+    
+    wc=wc.reshape(reshape).T
+    if wvinput:
+        intc=intc.reshape(reshape).T
+        return wc, intc
+    else:
+        hwc=hwc.reshape(reshape).T
+        return wc, hwc
