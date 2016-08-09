@@ -11,6 +11,7 @@ __author__="J. Kang : jhkang@astro.snu.ac.kr"
 import numpy as np
 from scipy.interpolate import interp1d
 
+
 def wavecalib(band,profile,method=True,pca=True):
     """
     FISS Wavecalibration
@@ -105,9 +106,9 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
         return wc, intc
     
     if wvinput:
-        interp=[]
+        interp=[None]*na
         for i in range(na):
-            interp+=[interp1d(wv,data[i,:])]
+            interp[i]=interp1d(wv,data[i,:])
             intc[i]=0.5*(interp[i](wv[s[i]]-hw)+interp[i](wv[s[i]]+hw))
     else:
         intc=np.ones(na)*sp
@@ -116,12 +117,11 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     ref=1    
     rep=0
     
-    while ref > 0.001:
+    while ref > 0.001 or rep <5:
         sp1=data-intc[:,np.newaxis]*np.ones(nw)
         comp=sp1[:,0:nw-1]*sp1[:,1:nw]
     
         for i in range(na):
-#        for k,i in enumerate(na):
             s=np.where(comp[i,:] <= 0.)[0]
             nsol=s.size
             j=int(nsol/2)
@@ -140,8 +140,6 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
             ref=0
         
         rep+=1
-        if rep == 5:
-            break
     
     wc=wc.reshape(reshape).T
     if wvinput:
