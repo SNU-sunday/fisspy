@@ -32,7 +32,7 @@ import numpy as np
 import os.path
 
 
-def frame(file,x1,x2=False,pca=True,ncoeff=False):
+def frame(file,x1,x2=False,pca=True,ncoeff=False,xmax=False):
     """
     FISS READ FRAME
 
@@ -62,8 +62,10 @@ def frame(file,x1,x2=False,pca=True,ncoeff=False):
     
     header=fits.getheader(file)
     
-    if not x2:
+    if not x2 and not xmax:
         x2=x1+1
+    elif not x2 and xmax:
+        x2=header['naxis3']
     
     if pca:
         spec=pca_read(file,header,x1,x2,ncoeff=ncoeff)

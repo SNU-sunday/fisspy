@@ -9,8 +9,7 @@ __date__="Aug 08 2016"
 __author__="J. Kang : jhkang@astro.snu.ac.kr"
 
 import numpy as np
-from scipy.interpolate import interp1d
-import scipy
+
 
 def wavecalib(band,profile,method=True,pca=True):
     """
@@ -97,9 +96,9 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
         wtmp=wv[np.array((s-5,s-4,s-3,s-2,s-1,s,s+1,s+2,s+3,s+4,s+5))]
         mwtmp=np.median(wtmp,axis=0)
         sp0=np.array([data[i,s[i]-5:s[i]+6] for i in fna])
-        c=np.array([scipy.polyfit(wtmp[:,i]-mwtmp[i],sp0[i,:],2) for i in fna])
+        c=np.array([np.polyfit(wtmp[:,i]-mwtmp[i],sp0[i,:],2) for i in fna])
         wc=mwtmp-c[:,1]/(2*c[:,0])
-        p=[scipy.poly1d(c[i,:]) for i in fna]
+        p=[np.poly1d(c[i,:]) for i in fna]
         intc=np.array([p[i](wc[i]-mwtmp[i]) for i in fna])
         
         wc=wc.reshape(reshape).T
@@ -107,10 +106,9 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
         return wc, intc
     
     if wvinput:
-        interp=[None]*na
         for i in range(na):
-            interp[i]=interp1d(wv,data[i,:])
-            intc[i]=0.5*(interp[i](wv[s[i]]-hw)+interp[i](wv[s[i]]+hw))
+            intc[i]=0.5*(np.interp[i](wv[s[i]]-hw,wv,data[i,:])+
+                np.interp(wv[s[i]]+hw,wv,data[i,:]))
     else:
         intc=np.ones(na)*sp
     
@@ -138,7 +136,8 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
             hwc[i]=0.5*np.abs(wr-wl)
             
             if wvinput:
-                intc[i]=0.5*(interp[i](wc[i]-hw)+interp[i](wc[i]+hw))
+                intc[i]=0.5*(np.interp[i](wc[i]-hw,wv,data[i,:])+
+                    np.interp(wc[i]+hw,wv,data[i,:]))
         if wvinput:
             ref=np.abs(hwc-hw).max()
         else:
@@ -153,3 +152,4 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     else:
         hwc=hwc.reshape(reshape).T
         return wc, hwc
+
