@@ -11,6 +11,7 @@ __author__="J. Kang : jhkang@astro.snu.ac.kr"
 import numpy as np
 from scipy.interpolate import interp1d
 import scipy
+from multiprocessing import Process,Queue
 
 def wavecalib(band,profile,method=True,pca=True):
     """
@@ -117,11 +118,11 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     hwc=np.zeros(na)
     ref=1    
     rep=0
+    more=np.ones(na,dtype=bool)
     
-    while ref > 0.001 or rep <5:
+    while ref > 0.001 and rep <6:
         sp1=data-intc[:,np.newaxis]*np.ones(nw)
         comp=sp1[:,0:nw-1]*sp1[:,1:nw]
-        
 #        s=comp<=0.
 #        nsol=s.sum(axis=1)
 #        j=np.int32(nsol/2)
@@ -136,14 +137,15 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
             wr=wv[r]-(wv[r+1]-wv[r])/(sp1[i,r+1]-sp1[i,r])*sp1[i,r]
             wc[i]=0.5*(wl+wr)
             hwc[i]=0.5*np.abs(wr-wl)
-            
             if wvinput:
                 intc[i]=0.5*(interp[i](wc[i]-hw)+interp[i](wc[i]+hw))
         if wvinput:
-            ref=np.abs(hwc-hw).max()
+            ref0=np.abs(hwc-hw)
+            ref=ref0.max()
+            more=np.where(ref0>=0.001)[0]
+            fna=more
         else:
             ref=0
-        
         rep+=1
     
     wc=wc.reshape(reshape).T
@@ -153,3 +155,6 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     else:
         hwc=hwc.reshape(reshape).T
         return wc, hwc
+
+def multicoreLM(wv,data,hw=0.,sp=5000.,wvinput=True):
+    
