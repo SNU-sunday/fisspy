@@ -22,7 +22,7 @@ Next, Install the fisspy
 
     git clone https://github.com/SNU-sunday/FISS-PYTHON
 
-then update your pythonpath enviroment variable.
+then update your PYTHONPATH enviroment variable.
 
 # Github Manual
 If you don't know how to use github, See this [simple manual](https://guides.github.com/activities/hello-world/).
