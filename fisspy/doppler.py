@@ -9,9 +9,9 @@ __date__="Aug 08 2016"
 __author__="J. Kang : jhkang@astro.snu.ac.kr"
 
 import numpy as np
-from scipy.interpolate import interp1d
+#from scipy.interpolate import interp1d
+from interpolation.splines import LinearSpline
 import scipy
-from multiprocessing import Process,Queue
 
 def wavecalib(band,profile,method=True,pca=True):
     """
@@ -84,15 +84,15 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     nw=shape[-1]
     reshape=shape[:-1]
     if wv.shape[0] != nw:
-        raise ValueError('The dimensions of %s and %s are not equal.'%(repr(wv),repr(data)))
+        raise ValueError('The number of elements of wv and'
+        'the number of elements of last axis for data are not equal.')
     
     na=int(data.size/nw)
     fna=range(na)
     data=data.reshape((na,nw))
     
     s=data.argmin(axis=-1)
-    wc=np.zeros(na)
-    intc=np.zeros(na)
+
     
     if wvinput and hw == 0.:
         wtmp=wv[np.array((s-5,s-4,s-3,s-2,s-1,s,s+1,s+2,s+3,s+4,s+5))]
@@ -106,16 +106,20 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
         wc=wc.reshape(reshape).T
         intc=intc.reshape(reshape).T
         return wc, intc
-    
+        
+    posi=np.arange(na)
+    smin=[0,wv[0]]
+    smax=[na-1,wv[-1]]
+    order=[na,len(wv)]
     if wvinput:
-        interp=[None]*na
-        for i in range(na):
-            interp[i]=interp1d(wv,data[i,:])
-            intc[i]=0.5*(interp[i](wv[s[i]]-hw)+interp[i](wv[s[i]]+hw))
+            interp=LinearSpline(smin,smax,order,data)
+            wl=np.array((posi,wv[s]-hw)).T; wr=np.array((posi,wv[s]+hw)).T
+            intc=0.5*(interp(wl)+interp(wr))
     else:
         intc=np.ones(na)*sp
     
-    hwc=np.zeros(na)
+    wc=np.empty(na)
+    hwc=np.empty(na)
     ref=1    
     rep=0
     more=np.ones(na,dtype=bool)
@@ -123,9 +127,6 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     while ref > 0.001 and rep <6:
         sp1=data-intc[:,np.newaxis]*np.ones(nw)
         comp=sp1[:,0:nw-1]*sp1[:,1:nw]
-#        s=comp<=0.
-#        nsol=s.sum(axis=1)
-#        j=np.int32(nsol/2)
         
         for i in fna:
             s=np.where(comp[i,:] <= 0.)[0]
@@ -133,13 +134,14 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
             j=int(nsol/2)
             l=s[j-1]
             r=s[j]
-            wl=wv[l]-(wv[l+1]-wv[l])/(sp1[i,l+1]-sp1[i,l])*sp1[i,l]
-            wr=wv[r]-(wv[r+1]-wv[r])/(sp1[i,r+1]-sp1[i,r])*sp1[i,r]
-            wc[i]=0.5*(wl+wr)
-            hwc[i]=0.5*np.abs(wr-wl)
-            if wvinput:
-                intc[i]=0.5*(interp[i](wc[i]-hw)+interp[i](wc[i]+hw))
+            wl0=wv[l]-(wv[l+1]-wv[l])/(sp1[i,l+1]-sp1[i,l])*sp1[i,l]
+            wr0=wv[r]-(wv[r+1]-wv[r])/(sp1[i,r+1]-sp1[i,r])*sp1[i,r]
+            wc[i]=0.5*(wl0+wr0)
+            hwc[i]=0.5*np.abs(wr0-wl0)
+        wl=np.array((posi,wc-hw)).T; wr=np.array((posi,wc+hw)).T
+        
         if wvinput:
+            intc=0.5*(interp(wl)+interp(wr))
             ref0=np.abs(hwc-hw)
             ref=ref0.max()
             more=np.where(ref0>=0.001)[0]
@@ -155,6 +157,3 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     else:
         hwc=hwc.reshape(reshape).T
         return wc, hwc
-
-def multicoreLM(wv,data,hw=0.,sp=5000.,wvinput=True):
-    
