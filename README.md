@@ -26,5 +26,7 @@ then update your pythonpath enviroment variable.
 
 # Github Manual
 If you don't know how to use github, See this [simple manual](https://guides.github.com/activities/hello-world/).
+
 The basic GitHub manual is uploaded as "Github manual.pdf".
+
 The more detail imformation can be seen on the [Sunpy Developer's Guide](http://docs.sunpy.org/en/stable/dev.html).
