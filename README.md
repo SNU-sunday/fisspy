@@ -6,12 +6,12 @@ Installation
 
 Requirement Package:
 
-*[Python](http://www.python.org) v2.7 or 3.5
-*[NumPy](http://numpy.scipy.org/)
-*[Matplotlib](http://matplotlib.sourceforge.net/)
-*[SciPy](http://www.scipy.org/)
-*[Astropy](http://astropy.org) v1.0.0+
-*[Interpolation](https://github.com/EconForge/interpolation.py)
+* [Python](http://www.python.org) v2.7 or 3.5
+* [NumPy](http://numpy.scipy.org/)
+* [Matplotlib](http://matplotlib.sourceforge.net/)
+* [SciPy](http://www.scipy.org/)
+* [Astropy](http://astropy.org) v1.0.0+
+* [Interpolation](https://github.com/EconForge/interpolation.py)
 
 Recommand to install the python package manager [Anaconda](https://www.continuum.io/why-anaconda).
 If you install Anaconda then interpolation package can be easily downloaded.
