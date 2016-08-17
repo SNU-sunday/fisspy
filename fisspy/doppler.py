@@ -13,11 +13,22 @@ import numpy as np
 from interpolation.splines import LinearSpline
 import scipy
 
-def wavecalib(band,profile,method=True,pca=True):
+def wavecalib(band,profile,method=True):
     """
     FISS Wavecalibration
     
     Based on the IDL code written by (J. Chae 2013)
+    
+    Arguments
+        band : a string wavelength band, '6562','8542','5890','5434'
+        profile : a 1-D spectral profile
+    
+    Keywords
+        Method : If true, the reference lines are the telluric lines.
+                 else if False, the reference lines are the solar absorption lines.
+    ==========================================
+    Example)
+    >>> wv=fisspy.doppler.wavecalib('6562',profile)
     """
     band=band[0:4]
     nw=profile.shape[0]
@@ -78,6 +89,30 @@ def wavecalib(band,profile,method=True,pca=True):
 def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     """
     FISS Doppler Lambdameter
+    
+    Determine the Lambdameter chord center for a given half width or intensity.
+    
+    Based on the IDL code written by (J. Chae)
+    
+    Arguments
+        wv : A Calibrated wavelength.
+        data : n-D (n>=2) spectral profile data, 
+               the last dimension must be the spectral components
+               and size is equal to wv.
+               
+        Case wvinput=True
+        hw : A half width of the horizontal line segment
+        outputs are an array of central wavelength values
+                and an array of intensies of the line segment
+        
+        Case wvinput=False
+        sp : A intensity of the horiznotal segment
+        outputs are an array of central wavelength values
+                and an array of half widths of the line segment
+    
+    =======================================================
+    Example)
+    >>> wc, inten=fisspy.doppler.labdameter(wv,data,0.2)
     """
     
     shape=data.shape
