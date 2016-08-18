@@ -86,6 +86,7 @@ def wavecalib(band,profile,method=True):
     
     return wavelength
 
+
 def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     """
     FISS Doppler Lambdameter
@@ -159,28 +160,28 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     rep=0
     more=np.ones(na,dtype=bool)
     
-    while ref > 0.001 and rep <6:
-        sp1=data-intc[:,np.newaxis]*np.ones(nw)
+    while ref > 0.0001 and rep <6:
+        sp1=data[more,:]-intc[more,np.newaxis]*np.ones(nw)
         comp=sp1[:,0:nw-1]*sp1[:,1:nw]
         
-        for i in fna:
-            s=np.where(comp[i,:] <= 0.)[0]
-            nsol=s.size
-            j=int(nsol/2)
-            l=s[j-1]
-            r=s[j]
-            wl0=wv[l]-(wv[l+1]-wv[l])/(sp1[i,l+1]-sp1[i,l])*sp1[i,l]
-            wr0=wv[r]-(wv[r+1]-wv[r])/(sp1[i,r+1]-sp1[i,r])*sp1[i,r]
-            wc[i]=0.5*(wl0+wr0)
-            hwc[i]=0.5*np.abs(wr0-wl0)
-        wl=np.array((posi,wc-hw)).T; wr=np.array((posi,wc+hw)).T
+        s=comp <=0.1
+        nsol=s.sum(axis=1)
+        j=nsol//2
+        s2=s.argsort(axis=1)
+        posi2=np.arange(more.sum())
+        l=s2[posi2,-j-1]
+        r=s2[posi2,-j]
+        wl0=wv[l]-(wv[l+1]-wv[l])/(sp1[posi2,l+1]-sp1[posi2,l])*sp1[posi2,l]
+        wr0=wv[r]-(wv[r+1]-wv[r])/(sp1[posi2,r+1]-sp1[posi2,r])*sp1[posi2,r]
+        wc[more]=0.5*(wl0+wr0)
+        hwc[more]=0.5*np.abs(wr0-wl0)
         
         if wvinput:
-            intc=0.5*(interp(wl)+interp(wr))
+            wl=np.array((posi2,wc[more]-hw)).T; wr=np.array((posi2,wc[more]+hw)).T
+            intc[more]=0.5*(interp(wl)+interp(wr))
             ref0=np.abs(hwc-hw)
             ref=ref0.max()
-            more=np.where(ref0>=0.001)[0]
-            fna=more
+            more=ref0>=0.0001
         else:
             ref=0
         rep+=1
