@@ -26,7 +26,7 @@ then update your PYTHONPATH enviroment variable.
 
 Example
 ----------
-See the [notebook](https://github.com/SNU-sunday/FISS-PYTHON/fisspy/example/fisspy.ipynb)
+See the [notebook](https://github.com/SNU-sunday/FISS-PYTHON/blob/master/fisspy/example/fisspy.ipynb)
 
 # Github Manual
 If you don't know how to use github, See this [simple manual](https://guides.github.com/activities/hello-world/).
