@@ -143,13 +143,13 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
         intc=intc.reshape(reshape).T
         return wc, intc
         
-    posi=np.arange(na)
+    posi0=np.arange(na)
     smin=[0,wv[0]]
     smax=[na-1,wv[-1]]
     order=[na,len(wv)]
     if wvinput:
             interp=LinearSpline(smin,smax,order,data)
-            wl=np.array((posi,wv[s]-hw)).T; wr=np.array((posi,wv[s]+hw)).T
+            wl=np.array((posi0,wv[s]-hw)).T; wr=np.array((posi0,wv[s]+hw)).T
             intc=0.5*(interp(wl)+interp(wr))
     else:
         intc=np.ones(na)*sp
@@ -161,27 +161,29 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
     more=np.ones(na,dtype=bool)
     
     while ref > 0.0001 and rep <6:
-        sp1=data[more,:]-intc[more,np.newaxis]*np.ones(nw)
+        sp1=data-intc[:,np.newaxis]
         comp=sp1[:,0:nw-1]*sp1[:,1:nw]
         
-        s=comp <=0.1
+        s=comp[more] <=0.
         nsol=s.sum(axis=1)
         j=nsol//2
-        s2=s.argsort(axis=1)
-        posi2=np.arange(more.sum())
-        l=s2[posi2,-j-1]
-        r=s2[posi2,-j]
-        wl0=wv[l]-(wv[l+1]-wv[l])/(sp1[posi2,l+1]-sp1[posi2,l])*sp1[posi2,l]
-        wr0=wv[r]-(wv[r+1]-wv[r])/(sp1[posi2,r+1]-sp1[posi2,r])*sp1[posi2,r]
+        whl=nsol.cumsum()-nsol+j-1
+        whr=nsol.cumsum()-nsol+j
+        whp, whs=np.where(s)
+        l=whs[whl]
+        r=whs[whr]
+        posi=posi0[more]
+        wl0=wv[l]-(wv[l+1]-wv[l])/(sp1[posi,l+1]-sp1[posi,l])*sp1[posi,l]
+        wr0=wv[r]-(wv[r+1]-wv[r])/(sp1[posi,r+1]-sp1[posi,r])*sp1[posi,r]
         wc[more]=0.5*(wl0+wr0)
         hwc[more]=0.5*np.abs(wr0-wl0)
         
         if wvinput:
-            wl=np.array((posi2,wc[more]-hw)).T; wr=np.array((posi2,wc[more]+hw)).T
+            wl=np.array((posi,wc[more]-hw)).T; wr=np.array((posi,wc[more]+hw)).T
             intc[more]=0.5*(interp(wl)+interp(wr))
             ref0=np.abs(hwc-hw)
             ref=ref0.max()
-            more=ref0>=0.0001
+            more=ref0>0.0001
         else:
             ref=0
         rep+=1
