@@ -1,5 +1,5 @@
 # FISSpy
-PYTHON code for data analysis of the [NST/FISS instrument](http://fiss.snu.ac.kr/)
+The PYTHON Package for data analysis of the [NST/FISS instrument](http://fiss.snu.ac.kr/)
 
 Installation
 ------------
