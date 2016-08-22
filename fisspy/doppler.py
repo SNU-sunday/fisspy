@@ -124,24 +124,23 @@ def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
         'the number of elements of last axis for data are not equal.')
     
     na=int(data.size/nw)
-    fna=range(na)
     data=data.reshape((na,nw))
-    
     s=data.argmin(axis=-1)
 
     
     if wvinput and hw == 0.:
-        wtmp=wv[np.array((s-5,s-4,s-3,s-2,s-1,s,s+1,s+2,s+3,s+4,s+5))]
-        mwtmp=np.median(wtmp,axis=0)
-        sp0=np.array([data[i,s[i]-5:s[i]+6] for i in fna])
-        c=np.array([scipy.polyfit(wtmp[:,i]-mwtmp[i],sp0[i,:],2) for i in fna])
-        wc=mwtmp-c[:,1]/(2*c[:,0])
-        p=[scipy.poly1d(c[i,:]) for i in fna]
-        intc=np.array([p[i](wc[i]-mwtmp[i]) for i in fna])
-        
-        wc=wc.reshape(reshape).T
-        intc=intc.reshape(reshape).T
-        return wc, intc
+        raise ValueError('The half-width value must be greater than 0.')
+#        fna=range(na)
+#        wtmp=wv[np.array((s-5,s-4,s-3,s-2,s-1,s,s+1,s+2,s+3,s+4,s+5))]
+#        mwtmp=np.median(wtmp,axis=0)
+#        sp0=np.array([data[i,s[i]-5:s[i]+6] for i in fna])
+#        c=np.array([scipy.polyfit(wtmp[:,i]-mwtmp[i],sp0[i,:],2) for i in fna])
+#        wc=mwtmp-c[:,1]/(2*c[:,0])
+#        p=[scipy.poly1d(c[i,:]) for i in fna]
+#        intc=np.array([p[i](wc[i]-mwtmp[i]) for i in fna])
+#        wc=wc.reshape(reshape).T
+#        intc=intc.reshape(reshape).T
+#        return wc, intc
         
     posi0=np.arange(na)
     smin=[0,wv[0]]
