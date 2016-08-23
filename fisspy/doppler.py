@@ -9,9 +9,7 @@ __date__="Aug 08 2016"
 __author__="J. Kang : jhkang@astro.snu.ac.kr"
 
 import numpy as np
-#from scipy.interpolate import interp1d
 from interpolation.splines import LinearSpline
-import scipy
 
 def wavecalib(band,profile,method=True):
     """
