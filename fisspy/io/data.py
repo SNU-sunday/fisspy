@@ -32,7 +32,7 @@ import numpy as np
 import os.path
 
 
-def frame(file,x1,x2=False,pca=True,ncoeff=False,xmax=False):
+def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False):
     """
     FISS READ FRAME
 
@@ -55,12 +55,15 @@ def frame(file,x1,x2=False,pca=True,ncoeff=False,xmax=False):
     
     Based on the IDL code FISS_READ_FRAME written by (J. Chae 2013)
     """
-    global header
-    
     if not file:
         raise ValueError('Empty filename: %s' % repr(file))
     
     header=fits.getheader(file)
+    
+    try:
+        header['pfile']
+    except:
+        pca=False
     
     if not x2 and not xmax:
         x2=x1+1
@@ -141,7 +144,7 @@ def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
     >>> import fisspy
     >>> raster=fisspy.read.raster(file[0],np.array([-1,0,1]),0.05)
     """
-    header=getheader(file)
+    header=getheader(file,pca)
     nw=header['NAXIS1']
     ny=header['NAXIS2']
     nx=header['NAXIS3']
@@ -160,7 +163,7 @@ def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
         hw=abs(dldw)/2.
     
     s=np.abs(wl-wv[:,np.newaxis])<=hw
-    sp=frame(file,x1,x2)
+    sp=frame(file,x1,x2,pca=pca)
     leng=s.sum(1)
     img=np.array([])
     for i in range(num):
@@ -196,6 +199,11 @@ def getheader(file,pca=True):
     Using astropy package
     """
     header0=fits.getheader(file)
+    try:
+        header0['pfile']
+    except:
+        pca=False
+        
     if pca:
         header={}
         for i in header0['comment']:
