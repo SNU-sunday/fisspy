@@ -36,7 +36,7 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False):
     """
     FISS READ FRAME
 
-    Arguments
+    Parameters
         file : string of file name to be read
         x1   : the frame number along the scanning direction
         x2   : the end of the frame number (optional)
@@ -82,7 +82,7 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     """
     FISS READ PCA FILE
     
-    Arguments
+    Parameters
         file : string of file name to be read
         header : the fts file header
         x1   : the starting frame number along the scanning direction
@@ -126,7 +126,7 @@ def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
     
     Make raster images for a given file at wv of wavelength within width hw
     
-    Argument
+    Parameters
         file : string of file name to be read
         wv   : wavelengths
         hw   : A half-width for wavelength integration
@@ -151,7 +151,13 @@ def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
     wc=header['CRPIX1']
     dldw=header['CDELT1']
     
-    num=wv.shape[0]
+    
+    
+    try:
+        num=wv.shape[0]    
+    except:
+        num=1
+        wv=np.array([wv])
     
     if not x2:
         x2=int(nx)
@@ -165,11 +171,12 @@ def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
     s=np.abs(wl-wv[:,np.newaxis])<=hw
     sp=frame(file,x1,x2,pca=pca)
     leng=s.sum(1)
-    img=np.array([])
-    for i in range(num):
-        img=np.append(img,sp[:,y1:y2,s[i,:]].sum(2)/leng[i])
-    img=img.reshape((num,x2-x1,y2-y1)).T
-    return img
+    if num == 1:
+        img=sp[:,y1:y2,s[0,:]].sum(2)/leng[0]
+        return img.reshape((x2-x1,y2-y1)).T
+    else:
+        img=np.array([sp[:,y1:y2,s[i,:]].sum(2)/leng[i]] for i in range(num))
+        return img.reshape((num,x2-x1,y2-y1)).T
 
 
 def getheader(file,pca=True):
@@ -182,7 +189,7 @@ def getheader(file,pca=True):
     
     use this function to get header file.
     
-    Argument
+    Parameters
         file : string of file name to be read
         
     Keyword
