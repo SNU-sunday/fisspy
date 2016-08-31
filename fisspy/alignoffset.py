@@ -21,6 +21,11 @@ __date__="Sep 01 2016"
 from scipy.fftpack import ifft2,fft2
 import fisspy.io.data
 
-def alignoffset(image,tempate,cor=False):
+def alignoffset(image,template,cor=False):
+    nxi,nyi=image.shape
+    nxt,nyt=template.shape
+    
+    if nxi==nxt and nyi==nyt:
+        raise ValueError('Two images are incompatible')
     
     
