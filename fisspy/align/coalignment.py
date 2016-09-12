@@ -1,16 +1,5 @@
 """
-Align
-
-Based on the alignoffset.pro IDL code written by Chae 2004
-
-Parameters
-Image :
-Template :
-
-Keyword
-Cor : If True, then return values are x, y offsets
-      and 2-Dimensional correlation value array of the two input images
-      Default is False.
+Coalignment
 
 """
 from __future__ import absolute_import, print_function, division
@@ -19,10 +8,33 @@ __author__="J. Kang : jhkang@astro.snu.ac.kr"
 __date__="Sep 01 2016"
 
 from scipy.fftpack import ifft2,fft2
+from scipy.ndimage.interpolation import shift
 import numpy as np
 
-def alignoffset(image0,template0,cor):
-    """"""
+def alignoffset(image0,template0):
+    """
+    Alignoffset
+    
+    Based on the alignoffset.pro IDL code written by Chae 2004
+    
+    Parameters
+    Image : Images for coalignment with the template
+            A 2 or 3 Dimensional array ex) image[t,y,x]
+    Template : The reference image for coalignment
+               2D Dimensional arry ex) template[y,x]
+           
+    Outputs
+        x, y : The single value or array of the offset values.
+    ========================================
+    Example)
+    >>> x, y = alignoffset(image,template)
+    ========================================
+    
+    Notification
+    Using for loop is faster than inputing the 3D array as,
+    >>> res=np.array([alignoffset(image[i],template) for i in range(nt)])
+    where nt is the number of elements for the first axis.
+    """
     st=template0.shape
     si=image0.shape
     ndim=image0.ndim
@@ -35,7 +47,7 @@ def alignoffset(image0,template0,cor):
         'The shape of image = %s\n The shape of template = %s.'
         %(repr(si[-2:]),repr(st)))
     
-    if not 'float' in str(image0.dtype) and not 'float' in str(template0.dtype):
+    if not ('float' in str(image0.dtype) and 'float' in str(template0.dtype)):
         image0=image0.astype(float)
         template0=template0.astype(float)
     
@@ -91,3 +103,20 @@ def alignoffset(image0,template0,cor):
     
     return x, y
 
+def imageshift(image,x,y):
+    """
+    Imageshift
+    
+    Shifting the input image by x and y.
+    The x and y values are the outputs of the alignoffset.
+    
+    Parameter
+    Image : A 2 Dimensional array.
+    x, y  : The align offset values for image.
+            These are the outputs of the alignoffset code.
+    ==============================
+    Example)
+    >>> newimage=imageshift(image,x,y)
+    """
+    
+    return shift(image,[y,x])
