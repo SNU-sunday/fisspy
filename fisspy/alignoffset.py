@@ -21,11 +21,11 @@ __date__="Sep 01 2016"
 from scipy.fftpack import ifft2,fft2
 import numpy as np
 
-def alignoffset(image,template,cor=False):
+def alignoffset(image0,template0,cor):
     """"""
-    st=template.shape
-    si=image.shape
-    ndim=image.ndim
+    st=template0.shape
+    si=image0.shape
+    ndim=image0.ndim
     
     if ndim>3 or ndim==1:
         raise ValueError('Image must be 2 or 3 dimensional array.')
@@ -35,8 +35,15 @@ def alignoffset(image,template,cor=False):
         'The shape of image = %s\n The shape of template = %s.'
         %(repr(si[-2:]),repr(st)))
     
+    if not 'float' in str(image0.dtype) and not 'float' in str(template0.dtype):
+        image0=image0.astype(float)
+        template0=template0.astype(float)
+    
     nx=st[-1]
     ny=st[-2]
+    
+    template=template0.copy()
+    image=image0.copy()
     
     image=(image.T-image.mean(axis=(-1,-2))).T
     template-=template.mean()
@@ -60,17 +67,24 @@ def alignoffset(image,template,cor=False):
     y0=s[-2]-ny*(s[-2]>ny/2)
     
     if ndim==2:
-        cc=cor[s[0]-1:s[0]+2,s[1]-1:s[1]+2]
+        cc=np.empty((3,3))
+        cc[0,1]=cor[s[0]-1,s[1]]
+        cc[1,0]=cor[s[0],s[1]-1]
+        cc[1,1]=cor[s[0],s[1]]
+        cc[1,2]=cor[s[0],s[1]+1-nx]
+        cc[2,1]=cor[s[0]+1-ny,s[1]]
+        x1=0.5*(cc[1,0]-cc[1,2])/(cc[1,2]+cc[1,0]-2.*cc[1,1])
+        y1=0.5*(cc[0,1]-cc[2,1])/(cc[2,1]+cc[0,1]-2.*cc[1,1])
     else:
         cc=np.empty((si[0],3,3))
         cc[:,0,1]=cor[s[0],s[1]-1,s[2]]
         cc[:,1,0]=cor[s[0],s[1],s[2]-1]
         cc[:,1,1]=cor[s[0],s[1],s[2]]
-        cc[:,1,2]=cor[s[0],s[1],s[2]+1]
-        cc[:,2,1]=cor[s[0],s[1]+1,s[2]]
-    
-    x1=0.5*(cc[1,0]-cc[1,2])/(cc[1,2]+cc[1,0]-2.*cc[1,1])
-    y1=0.5*(cc[0,1]-cc[2,1])/(cc[2,1]+cc[0,1]-2.*cc[1,1])
+        cc[:,1,2]=cor[s[0],s[1],s[2]+1-nx]
+        cc[:,2,1]=cor[s[0],s[1]+1-ny,s[2]]
+        x1=0.5*(cc[:,1,0]-cc[:,1,2])/(cc[:,1,2]+cc[:,1,0]-2.*cc[:,1,1])
+        y1=0.5*(cc[:,0,1]-cc[:,2,1])/(cc[:,2,1]+cc[:,0,1]-2.*cc[:,1,1])
+
     
     x=x0+x1
     y=y0+y1
