@@ -12,6 +12,7 @@ def wavelet(y, dt,
             s0=False, j=False, param=False, pad=False):
     
     n=len(y)
+    n0=n.copy
     if not s0:
         s0 = 2*dt
     if not j:
@@ -35,27 +36,50 @@ def wavelet(y, dt,
     # FFT
     fx = fft(x)
     
+    nowf, period, fourier_factor, coi, dofmin = motherfunc(mother,
+                                                           k, scale,param)
+    wave = ifft(fx*nowf)
+    coi=coi*dt*np.append(np.arange((n0+1)//2),np.arange((n0//2-1,-1,-1)))
     
-    return wave
+    return wave[:,:n0], period, scale, coi
 
 def motherfunc(mother, k, scale, param):
+    """"""
     n = len(k)
-    k2 = k > 0.
-    scale2=scale[:,np.newaxis]
+    kp = k > 0.
+    scale2 = scale[:,np.newaxis]
+    pi = np.pi
     
     if mother == 'MORLET':
         if not param:
             param = 6.
-        
-        expn=-(scale2*k-param)**2/2.*k2
-        undermask=expn > -100.
-        norm=np.pi**-0.25*(n*k[1]*scale2)**0.5
-        psi_fft=norm*np.exp(expn)*k2*undermask
+        expn = -(scale2*k-param)**2/2.*kp
+        norm = pi**-0.25*(n*k[1]*scale2)**0.5
+        nowf = norm*np.exp(expn)*kp*(expn > -100.)
+        fourier_factor = 4*pi/(param+(2+param**2)**0.5)
+        coi = fourier_factor/2**0.5
         
     elif mother == 'PAUL':
+        if not param:
+            param = 4.
+        expn = -scale2*k*kp
+        norm = 2**param*(scale2*k[1]*n/(param*gamma(2*param)))**0.5
+        nowf = norm*np.exp(expn)*((scale2*k)**param)*kp*(expn > -100.)
+        fourier_factor = 4*pi/(2*param+1)
+        coi = fourier_factor*2**0.5
         
     elif mother == 'DOG':
-        
+        if not param:
+            param = 2.
+        expn = -(scale2*k)**2/2.
+        norm = (scale2*k[1]*n/gamma(param+0.5))**0.5
+        nowf = -norm*1j**param*(scale2*k)**param*np.exp(expn)
+        fourier_factor = 2*pi*(2./(2*param+1))**0.5
+        coi = fourier_factor/2**0.5
     else:
         raise ValueError('mother must be one of MORLET, PAUL, DOG')
+    period = scale2*fourier_factor
+    return nowf, period, fourier_factor, coi
+
+def wavesignif(y,dt,scale):
     
