@@ -12,17 +12,16 @@ def wavelet(y, dt,
             s0=False, j=False, param=False, pad=False):
     
     n=len(y)
-    n0=n
+    n0=n.copy
     if not s0:
         s0 = 2*dt
     if not j:
         j = int(np.log2(n*dt/s0)/dj)
-    else:
-        j=int(j)
+    
     #reconstruct the time series to analyze if set pad
     x = y - y.mean()
     if pad:
-        power = int(np.log2(n)+0.4999)
+        power = int(np.log2(n)/+0.4999)
         x = np.append(x,np.zeros(2**(power+1)-n))
         n=len(x)
     
@@ -37,10 +36,10 @@ def wavelet(y, dt,
     # FFT
     fx = fft(x)
     
-    nowf, period, fourier_factor, coi = motherfunc(mother,
+    nowf, period, fourier_factor, coi, dofmin = motherfunc(mother,
                                                            k, scale,param)
     wave = ifft(fx*nowf)
-    coi=coi*dt*np.append(np.arange((n0+1)//2),np.arange(n0//2-1,-1,-1))
+    coi=coi*dt*np.append(np.arange((n0+1)//2),np.arange((n0//2-1,-1,-1)))
     
     return wave[:,:n0], period, scale, coi
 
@@ -78,8 +77,7 @@ def motherfunc(mother, k, scale, param):
         fourier_factor = 2*pi*(2./(2*param+1))**0.5
         coi = fourier_factor/2**0.5
     else:
-        raise ValueError('Mother must be one of MORLET, PAUL, DOG\n'
-                         'mother = %s' %repr(mother))
+        raise ValueError('Mother must be one of MORLET, PAUL, DOG')
     period = scale2*fourier_factor
     return nowf, period, fourier_factor, coi
 
