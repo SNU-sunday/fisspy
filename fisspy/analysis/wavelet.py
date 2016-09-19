@@ -144,7 +144,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
     freq = dj0/period
     fft_theor = (1-lag1**2)/(1-2*lag1*np.cos(freq*2*np.pi)+lag1**2)
     fft_theor*=var
-    if len(gws) == j:
+    if gws:
         fft_theor = gws
     signif = fft_theor
     
