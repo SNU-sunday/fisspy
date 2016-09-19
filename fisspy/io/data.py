@@ -181,7 +181,7 @@ def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
         img=sp[:,y1:y2,s[0,:]].sum(2)/leng[0]
         return img.reshape((x2-x1,y2-y1)).T
     else:
-        img=np.array([sp[:,y1:y2,s[i,:]].sum(2)/leng[i]] for i in range(num))
+        img=np.array([sp[:,y1:y2,s[i,:]].sum(2)/leng[i] for i in range(num)])
         return img.reshape((num,x2-x1,y2-y1)).T
 
 
