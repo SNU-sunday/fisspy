@@ -56,7 +56,9 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False):
     Based on the IDL code FISS_READ_FRAME written by (J. Chae 2013)
     """
     if not file:
-        raise ValueError('Empty filename: %s' % repr(file))
+        raise ValueError('Empty filename')
+    if x2 and x2 <= x1:
+        raise ValueError('x2 must be larger than x1')
     
     header=fits.getheader(file)
     
@@ -65,16 +67,17 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False):
     except:
         pca=False
     
-    if not x2 and not xmax:
-        x2=x1+1
-    elif not x2 and xmax:
+    if xmax:
         x2=header['naxis3']
+    elif not x2:
+        x2=x1+1
     
     if pca:
         spec=pca_read(file,header,x1,x2,ncoeff=ncoeff)
     else:        
         spec=fits.getdata(file)[x1:x2]
-        
+    if x1+1 == x2:
+        spec=spec[0]
     return spec.astype(float)
 
 
@@ -97,7 +100,7 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     Based on the IDL code FISS_PCA_READ written by (J. Chae 2013)
     """
     if not file:
-        raise ValueError('Empty filename: %s' % repr(file))
+        raise ValueError('Empty filename')
     if not x2:
         x2=x1+1
         
@@ -151,7 +154,10 @@ def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
     wc=header['CRPIX1']
     dldw=header['CDELT1']
     
-    
+    if not file:
+        raise ValueError('Empty filename')
+    if x2 and x2 <= x1+1:
+        raise ValueError('x2 must be larger than x1+1')
     
     try:
         num=wv.shape[0]    
@@ -180,48 +186,43 @@ def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
 
 
 def getheader(file,pca=True):
-    """
-    FISS Get Header
-    
-    Load the header file of the FISS file.
-    
-    Since FISS file header is unusal other fits file,
-    
-    use this function to get header file.
-    
-    Parameters
-        file : string of file name to be read
-        
-    Keyword
-        pca  : if set, data are read from the PCA file
-               default set true.
-    ======================================
-    Example)
-    
-    >>> import fisspy
-    >>> header=fisspy.read.getheader(file[0])
-    >>> print(header['NAXIS1'])
-    ======================================
-    
-    Using astropy package
-    """
     header0=fits.getheader(file)
+    header=fits.Header()
     try:
         header0['pfile']
     except:
         pca=False
-        
     if pca:
-        header={}
+        header['pfile']=header0['pfile']
+        header['bscale']=header0['bscale']
         for i in header0['comment']:
-            tmp=i.split(maxsplit=3)
-            if len(tmp) == 4:
+            sori = i.split('=')
+            if len(sori) == 1:
+                skv = sori[0].split(maxsplit=1)
+                if len(skv) == 1:
+                    pass
+                else:
+                    header[skv[0]] = skv[1]
+            else:
+                key = sori[0]
+                svc = sori[1].split('/')
                 try:
-                    header[tmp[0]]=float(tmp[2])
+                    item=float(svc[0])
+#                    if item-int(svc[0]) == 0:
+#                        item=int(item)
                 except:
-                    header[tmp[0]]=tmp[2]
-            if tmp[0] == 'WAVELEN':
-                header[tmp[0]]=tmp[2][1:]
-    else:
-        header=header0
+                    item=svc[0].split("'")
+                    if len(item) != 1:
+                        item=item[1].split(maxsplit=0)[0]
+                    else:
+                        item=item[0].split(maxsplit=0)[0]
+                try:
+                    if item-int(svc[0]) == 0:
+                        item=int(item)
+                except:
+                    pass
+                if len(svc) == 1:
+                    header[key]=item
+                else:
+                    header[key]=(item,svc[1])
     return header
