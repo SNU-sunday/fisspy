@@ -156,7 +156,7 @@ def motherfunc(mother, k, scale, param):
     else:
         raise ValueError('Mother must be one of MORLET, PAUL, DOG\n'
                          'mother = %s' %repr(mother))
-    period = scale2*fourier_factor
+    period = scale*fourier_factor
     return nowf, period, fourier_factor, coi
 
 def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
@@ -202,7 +202,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
         signif : significance levels as a function of scale
         
     """
-    if len(y) == 1:
+    if np.atleast_1d(y) == 1:
         var = y
     else:
         var = np.var(y)
@@ -276,9 +276,11 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
             raise ValueError('gamma_fac(decorrelation facotr) not defined for '
                              'mother = %s with param = %s'
                              %(repr(mother),repr(param)))
-        if dof == -1:
-            dof = dofmin
-        if len(np.atleast_1d(dof)) == 1:
+        if len(np.atleast_1d(dof)) != 1:
+            pass
+        elif dof == -1:
+            dof = np.zeros(j)+dofmin
+        else:
             dof = np.zeros(j)+dof
         dof[dof <= 1] = 1
         dof = dofmin*(1+(dof*dt/gamma_fac/scale)**2)**0.5
@@ -296,7 +298,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
     elif sigtest == 2:
         if len(dof) != 2:
             raise ValueError('DOF must be set to [s1,s2], the range of scale-averages')
-        if cdelta != -1:
+        if cdelta == -1:
             raise ValueError('cdelta & dj0 not defined for'
                              'mother = %s with param = %s' %(repr(mother),repr(param)))
         dj= np.log2(scale[1]/scale[0])
