@@ -256,7 +256,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
         raise ValueError('Mother must be one of MORLET, PAUL, DOG')
     
     period = scale*fourier_factor
-    freq = dj0/period
+    freq = dt/period
     fft_theor = (1-lag1**2)/(1-2*lag1*np.cos(freq*2*np.pi)+lag1**2)
     fft_theor*=var
     if gws:
