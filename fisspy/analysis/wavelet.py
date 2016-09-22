@@ -131,7 +131,7 @@ def motherfunc(mother, k, scale, param):
         if not param:
             param = 6.
         expn = -(scale2*k-param)**2/2.*kp
-        norm = pi**-0.25*(n*k[1]*scale2)**0.5
+        norm = pi**(-0.25)*(n*k[1]*scale2)**0.5
         nowf = norm*np.exp(expn)*kp*(expn > -100.)
         fourier_factor = 4*pi/(param+(2+param**2)**0.5)
         coi = fourier_factor/2**0.5
