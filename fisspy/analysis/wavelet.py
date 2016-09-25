@@ -1,3 +1,7 @@
+"""
+Wavelet
+"""
+
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy.special._ufuncs import gamma, gammainc
@@ -8,9 +12,63 @@ __author__ = "J. Kang : jhkang@astro.snu.ac.kr"
 __date__= "Sep 13 2016"
 
 def wavelet(y, dt,
-            dj=0.25, mother='MORLET',
-            s0=False, j=False, param=False, pad=False):
+            dj=0.25, s0=False, j=False,
+            mother='MORLET', param=False, pad=False):
+    """
+    Wavelet
+    Computes the wavelet transform of the vecotr y
+    with sampling rate dt.
     
+    By default, the MORLET wavelet (k0=6) is used.
+    The wavelet basis is normalized to have total energy=1
+    at all scales.
+    
+    Parameters
+        y      : The time series of length N.
+        dt     : The time step between each y values
+                 i.e. the sampling time.
+        dj     : The spacing between discrete scales.(optional)
+                 Default is 0.25
+                 The smaller, the better scale resolution.
+        s0     : The smallest scale of the wavelet.(optional)
+                 Default is 2*dt.
+        j      : The number of scales minus one.(optional)
+                 Scales range from s0 up to s0*2**(j*dj), to give
+                 a total of (j+1) scales.
+                 Default is j=log2(n*dt/s0)/dj.
+        mother : The mother wavelet function.(optional)
+                 The choices are 'MORLET', 'PAUL', or 'DOG'
+                 Default is 'MORLET'
+        param  : The mother wavelet parameter.(optional)
+                 For 'MORLET' param is k0, default is 6.
+                 For 'PAUL' param is m, default is 4.
+                 For 'DOG' param is m, default is 2.
+    
+    Keywords
+        pad : If set True, pad time series with enough zeros to get
+              N up to the next higher power of 2.
+              This prevents wraparound from the end of the time series
+              to the beginning, and also speeds up the FFT's 
+              used to do the wavelet transform.
+              This will not eliminate all edge effects.
+    
+    Outputs
+        wave   : The WAVELET transform of y.
+                 (j+1,n) complex arry.
+                 np.arctan2(wave.imag,wave.real) gives the WAVELET phase.
+                 wave.real gives the WAVELET amplitude.
+                 The WAVELET power spectrum is np.abs(wave)**2
+        period : The vecotr of "Fourier" periods (in time units)
+                 that correspods to the scales.
+        scale  : The vecotr of scale indices, given by s0*2**(j*dj),
+                 j=0...j
+                 where j+1 is the total number of scales.
+        coi    : The Cone-of-Influence, which is a vector of N points
+                 that contains the maximum period of useful information
+                 at that particular time.
+                 Periods greater than this are subject to edge effets.
+    
+    """
     n=len(y)
     n0=n
     if not s0:
@@ -45,7 +103,25 @@ def wavelet(y, dt,
     return wave[:,:n0], period, scale, coi
 
 def motherfunc(mother, k, scale, param):
-    """"""
+    """
+    Motherfunc
+    
+    computes the wavelet function as a function of Fourier frequency,
+    used for the wavelet transform in Fourier space.
+    
+    Parameters
+        mother  : A string, Equal to 'MORLET' or 'PAUL' or 'DOG'
+        k       : The Fourier frequencies at which to calculate the wavelet
+        scale   : The wavelet scale
+        param   : The nondimensional parameter for the wavelet function
+    
+        Outputs
+        nowf   : The nonorthogonal wavelet function
+        fourier_factor : the ratio of Fourier period to scale
+        coi    : The cone-of-influence size at the scale
+        dofmin : Degrees of freedom for each point in the wavelet power
+                 (either 2 for MORLET and PAUL, or 1 for the DOG)
+    """
     n = len(k)
     kp = k > 0.
     scale2 = scale[:,np.newaxis]
@@ -55,7 +131,7 @@ def motherfunc(mother, k, scale, param):
         if not param:
             param = 6.
         expn = -(scale2*k-param)**2/2.*kp
-        norm = pi**-0.25*(n*k[1]*scale2)**0.5
+        norm = pi**(-0.25)*(n*k[1]*scale2)**0.5
         nowf = norm*np.exp(expn)*kp*(expn > -100.)
         fourier_factor = 4*pi/(param+(2+param**2)**0.5)
         coi = fourier_factor/2**0.5
@@ -80,14 +156,53 @@ def motherfunc(mother, k, scale, param):
     else:
         raise ValueError('Mother must be one of MORLET, PAUL, DOG\n'
                          'mother = %s' %repr(mother))
-    period = scale2*fourier_factor
+    period = scale*fourier_factor
     return nowf, period, fourier_factor, coi
 
 def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
                 param=False,lag1=0.0,siglvl=0.95,dof=-1,
                 gws=False,confidence=False):
+    """
+    Wave_signif
     
-    if len(y) == 1:
+    Compute the significance levels for a wavelet transform.
+    
+    Parameters
+        y     : The time series, or the variance of the time series.
+                If this is a single number, it is assumed to be the variance
+        dt    : The sampling time.
+        scale : The vecotr of scale indices, from previous call to WAVELET
+        sigtest : 0, 1, or 2 (optional)
+                  if 0 (default), then just do a regular chi-square test
+                      i.e. Eqn (18) from Torrence & Compo.
+                  If 1, then do a "time-average" test, i.e. Eqn (23).
+                      in this case, dof should be set to False,
+                      the nuber of local wavelet spectra 
+                      that were averaged together.
+                      For the Global Wavelet Spectrum(GWS), this would be N,
+                      where N is the number of points in y
+                  If 2, then do a "scale-average" test, i.e. Eqns (25)-(28).
+                      In this case, dof should be set to a two-element vector,
+                      which gives the scale range that was averaged together.
+                      e.g. if one scale-averaged scales between 2 and 8,
+                      then dof=[2,8]
+        lag1  : LAG 1 Autocorrelation, used for signif levels. (optional)
+                Default is 0.
+        siglvl : Significance level to use. (optional)
+                 Default is 0.95
+        dof   : degrees-of-freedom for sgnif test
+            Note: IF SIGTEST=1, then DOF can be a vector (same length as SCALEs),
+            in which case NA is assumed to vary with SCALE.
+            This allows one to average different numbers of times
+            together at different scales, or to take into account
+            things like the Cone of Influence.
+            See discussion following Eqn (23) in Torrence & Compo.
+            
+    Outputs
+        signif : significance levels as a function of scale
+        
+    """
+    if np.atleast_1d(y) == 1:
         var = y
     else:
         var = np.var(y)
@@ -141,7 +256,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
         raise ValueError('Mother must be one of MORLET, PAUL, DOG')
     
     period = scale*fourier_factor
-    freq = dj0/period
+    freq = dt/period
     fft_theor = (1-lag1**2)/(1-2*lag1*np.cos(freq*2*np.pi)+lag1**2)
     fft_theor*=var
     if gws:
@@ -161,9 +276,11 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
             raise ValueError('gamma_fac(decorrelation facotr) not defined for '
                              'mother = %s with param = %s'
                              %(repr(mother),repr(param)))
-        if dof == -1:
-            dof = dofmin
-        if len(np.atleast_1d(dof)) == 1:
+        if len(np.atleast_1d(dof)) != 1:
+            pass
+        elif dof == -1:
+            dof = np.zeros(j)+dofmin
+        else:
             dof = np.zeros(j)+dof
         dof[dof <= 1] = 1
         dof = dofmin*(1+(dof*dt/gamma_fac/scale)**2)**0.5
@@ -181,7 +298,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
     elif sigtest == 2:
         if len(dof) != 2:
             raise ValueError('DOF must be set to [s1,s2], the range of scale-averages')
-        if cdelta != -1:
+        if cdelta == -1:
             raise ValueError('cdelta & dj0 not defined for'
                              'mother = %s with param = %s' %(repr(mother),repr(param)))
         dj= np.log2(scale[1]/scale[0])
@@ -232,6 +349,13 @@ def chisquare_inv(p,v):
     return x
     
 def chisquare_solve(xguess,p,v):
+    """
+    Chisqure_solve
+    
+    Return the difference between calculated percentile and P.
+    
+    Written January 1998 by C. Torrence
+    """
     pguess = gammainc(v/2,v*xguess/2)
     pdiff = np.abs(pguess - p)
     if pguess >= 1-1e-4:
