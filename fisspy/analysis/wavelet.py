@@ -7,6 +7,8 @@ import numpy as np
 from scipy.special._ufuncs import gamma, gammainc
 from scipy.optimize import fminbound as fmin
 from scipy.fftpack import fft, ifft
+import matplotlib.pyplot as plt
+from matplotlib.ticker import sf
 
 __author__ = "J. Kang : jhkang@astro.snu.ac.kr"
 __date__= "Sep 13 2016"
@@ -102,6 +104,33 @@ def wavelet(y, dt,
     
     return wave[:,:n0], period, scale, coi
 
+def iwavelet(wave,scale,dt,dj=0.25,mother='MORLET',param=False):
+    a, b = wave.shape
+    c = len(scale)
+    scale2=1/scale**0.5
+    
+    if a != c:
+        raise ValueError('Input array dimensions do mot match.')
+    
+    fourier_factor, dofmin, cdelta, gamma_fac, dj0 = motherparam(mother,param)
+    if cdelta == -1:
+        raise ValueError('Cdelta undefined, cannot inverse with this wavelet')
+    
+    if mother == 'MORLET':
+        psi0=np.pi**(-0.25)
+    elif mother == 'PAUL':
+        psi0=2**param*gamma(param+1)/(np.pi*gamma(2*param+1))**0.5
+    elif mother == 'DOG':
+        if not param:
+            param=2
+        if param==2:
+            psi0=0.867325
+        elif param==6:
+            psi0=0.88406
+    
+    iwave=dj*dt**0.5/(cdelta*psi0)*np.dot(scale2,wave.real)
+    return iwave
+
 def motherfunc(mother, k, scale, param):
     """
     Motherfunc
@@ -159,6 +188,54 @@ def motherfunc(mother, k, scale, param):
     period = scale*fourier_factor
     return nowf, period, fourier_factor, coi
 
+def motherparam(mother,param=False):
+    if mother == 'MORLET':
+        if not param:
+            param = 6.
+        fourier_factor = 4*np.pi/(param+(2+param**2)**0.5)
+        dofmin=2.
+        if param == 6.:
+            cdelta = 0.776
+            gamma_fac = 2.32
+            dj0 = 0.60
+        else:
+            cdelta = -1
+            gamma_fac = -1
+            dj0 = -1
+    elif mother == 'PAUL':
+        if not param:
+            param = 4.
+        fourier_factor = 4*np.pi/(2*param+1)
+        dofmin = 2.
+        if param == 4.:
+            cdelta = 1.132
+            gamma_fac = 1.17
+            dj0 = 1.5
+        else:
+            cdelta = -1
+            gamma_fac = -1
+            dj0 = -1
+    elif mother == 'DOG':
+        if not param:
+            param = 2.
+        fourier_factor = 2.*np.pi*(2./(2*param+1))**0.5
+        dofmin = 1.
+        if param == 2.:
+            cdelta = 3.541
+            gamma_fac = 1.43
+            dj0 = 1.4
+        elif param ==6.:
+            cdelta = 1.966
+            gamma_fac = 1.37
+            dj0 = 0.97
+        else:
+            cdelta = -1
+            gamma_fac = -1
+            dj0 = -1
+    else:
+        raise ValueError('Mother must be one of MORLET, PAUL, DOG')
+    return fourier_factor, dofmin, cdelta, gamma_fac, dj0
+    
 def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
                 param=False,lag1=0.0,siglvl=0.95,dof=-1,
                 gws=False,confidence=False):
@@ -209,52 +286,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
     
     j = len(scale)
     
-    if mother == 'MORLET':
-        if not param:
-            param = 6.
-        fourier_factor = 4*np.pi/(param+(2+param**2)**0.5)
-        dofmin=2.
-        if param == 6.:
-            cdelta = 0.776
-            gamma_fac = 2.32
-            dj0 = 0.60
-        else:
-            cdelta = -1
-            gamma_fac = -1
-            dj0 = -1
-    elif mother == 'PAUL':
-        if not param:
-            param = 4.
-        fourier_factor = 4*np.pi/(2*param+1)
-        dofmin = 2.
-        if param == 4.:
-            cdelta = 1.132
-            gamma_fac = 1.17
-            dj0 = 1.5
-        else:
-            cdelta = -1
-            gamma_fac = -1
-            dj0 = -1
-    elif mother == 'DOG':
-        if not param:
-            param = 2.
-        fourier_factor = 2.*np.pi*(2./(2*param+1))**0.5
-        dofmin = 1.
-        if param == 2.:
-            cdelta = 3.541
-            gamma_fac = 1.43
-            dj0 = 1.4
-        elif param ==6.:
-            cdelta = 1.966
-            gamma_fac = 1.37
-            dj0 = 0.97
-        else:
-            cdelta = -1
-            gamma_fac = -1
-            dj0 = -1
-    else:
-        raise ValueError('Mother must be one of MORLET, PAUL, DOG')
-    
+    fourier_factor, dofmin, cdelta, gamma_fac, dj0 = motherparam(mother,param)
     period = scale*fourier_factor
     freq = dt/period
     fft_theor = (1-lag1**2)/(1-2*lag1*np.cos(freq*2*np.pi)+lag1**2)
@@ -320,6 +352,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
     else:
         raise ValueError('Sigtest must be 0,1, or 2')
     return signif
+
 def chisquare_inv(p,v):
     """
     CHISQUARE_INV
@@ -361,3 +394,33 @@ def chisquare_solve(xguess,p,v):
     if pguess >= 1-1e-4:
         pdiff = xguess
     return pdiff
+
+#def wave_coherency(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False):
+    
+def waveletplot(wave,time,period,coi,sig95,levels=[0,2,5,10,20],
+                cmap=False,title=False,xlabel=False,ylabel=False):
+    
+    plt.figure(figsize=(10,2))
+    if not cmap:
+        cmap=plt.cm.gray_r
+    power=np.abs(wave)**2
+    cs=plt.contourf(time,period,power,len(levels),cmap=cmap)
+    im=plt.contourf(cs,levels=levels,cmap=cmap)
+    plt.contour(time,period,sig95,[-99,1],color='k')
+    plt.fill_between(time,coi,period.max(),color='grey',alpha=0.4,hatch='x')
+    plt.ylim([period.max(),period.min()])
+    plt.yscale('log',basey=2)
+    if not xlabel:
+        xlabel='Time'
+    if not ylabel:
+        ylabel='Period'
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    ax=plt.gca().yaxis
+    ax.set_major_formatter(sf())
+    plt.ticklabel_format(axis='y',style='plain')
+    if not title:
+        title='Figure'
+    plt.title(title)
+    plt.colorbar(im)
+    plt.grid()
