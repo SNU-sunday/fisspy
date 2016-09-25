@@ -29,7 +29,7 @@ Example
 #### Raster & doppler map
 See the [notebook](https://github.com/SNU-sunday/FISS-PYTHON/blob/master/fisspy/example/fisspy.ipynb)
 #### wavelet
-see the [wavelet](https://github.com/SNU-sunday/FISS-PYTHON/blob/master/fisspy/analysis/sample/wavelet.ipynb)
+See the [wavelet](https://github.com/SNU-sunday/FISS-PYTHON/blob/master/fisspy/analysis/sample/wavelet.ipynb)
 # Github Manual
 If you don't know how to use github, See this [simple manual](https://guides.github.com/activities/hello-world/).
 
