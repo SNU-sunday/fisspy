@@ -575,13 +575,13 @@ def wave_coherency2(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
     rside=(ntmax-nt+1)//2
     g=np.arange(ntmax)*np.ones((nj,1))
     g-=lside[:,np.newaxis]
-    wh=~((g >= 0)*(g < nt2))
+    wh=~(g < nt2)
     time_wavelet=(g-nt2//2)*dt/scale[:,np.newaxis]
     wave_func=np.exp(-time_wavelet**2/2)
     wave_func[wh]=0
-    wave_func=(wave_func/wave_func.sum()).real[::-1]
+    wave_func=(wave_func/wave_func.sum()).real[:,::-1]
     cross_wavelet=fast_conv(cross_wavelet,wave_func)
-    
+    k=(nt2+1)//2
     
     scales=scale[:,np.newaxis]
     cross_wavelet/=scales
@@ -612,6 +612,14 @@ def wave_coherency2(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
 
 
 
-#def fast_conv(f,g):
+#def fast_conv(f,g,nt=False):
+#    nf=f.shape(f)
+#    ng=g.shape(g)
+#    npad=2**(np.log2(nf[-1])+1)
+#    
+#    pf=np.zeros([nf[0],npad],dtype=complex)
+#    pg=np.zeros([nf[0],npad],dtype=complex)
+#    pf[:,nf[1]]=f
+#    pg[:,ng[1]]=g
 #    convovle=ifft(fft(pf)*fft(pg))
 #    return convovle
