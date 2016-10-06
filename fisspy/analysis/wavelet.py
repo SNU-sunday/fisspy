@@ -575,7 +575,6 @@ def wave_coherency2(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
     power1/=scales
     power2/=scales
     
-
     nw=int(0.6/dj/2+0.5)*2-1
     weight=np.ones(nw)/nw
     cross_wavelet=fast_conv2(cross_wavelet,weight)
@@ -618,11 +617,11 @@ def fast_conv2(f,g):
     npad=2**(int(np.log2(max([nf[0],ng])))+1)
     
     wh1=np.arange(nf[1],dtype=int)
-    wh2=np.arange(nf[0],dtype=int)*np.ones((nf[1],1),dtype=int)-(ng-1)//2-1
+    wh2=np.arange(nf[0],dtype=int)*np.ones((nf[1],1),dtype=int)-ng//2
     pf=np.zeros([npad,nf[1]],dtype=complex)
     pg=np.zeros([npad,nf[1]],dtype=complex)
     pf[:nf[0],:]=f
     pg[:ng,:]=g
-    conv=ifft(fft(pf,axis=0)*fft(pg))
+    conv=ifft(fft(pf,axis=0)*fft(pg,axis=0),axis=0)
     result=conv[wh2.T,wh1]
     return result
