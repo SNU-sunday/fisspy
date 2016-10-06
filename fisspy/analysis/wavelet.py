@@ -545,7 +545,6 @@ def wave_coherency2(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
     
     time=time1[t1s:t1e]
     scale=scale1[s1s:s1e]
-    ntime=t1e-t1s
     nj=s1e-s1s
     
     global1=power1.sum(1)
@@ -559,21 +558,18 @@ def wave_coherency2(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
                       cross_wavelet=cross_wavelet)
         return result
     
-    nt=int(4*scale/dt)//2*4+1
+    nt=(4*scale/dt)//2*4+1
     nt2=nt[:,np.newaxis]
     ntmax=nt.max()
-    lside=(ntmax-nt)//2
     g=np.arange(ntmax)*np.ones((nj,1))
-    g-=lside[:,np.newaxis]
-    wh=~(g < nt2)
+    wh=g >= nt2
     time_wavelet=(g-nt2//2)*dt/scale[:,np.newaxis]
     wave_func=np.exp(-time_wavelet**2/2)
     wave_func[wh]=0
-    wave_func=(wave_func/wave_func.sum()).real
+    wave_func=(wave_func/wave_func.sum(1)[:,np.newaxis]).real
     cross_wavelet=fast_conv(cross_wavelet,wave_func,nt2)
-    power1=fast_conv(power1,wave_func)
-    power2=fast_conv(power2,wave_func)
-    
+    power1=fast_conv(power1,wave_func,nt2)
+    power2=fast_conv(power2,wave_func,nt2)
     scales=scale[:,np.newaxis]
     cross_wavelet/=scales
     power1/=scales
@@ -582,10 +578,9 @@ def wave_coherency2(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
 
     nw=int(0.6/dj/2+0.5)*2-1
     weight=np.ones(nw)/nw
-    for i in range(ntime):
-        cross_wavelet[:,i]=convolve(cross_wavelet[:,i],weight[::-1])
-        power1[:,i]=convolve(power1[:,i],weight[::-1])
-        power2[:,i]=convolve(power2[:,i],weight[::-1])
+    cross_wavelet=fast_conv2(cross_wavelet,weight)
+    power1=fast_conv2(power1,weight)
+    power2=fast_conv2(power2,weight)
     
     wave_phase=180./np.pi*np.arctan(cross_wavelet.imag/cross_wavelet.real)
     power3=power1*power2
@@ -604,31 +599,30 @@ def wave_coherency2(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
 
 
 def fast_conv(f,g,nt):
-    nf=f.shape(f)
-    ng=g.shape(g)
-    npad=2**(np.log2(max([nf[1],ng[1]])+1))
-    
+    nf=f.shape
+    ng=g.shape
+    npad=2**(int(np.log2(max([nf[1],ng[1]])))+1)
     wh1=np.arange(nf[0],dtype=int)
-    wh2=np.arange(nf[1],dtype=int)*np.ones((nf[0],1),dtype=int)-(nt-1)//2-1
+    wh2=np.arange(nf[1],dtype=int)*np.ones((nf[0],1),dtype=int)-(nt.astype(int)-1)//2-1
     pf=np.zeros([nf[0],npad],dtype=complex)
     pg=np.zeros([nf[0],npad],dtype=complex)
-    pf[:,nf[1]]=f
-    pg[:,ng[1]]=g
+    pf[:,:nf[1]]=f
+    pg[:,:ng[1]]=g
     conv=ifft(fft(pf)*fft(pg[:,::-1]))
     result=conv[wh1,wh2.T].T
     return result
 
 def fast_conv2(f,g):
-    nf=f.shape(f)
+    nf=f.shape
     ng=len(g)
-    npad=2**(np.log2(max([nf[0],ng]+1)))
+    npad=2**(int(np.log2(max([nf[0],ng])))+1)
     
     wh1=np.arange(nf[1],dtype=int)
     wh2=np.arange(nf[0],dtype=int)*np.ones((nf[1],1),dtype=int)-(ng-1)//2-1
     pf=np.zeros([npad,nf[1]],dtype=complex)
     pg=np.zeros([npad,nf[1]],dtype=complex)
-    pf[nf[0],:]=f
-    pg[ng[0],:]=g
-    conv=ifft(fft(pf,axis=0)*fft(pg)[:,np.newaxis])
-    result=conv[wh2.T,wh1].T
+    pf[:nf[0],:]=f
+    pg[:ng,:]=g
+    conv=ifft(fft(pf,axis=0)*fft(pg))
+    result=conv[wh2.T,wh1]
     return result
