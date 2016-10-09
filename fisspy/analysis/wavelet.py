@@ -7,6 +7,9 @@ import numpy as np
 from scipy.special._ufuncs import gamma, gammainc
 from scipy.optimize import fminbound as fmin
 from scipy.fftpack import fft, ifft
+from scipy.signal import convolve
+import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter as sf
 
 __author__ = "J. Kang : jhkang@astro.snu.ac.kr"
 __date__= "Sep 13 2016"
@@ -102,6 +105,33 @@ def wavelet(y, dt,
     
     return wave[:,:n0], period, scale, coi
 
+def iwavelet(wave,scale,dt,dj=0.25,mother='MORLET',param=False):
+    a, b = wave.shape
+    c = len(scale)
+    scale2=1/scale**0.5
+    mother=mother.upper()
+    if a != c:
+        raise ValueError('Input array dimensions do mot match.')
+    
+    fourier_factor, dofmin, cdelta, gamma_fac, dj0 = motherparam(mother,param)
+    if cdelta == -1:
+        raise ValueError('Cdelta undefined, cannot inverse with this wavelet')
+    
+    if mother == 'MORLET':
+        psi0=np.pi**(-0.25)
+    elif mother == 'PAUL':
+        psi0=2**param*gamma(param+1)/(np.pi*gamma(2*param+1))**0.5
+    elif mother == 'DOG':
+        if not param:
+            param=2
+        if param==2:
+            psi0=0.867325
+        elif param==6:
+            psi0=0.88406
+    
+    iwave=dj*dt**0.5/(cdelta*psi0)*np.dot(scale2,wave.real)
+    return iwave
+
 def motherfunc(mother, k, scale, param):
     """
     Motherfunc
@@ -122,6 +152,7 @@ def motherfunc(mother, k, scale, param):
         dofmin : Degrees of freedom for each point in the wavelet power
                  (either 2 for MORLET and PAUL, or 1 for the DOG)
     """
+    mother=mother.upper()
     n = len(k)
     kp = k > 0.
     scale2 = scale[:,np.newaxis]
@@ -159,6 +190,55 @@ def motherfunc(mother, k, scale, param):
     period = scale*fourier_factor
     return nowf, period, fourier_factor, coi
 
+def motherparam(mother,param=False):
+    mother=mother.upper()
+    if mother == 'MORLET':
+        if not param:
+            param = 6.
+        fourier_factor = 4*np.pi/(param+(2+param**2)**0.5)
+        dofmin=2.
+        if param == 6.:
+            cdelta = 0.776
+            gamma_fac = 2.32
+            dj0 = 0.60
+        else:
+            cdelta = -1
+            gamma_fac = -1
+            dj0 = -1
+    elif mother == 'PAUL':
+        if not param:
+            param = 4.
+        fourier_factor = 4*np.pi/(2*param+1)
+        dofmin = 2.
+        if param == 4.:
+            cdelta = 1.132
+            gamma_fac = 1.17
+            dj0 = 1.5
+        else:
+            cdelta = -1
+            gamma_fac = -1
+            dj0 = -1
+    elif mother == 'DOG':
+        if not param:
+            param = 2.
+        fourier_factor = 2.*np.pi*(2./(2*param+1))**0.5
+        dofmin = 1.
+        if param == 2.:
+            cdelta = 3.541
+            gamma_fac = 1.43
+            dj0 = 1.4
+        elif param ==6.:
+            cdelta = 1.966
+            gamma_fac = 1.37
+            dj0 = 0.97
+        else:
+            cdelta = -1
+            gamma_fac = -1
+            dj0 = -1
+    else:
+        raise ValueError('Mother must be one of MORLET, PAUL, DOG')
+    return fourier_factor, dofmin, cdelta, gamma_fac, dj0
+    
 def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
                 param=False,lag1=0.0,siglvl=0.95,dof=-1,
                 gws=False,confidence=False):
@@ -209,52 +289,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
     
     j = len(scale)
     
-    if mother == 'MORLET':
-        if not param:
-            param = 6.
-        fourier_factor = 4*np.pi/(param+(2+param**2)**0.5)
-        dofmin=2.
-        if param == 6.:
-            cdelta = 0.776
-            gamma_fac = 2.32
-            dj0 = 0.60
-        else:
-            cdelta = -1
-            gamma_fac = -1
-            dj0 = -1
-    elif mother == 'PAUL':
-        if not param:
-            param = 4.
-        fourier_factor = 4*np.pi/(2*param+1)
-        dofmin = 2.
-        if param == 4.:
-            cdelta = 1.132
-            gamma_fac = 1.17
-            dj0 = 1.5
-        else:
-            cdelta = -1
-            gamma_fac = -1
-            dj0 = -1
-    elif mother == 'DOG':
-        if not param:
-            param = 2.
-        fourier_factor = 2.*np.pi*(2./(2*param+1))**0.5
-        dofmin = 1.
-        if param == 2.:
-            cdelta = 3.541
-            gamma_fac = 1.43
-            dj0 = 1.4
-        elif param ==6.:
-            cdelta = 1.966
-            gamma_fac = 1.37
-            dj0 = 0.97
-        else:
-            cdelta = -1
-            gamma_fac = -1
-            dj0 = -1
-    else:
-        raise ValueError('Mother must be one of MORLET, PAUL, DOG')
-    
+    fourier_factor, dofmin, cdelta, gamma_fac, dj0 = motherparam(mother,param)
     period = scale*fourier_factor
     freq = dt/period
     fft_theor = (1-lag1**2)/(1-2*lag1*np.cos(freq*2*np.pi)+lag1**2)
@@ -320,6 +355,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
     else:
         raise ValueError('Sigtest must be 0,1, or 2')
     return signif
+
 def chisquare_inv(p,v):
     """
     CHISQUARE_INV
@@ -361,3 +397,148 @@ def chisquare_solve(xguess,p,v):
     if pguess >= 1-1e-4:
         pdiff = xguess
     return pdiff
+
+
+def waveletplot(wave,time,period,coi,sig95,levels=[0,2,5,10,20],
+                cmap=False,title=False,xlabel=False,ylabel=False):
+    
+    plt.figure(figsize=(10,2))
+    if not cmap:
+        cmap=plt.cm.gray_r
+    power=np.abs(wave)**2
+    cs=plt.contourf(time,period,power,len(levels),cmap=cmap)
+    im=plt.contourf(cs,levels=levels,cmap=cmap)
+    plt.contour(time,period,sig95,[-99,1],color='k')
+    plt.fill_between(time,coi,period.max(),color='grey',alpha=0.4,hatch='x')
+    plt.ylim([period.max(),period.min()])
+    plt.yscale('log',basey=2)
+    if not xlabel:
+        xlabel='Time'
+    if not ylabel:
+        ylabel='Period'
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    ax=plt.gca().yaxis
+    ax.set_major_formatter(sf())
+    plt.ticklabel_format(axis='y',style='plain')
+    if not title:
+        title='Figure'
+    plt.title(title)
+    plt.colorbar(im)
+    plt.grid()
+
+def wave_coherency(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
+                   outall=True,nosmooth=False,coi=False):
+    """"""
+    if not dt: dt=time1[1]-time1[0]
+    if not dj: dj=np.log2(scale1[1]/scale1[0])
+    if time1 is time2:
+        t1s=0
+        t1e=len(time1)
+        t2s=t1s
+        t2e=t1e
+    else:
+        otime_start=min([time1.min(),time2.min()])
+        otime_end=max([time1.max(),time2.max()])
+        t1=np.where((time1 >= otime_start)*(time1 <= otime_end))[0]
+        t1s=t1[0]
+        t1e=t1[-1]+1
+        t2=np.where((time2 >= otime_start)*(time2 <= otime_end))[0]
+        t2s=t2[0]
+        t2e=t2[-1]+1
+    
+    oscale_start=min([scale1.min(),scale2.min()])
+    oscale_end=max([scale1.max(),scale2.max()])
+    s1=np.where((scale1 >= oscale_start)*(scale1 <= oscale_end))[0]
+    s2=np.where((scale2 >= oscale_start)*(scale2 <= oscale_end))[0]
+    s1s=s1[0]
+    s1e=s1[-1]+1
+    s2s=s2[0]
+    s2e=s2[-1]+1
+    
+    cross_wavelet=wave1[s1s:s1e,t1s:t1e]*wave2[s2s:s2e,t2s:t2e].conj()
+    power1=np.abs(wave1[s1s:s1e,t1s:t1e])**2
+    power2=np.abs(wave2[s2s:s2e,t2s:t2e])**2
+    
+    time=time1[t1s:t1e]
+    scale=scale1[s1s:s1e]
+    nj=s1e-s1s
+    
+    global1=power1.sum(1)
+    global2=power2.sum(1)
+    global_cross = cross_wavelet.sum(1)
+    global_coher = np.abs(global_cross)**2/(global1*global2)
+    global_phase = np.arctan(global_cross.imag/global_cross.real)*180./np.pi
+    
+    if nosmooth:
+        result = dict(global_coherence=global_coher,global_phase=global_phase,
+                      cross_wavelet=cross_wavelet)
+        return result
+    
+    nt=(4*scale/dt)//2*4+1
+    nt2=nt[:,np.newaxis]
+    ntmax=nt.max()
+    g=np.arange(ntmax)*np.ones((nj,1))
+    wh=g >= nt2
+    time_wavelet=(g-nt2//2)*dt/scale[:,np.newaxis]
+    wave_func=np.exp(-time_wavelet**2/2)
+    wave_func[wh]=0
+    wave_func=(wave_func/wave_func.sum(1)[:,np.newaxis]).real
+    cross_wavelet=fast_conv(cross_wavelet,wave_func,nt2)
+    power1=fast_conv(power1,wave_func,nt2)
+    power2=fast_conv(power2,wave_func,nt2)
+    scales=scale[:,np.newaxis]
+    cross_wavelet/=scales
+    power1/=scales
+    power2/=scales
+    
+    nw=int(0.6/dj/2+0.5)*2-1
+    weight=np.ones(nw)/nw
+    cross_wavelet=fast_conv2(cross_wavelet,weight)
+    power1=fast_conv2(power1,weight)
+    power2=fast_conv2(power2,weight)
+    
+    wave_phase=180./np.pi*np.arctan(cross_wavelet.imag/cross_wavelet.real)
+    power3=power1*power2
+    whp=power3 < 1e-9
+    power3[whp]=1e-9
+    wave_coher=np.abs(cross_wavelet)**2/power3
+    
+    result=dict(cross_wavelet=cross_wavelet,time=time,scale=scale,
+                wave_phase=wave_phase,wave_coher=wave_coher,
+                global_phase=global_phase,global_coher=global_coher,
+                power1=power1,power2=power2,coi=coi)
+    return result
+
+
+
+
+
+def fast_conv(f,g,nt):
+    nf=f.shape
+    ng=g.shape
+    npad=2**(int(np.log2(max([nf[1],ng[1]])))+1)
+    wh1=np.arange(nf[0],dtype=int)
+    wh2=np.arange(nf[1],dtype=int)*np.ones((nf[0],1),dtype=int)-(nt.astype(int)-1)//2-1
+    pf=np.zeros([nf[0],npad],dtype=complex)
+    pg=np.zeros([nf[0],npad],dtype=complex)
+    pf[:,:nf[1]]=f
+    pg[:,:ng[1]]=g
+    conv=ifft(fft(pf)*fft(pg[:,::-1]))
+    result=conv[wh1,wh2.T].T
+    return result
+
+def fast_conv2(f,g):
+    nf=f.shape
+    ng=len(g)
+    npad=2**(int(np.log2(max([nf[0],ng])))+1)
+    
+    wh1=np.arange(nf[1],dtype=int)
+    wh2=np.arange(nf[0],dtype=int)*np.ones((nf[1],1),dtype=int)-ng//2
+    pf=np.zeros([npad,nf[1]],dtype=complex)
+    pg=np.zeros([npad,nf[1]],dtype=complex)
+    pf[:nf[0],:]=f
+    pg[:ng,:]=g
+    conv=ifft(fft(pf,axis=0)*fft(pg,axis=0),axis=0)
+    result=conv[wh2.T,wh1]
+    return result
