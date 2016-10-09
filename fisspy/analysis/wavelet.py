@@ -398,89 +398,6 @@ def chisquare_solve(xguess,p,v):
         pdiff = xguess
     return pdiff
 
-def wave_coherency(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
-                   outall=True,nosmooth=False,coi=False):
-    """"""
-    if not dt: dt=time1[1]-time1[0]
-    if not dj: dj=np.log2(scale1[1]/scale1[0])
-    if time1 is time2:
-        t1s=0
-        t1e=len(time1)
-        t2s=t1s
-        t2e=t1e
-    else:
-        otime_start=min([time1.min(),time2.min()])
-        otime_end=max([time1.max(),time2.max()])
-        t1=np.where((time1 >= otime_start)*(time1 <= otime_end))[0]
-        t1s=t1[0]
-        t1e=t1[-1]+1
-        t2=np.where((time2 >= otime_start)*(time2 <= otime_end))[0]
-        t2s=t2[0]
-        t2e=t2[-1]+1
-    
-    oscale_start=min([scale1.min(),scale2.min()])
-    oscale_end=max([scale1.max(),scale2.max()])
-    s1=np.where((scale1 >= oscale_start)*(scale1 <= oscale_end))[0]
-    s2=np.where((scale2 >= oscale_start)*(scale2 <= oscale_end))[0]
-    s1s=s1[0]
-    s1e=s1[-1]+1
-    s2s=s2[0]
-    s2e=s2[-1]+1
-    
-    cross_wavelet=wave1[s1s:s1e,t1s:t1e]*wave2[s2s:s2e,t2s:t2e].conj()
-    power1=np.abs(wave1[s1s:s1e,t1s:t1e])**2
-    power2=np.abs(wave2[s2s:s2e,t2s:t2e])**2
-    
-    time=time1[t1s:t1e]
-    scale=scale1[s1s:s1e]
-    ntime=t1e-t1s
-    nj=s1e-s1s
-    
-    global1=power1.sum(1)
-    global2=power2.sum(1)
-    global_cross = cross_wavelet.sum(1)
-    global_coher = np.abs(global_cross)**2/(global1*global2)
-    global_phase = np.arctan(global_cross.imag/global_cross.real)*180./np.pi
-    
-    if nosmooth:
-        result = dict(global_coherence=global_coher,global_phase=global_phase,
-                      cross_wavelet=cross_wavelet)
-        return result
-    
-    for j in range(nj):
-        nt=int(4*scale[j]/dt)//2*4+1
-        time_wavelet=(np.arange(nt)-nt//2)*dt/scale[j]
-        wave_func=np.exp(-time_wavelet**2/2)
-        wave_func=(wave_func/wave_func.sum()).real[::-1]
-        cross_wavelet[j,:]=convolve(cross_wavelet[j,:],wave_func,mode='same')
-        power1[j,:]=convolve(power1[j,:],wave_func,mode='same')
-        power2[j,:]=convolve(power2[j,:],wave_func,mode='same')
-    
-    
-    scales=scale[:,np.newaxis]
-    cross_wavelet/=scales
-    power1/=scales
-    power2/=scales
-    
-
-    nw=int(0.6/dj/2+0.5)*2-1
-    weight=np.ones(nw)/nw
-    for i in range(ntime):
-        cross_wavelet[:,i]=convolve(cross_wavelet[:,i],weight[::-1])
-        power1[:,i]=convolve(power1[:,i],weight[::-1])
-        power2[:,i]=convolve(power2[:,i],weight[::-1])
-    
-    wave_phase=180./np.pi*np.arctan(cross_wavelet.imag/cross_wavelet.real)
-    power3=power1*power2
-    whp=power3 < 1e-9
-    power3[whp]=1e-9
-    wave_coher=np.abs(cross_wavelet)**2/power3
-    
-    result=dict(cross_wavelet=cross_wavelet,time=time,scale=scale,
-                wave_phase=wave_phase,wave_coher=wave_coher,
-                global_phase=global_phase,global_coher=global_coher,
-                power1=power1,power2=power2,coi=coi)
-    return result
 
 def waveletplot(wave,time,period,coi,sig95,levels=[0,2,5,10,20],
                 cmap=False,title=False,xlabel=False,ylabel=False):
@@ -510,7 +427,7 @@ def waveletplot(wave,time,period,coi,sig95,levels=[0,2,5,10,20],
     plt.colorbar(im)
     plt.grid()
 
-def wave_coherency2(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
+def wave_coherency(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
                    outall=True,nosmooth=False,coi=False):
     """"""
     if not dt: dt=time1[1]-time1[0]
