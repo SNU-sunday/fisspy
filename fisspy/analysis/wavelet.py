@@ -7,12 +7,11 @@ import numpy as np
 from scipy.special._ufuncs import gamma, gammainc
 from scipy.optimize import fminbound as fmin
 from scipy.fftpack import fft, ifft
-from scipy.signal import convolve
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter as sf
 
 __author__ = "J. Kang : jhkang@astro.snu.ac.kr"
-__date__= "Sep 13 2016"
+__date__= "Sep 2016"
 
 def wavelet(y, dt,
             dj=0.25, s0=False, j=False,
@@ -399,13 +398,19 @@ def chisquare_solve(xguess,p,v):
     return pdiff
 
 
-def waveletplot(wave,time,period,coi,sig95,levels=[0,2,5,10,20],
-                cmap=False,title=False,xlabel=False,ylabel=False):
+def waveletplot(wave,time,period,scale,coi,levels=[0,2,5,10,20],
+                cmap=False,title=False,xlabel=False,ylabel=False,mother='morlet'):
     
     plt.figure(figsize=(10,2))
     if not cmap:
         cmap=plt.cm.gray_r
     power=np.abs(wave)**2
+    
+    dt=time[1]-time[0]
+    signif=wave_signif(1.0,dt,scale,sigtest=0,mother=mother)
+    sig95=signif[:,np.newaxis]*np.ones(len(wave[0,:]))
+    sig95=power/sig95
+    
     cs=plt.contourf(time,period,power,len(levels),cmap=cmap)
     im=plt.contourf(cs,levels=levels,cmap=cmap)
     plt.contour(time,period,sig95,[-99,1],color='k')
