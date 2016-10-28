@@ -543,7 +543,7 @@ def fast_conv2(f,g):
     pf=np.zeros([npad,nf[1]],dtype=complex)
     pg=np.zeros([npad,nf[1]],dtype=complex)
     pf[:nf[0],:]=f
-    pg[:ng,:]=g
+    pg[:ng,:]=g[:,np.newaxis]
     conv=ifft(fft(pf,axis=0)*fft(pg,axis=0),axis=0)
     result=conv[wh2.T,wh1]
     return result
