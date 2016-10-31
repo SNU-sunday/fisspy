@@ -507,7 +507,7 @@ def wave_coherency(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
     power3=power1*power2
     whp=power3 < 1e-9
     power3[whp]=1e-9
-    wave_coher=np.abs(cross_wavelet)**2/power3
+    wave_coher=(np.abs(cross_wavelet)**2/power3).real
     
     result=dict(cross_wavelet=cross_wavelet,time=time,scale=scale,
                 wave_phase=wave_phase,wave_coher=wave_coher,
@@ -539,7 +539,7 @@ def fast_conv2(f,g):
     npad=2**(int(np.log2(max([nf[0],ng])))+1)
     
     wh1=np.arange(nf[1],dtype=int)
-    wh2=np.arange(nf[0],dtype=int)*np.ones((nf[1],1),dtype=int)-ng//2
+    wh2=np.arange(nf[0],dtype=int)*np.ones((nf[1],1),dtype=int)+ng//2
     pf=np.zeros([npad,nf[1]],dtype=complex)
     pg=np.zeros([npad,nf[1]],dtype=complex)
     pf[:nf[0],:]=f
