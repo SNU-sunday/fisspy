@@ -281,7 +281,7 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
         signif : significance levels as a function of scale
         
     """
-    if np.atleast_1d(y) == 1:
+    if len(np.atleast_1d(y)) == 1:
         var = y
     else:
         var = np.var(y)
