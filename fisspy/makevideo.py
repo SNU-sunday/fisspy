@@ -1,12 +1,11 @@
 """
 Makevideo
 
-Using the ffmpeg make a movie file from images
+Using the ffmpeg make a video file from images.
 """
 from __future__ import absolute_import, division, print_function
 import numpy as np
 import subprocess as sp
-import platform
 from matplotlib.pyplot import imread
 from shutil import copy2
 import os
@@ -15,12 +14,19 @@ __author__="J. Kang: jhkang@astro.snu.ac.kr"
 __email__="jhkang@astro.snu.ac.kr"
 __date__="Nov 08 2016"
 
-def makevideo(imgstr,fpsi,movie_name='video.mp4'):
-    os_name=platform.system()
-    if os_name == 'Windows':
-        FFMPEG_BIN = "ffmpeg.exe"
-    else:
-        FFMPEG_BIN = "ffmpeg"
+def ffmpeg(imgstr,fpsi,movie_name='video.mp4'):
+    """
+    FFMPEG
+    
+    Using the ffmpeg make a video file from images.
+    The output video is saved at the same location of images.
+    
+    Arguments
+        imgstr : List of image filename.
+        fpsi   : Integer value of Frame Per Second.
+        Movie_name : Output video name with extension. Default is video.mp4
+    """
+    FFMPEG_BIN = "ffmpeg"
     
     exten=movie_name.split('.')[1]
     if exten == 'mp4':
@@ -42,24 +48,29 @@ def makevideo(imgstr,fpsi,movie_name='video.mp4'):
     xsize=size[0]
     ysize=size[1]
     
-    if np.mod(xsize*ysize,2) == 0:
+    if np.mod(xsize*ysize,2) != 0:
         raise ValueError("The size of the image shuld be even numbers.")
     
     newname=np.arange(n)
     newname=np.char.add('_',newname.astype(str))
     newname=np.char.add(newname,'.png')
-    
+
+    dir=os.path.dirname(imgstr[0])
+    if bool(dir):
+        os.chdir(dir)
+    else:
+        os.chdir(os.getcwd())
+
     for i in range(n):
         copy2(imgstr[i],newname[i])
     
-    
-    cmd=[FFMPEG_BIN,
-         '-i', '_%d.png'
-         '-y',
-         '-s',str(xsize)+'x'+str(ysize),
-         '-pix_fmt','yuv420p',
-         '-r',fps,
-         '-c:v',codec,
-         'q:v 1',movie_name]
-    
-    pipe = sp.Popen(cmd,stdin=sp.PIPE,stderr=sp.PIPE)
+
+    cmd=(FFMPEG_BIN+
+        ' -i _%d.png -y -s '+str(xsize)+'x'+str(ysize)+
+        ' -pix_fmt yuv420p -r '+fps+' -c:v '+codec+
+        ' -q:v 1 '+movie_name)
+
+    os.system(cmd)
+
+    for i in range(n):
+        os.remove(newname[i])
