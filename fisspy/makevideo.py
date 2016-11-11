@@ -5,7 +5,6 @@ Using the ffmpeg make a video file from images.
 """
 from __future__ import absolute_import, division, print_function
 import numpy as np
-import subprocess as sp
 from matplotlib.pyplot import imread
 from shutil import copy2
 import os

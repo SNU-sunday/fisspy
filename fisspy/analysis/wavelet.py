@@ -291,11 +291,15 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
     fourier_factor, dofmin, cdelta, gamma_fac, dj0 = motherparam(mother,param)
     period = scale*fourier_factor
     freq = dt/period
-    fft_theor = (1-lag1**2)/(1-2*lag1*np.cos(freq*2*np.pi)+lag1**2)
-    fft_theor*=var
-    if gws:
-        fft_theor = gws
-    signif = fft_theor
+    try:
+        len(gws)
+        fft_theor = gws.copy()
+    except:
+        fft_theor = (1-lag1**2)/(1-2*lag1*np.cos(freq*2*np.pi)+lag1**2)
+        fft_theor*=var
+
+
+    signif = fft_theor.copy()
     
     if sigtest == 0:
         dof = dofmin
@@ -338,10 +342,12 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
         dj= np.log2(scale[1]/scale[0])
         s1 = dof[0]
         s2 = dof[1]
-        avg = (scale>=s1)*(scale<=s2)
+        avg = (period>=s1)*(period<=s2)
         navg = avg.sum()
         if not navg:
             raise ValueError('No valid scales between %s and %s' %(repr(s1),repr(s2)))
+        s1=scale[avg].min()
+        s2=scale[avg].max()
         savg = 1./(1./scale[avg]).sum()
         smid = np.exp(0.5*np.log(s1*s2))
         dof = (dofmin*navg*savg/smid)*(1+(navg*dj/dj0)**2)**0.5
