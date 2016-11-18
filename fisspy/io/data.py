@@ -78,7 +78,7 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False):
         spec=fits.getdata(file)[x1:x2]
     if x1+1 == x2:
         spec=spec[0]
-    return spec.astype(float)
+    return spec.transpose((1,0,2)).astype(float)
 
 
 def pca_read(file,header,x1,x2=False,ncoeff=False):
@@ -178,11 +178,11 @@ def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
     sp=frame(file,x1,x2,pca=pca)
     leng=s.sum(1)
     if num == 1:
-        img=sp[:,y1:y2,s[0,:]].sum(2)/leng[0]
-        return img.reshape((x2-x1,y2-y1)).T
+        img=sp[y1:y2,:,s[0,:]].sum(2)/leng[0]
+        return img.reshape((y2-y1,x2-x1))
     else:
-        img=np.array([sp[:,y1:y2,s[i,:]].sum(2)/leng[i] for i in range(num)])
-        return img.reshape((num,x2-x1,y2-y1)).T
+        img=np.array([sp[y1:y2,:,s[i,:]].sum(2)/leng[i] for i in range(num)])
+        return img.reshape((num,y2-y1,x2-x1))
 
 
 def getheader(file,pca=True):
