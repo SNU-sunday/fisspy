@@ -6,14 +6,14 @@ Using the ffmpeg make a video file from images.
 from __future__ import absolute_import, division, print_function
 import numpy as np
 from matplotlib.pyplot import imread
-from shutil import copy2
 import os
+import subprocess
 
 __author__="J. Kang: jhkang@astro.snu.ac.kr"
 __email__="jhkang@astro.snu.ac.kr"
 __date__="Nov 08 2016"
 
-def ffmpeg(imgstr,fpsi,movie_name='video.mp4'):
+def ffmpeg(imgstr,fpsi,output='video.mp4'):
     """
     FFMPEG
     
@@ -27,7 +27,7 @@ def ffmpeg(imgstr,fpsi,movie_name='video.mp4'):
     """
     FFMPEG_BIN = "ffmpeg"
     
-    exten=movie_name.split('.')[1]
+    exten=output.split('.')[1]
     if exten == 'mp4':
         codec='libx264'
     elif exten == 'avi':
@@ -60,16 +60,13 @@ def ffmpeg(imgstr,fpsi,movie_name='video.mp4'):
     else:
         os.chdir(os.getcwd())
 
-    for i in range(n):
-        copy2(imgstr[i],newname[i])
+    f=open('img_list.tmp','w')
+    for i in imgstr:
+        f.write("file '"+os.path.basename(i)+"'\n")
+    f.close()
     
-
     cmd=(FFMPEG_BIN+
-        ' -i _%d.png -y -s '+str(xsize)+'x'+str(ysize)+
-        ' -pix_fmt yuv420p -r '+fps+' -c:v '+codec+
-        ' -q:v 1 '+movie_name)
+         ' -r '+fps+' -f concat -i img_list.tmp'+
+         ' -c:v '+codec+' -pix_fmt yuv420p -q:v 1 -y '+output)
 
     os.system(cmd)
-
-    for i in range(n):
-        os.remove(newname[i])
