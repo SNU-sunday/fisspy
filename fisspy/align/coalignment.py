@@ -10,6 +10,10 @@ __date__="Sep 01 2016"
 from scipy.fftpack import ifft2,fft2
 from scipy.ndimage.interpolation import shift
 import numpy as np
+from fisspy.io.data import getheader,raster
+from astropy.time import Time
+from interpolation.splines import LinearSpline
+import os
 
 def alignoffset(image0,template0):
     """
@@ -120,3 +124,104 @@ def imageshift(image,x,y):
     """
     
     return shift(image,[y,x])
+
+def fiss_align_inform(file,wvref=-4,dirname=False,
+                      filename=False,save=True,sil=True):
+    """
+    fiss_align_infrom
+    
+    """
+    n=len(file)
+    hlist=[getheader(i) for i in file]
+    tlist=[i['date'] for i in hlist]
+    t=Time(tlist,format='isot',scale='ut1')
+    dtmin=(t.jd-t.jd[0])*24*60
+    
+    nx=hlist[0]['naxis3']
+    ny=hlist[0]['naxis2']
+    
+    angle=np.deg2rad(dtmin*0.25)
+    
+    xc=nx//2
+    yc=ny//2
+    
+    nx1=((nx//2)//2)*2
+    ny1=((ny//2)//2)*2
+    
+    x1=xc-nx1//2
+    y1=yc-ny1//2
+    
+    xa=(x1+np.arange(nx1))
+    ya=(y1+np.arange(ny1))[:,None]
+    
+    im1=raster(file[0],wvref,0.05,x1=x1,x2=x1+nx1,y1=y1,y2=y1+ny1)
+    
+    dx=np.zeros(n)
+    dy=np.zeros(n)
+    
+    for i in range(n-1):
+        #align with next image
+        #the alignment is not done with the reference, since the structure can be transformed
+        xt1,yt1=rot_trans(xa,ya,xc,yc,angle[i])
+        xt2,yt2=rot_trans(xa,ya,xc,yc,angle[i+1])
+        im2=raster(file[i+1],wvref,0.05,x1=x1,x2=x1+nx1-1,y1=y1,y2=y1+ny1-1)
+        img1=img_interpol(im1,xa,ya,xt1,yt1)
+        img2=img_interpol(im2,xa,ya,xt2,yt2)
+        sh=alignoffset(img2,img1)
+        
+        #align with reference
+        xt1,yt1=rot_trans(xa,ya,xc,yc,angle[i],dx[i],dy[i])
+        xt2,yt2=rot_trans(xa,ya,xc,yc,angle[i],dx[i]+sh[0],dx[i]+sh[1])
+        img1=img_interpol(im1,xa,ya,xt1,yt1)
+        img2=img_interpol(im2,xa,ya,xt2,yt2)
+        sh+=alignoffset(img2,img1)
+        
+        dx[i+1]=dx[i]+sh[0]
+        dy[i+1]=dy[i]+sh[1]
+        
+        im1=im2
+        
+        if not sil:
+            print(i)
+    
+    result=dict(xc=xc,yc=yc,angle=angle,dt=dtmin,dx=dx,dy=dy)
+    if save:
+        if not dirname:
+            dirname=os.getcwd()+os.sep
+        if not filename:
+            filename=t[0].value[:10]
+        np.savez(dirname+filename+'.npz',xc=xc,yc=yc,angle=angle,
+                 dt=dtmin,dx=dx,dy=dy)
+    return result
+    
+def rot_trans(x,y,xc,yc,angle,dx=0,dy=0,inv=False):
+    """
+    rot_trans
+    
+    rotational transpose for input array of x, y and angle.
+    
+    
+    """
+    
+    if not inv:
+        xt=(x-xc)*np.cos(angle)+(y-yc)*np.sin(angle)+xc+dx
+        yt=-(x-xc)*np.sin(angle)+(y-yc)*np.cos(angle)+yc+dy
+    else:
+        xt=(x-xc-dx)*np.cos(angle)-(y-yc-dy)*np.sin(angle)+xc
+        yt=(x-xc-dx)*np.sin(angle)+(y-yc-dy)*np.cos(angle)+yc
+    return xt,yt
+
+def img_interpol(img,xa,ya,xt,yt):
+    """
+    img_interpol
+    """
+    shape=xt.shape
+    size=xt.size
+    smin=[ya[0,0],xa[0]]
+    smax=[ya[-1,0],xa[-1]]
+    order=[len(ya),len(xa)]
+    interp=LinearSpline(smin,smax,order,img)
+    
+    a=np.array((yt.reshape(size),xt.reshape(size)))
+    b=interp(a.T)
+    return b.reshape(shape)
