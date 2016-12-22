@@ -1,5 +1,5 @@
 """
-FISS data module
+FISS read module
 
 Read the FISS data
 
@@ -29,7 +29,7 @@ __author__="J. Kang : jhkang@astro.snu.ac.kr"
 
 from astropy.io import fits
 import numpy as np
-import os.path
+import os
 
 
 def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False):
@@ -108,12 +108,11 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     pfile=header['pfile']
     
     if dir:
-        pfile=dir+'/'+pfile
+        pfile=dir+os.sep()+pfile
         
     pdata=fits.getdata(pfile)
     data=fits.getdata(file)[x1:x2]
     ncoeff1=data.shape[2]-1
-    
     if not ncoeff:
         ncoeff=ncoeff1
     elif ncoeff > ncoeff1:
@@ -123,7 +122,7 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     spec*=10.**data[:,:,ncoeff][:,:,np.newaxis]
     return spec
 
-def raster(file,wv,hw,x1=0,x2=False,y1=0,y2=False,pca=True):
+def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True):
     """
     FISS Raster
     

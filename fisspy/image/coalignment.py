@@ -8,12 +8,13 @@ __author__="J. Kang : jhkang@astro.snu.ac.kr"
 __date__="Sep 01 2016"
 
 from scipy.fftpack import ifft2,fft2
-from scipy.ndimage.interpolation import shift
 import numpy as np
-from fisspy.io.data import getheader,raster
+from fisspy.io.read import getheader,raster
+from . import fiss_sdo_align_tool
 from astropy.time import Time
-from interpolation.splines import LinearSpline
 import os
+from sunpy.net import vso
+from .base import rotation
 
 def alignoffset(image0,template0):
     """
@@ -107,26 +108,10 @@ def alignoffset(image0,template0):
     
     return x, y
 
-def imageshift(image,x,y):
-    """
-    Imageshift
-    
-    Shifting the input image by x and y.
-    The x and y values are the outputs of the alignoffset.
-    
-    Parameter
-    Image : A 2 Dimensional array.
-    x, y  : The align offset values for image.
-            These are the outputs of the alignoffset code.
-    ==============================
-    Example)
-    >>> newimage=imageshift(image,x,y)
-    """
-    
-    return shift(image,[y,x])
 
 def fiss_align_inform(file,wvref=-4,dirname=False,
-                      filename=False,save=True,sil=True):
+                      filename=False,save=True,pre_match_wcs=False,
+                      sil=True,missing=0):
     """
     fiss_align_infrom
     
@@ -162,18 +147,14 @@ def fiss_align_inform(file,wvref=-4,dirname=False,
     for i in range(n-1):
         #align with next image
         #the alignment is not done with the reference, since the structure can be transformed
-        xt1,yt1=rot_trans(xa,ya,xc,yc,angle[i])
-        xt2,yt2=rot_trans(xa,ya,xc,yc,angle[i+1])
         im2=raster(file[i+1],wvref,0.05,x1=x1,x2=x1+nx1-1,y1=y1,y2=y1+ny1-1)
-        img1=img_interpol(im1,xa,ya,xt1,yt1)
-        img2=img_interpol(im2,xa,ya,xt2,yt2)
+        img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=0)
+        img2=rotation(im1,angle[i+1],xa,ya,xc,yc,missing=0)
         sh=alignoffset(img2,img1)
         
         #align with reference
-        xt1,yt1=rot_trans(xa,ya,xc,yc,angle[i],dx[i],dy[i])
-        xt2,yt2=rot_trans(xa,ya,xc,yc,angle[i],dx[i]+sh[0],dx[i]+sh[1])
-        img1=img_interpol(im1,xa,ya,xt1,yt1)
-        img2=img_interpol(im2,xa,ya,xt2,yt2)
+        img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=0)
+        img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[0],dx[i]+sh[1],missing=0)
         sh+=alignoffset(img2,img1)
         
         dx[i+1]=dx[i]+sh[0]
@@ -190,38 +171,49 @@ def fiss_align_inform(file,wvref=-4,dirname=False,
             dirname=os.getcwd()+os.sep
         if not filename:
             filename=t[0].value[:10]
-        np.savez(dirname+filename+'.npz',xc=xc,yc=yc,angle=angle,
-                 dt=dtmin,dx=dx,dy=dy)
+        filename2=dirname+filename
+        if not pre_match_wcs:
+            np.savez(filename2+'_align_lev0.npz',xc=xc,yc=yc,angle=angle,
+                     dt=dtmin,dx=dx,dy=dy)
+        else:
+            tmp=np.load(filename2+'_match_wcs.npz')
+            np.savez(filename2+'_align_lev1.npz',xc=xc,yc=yc,angle=angle,
+                     dt=dtmin,dx=dx,dy=dy,sdo_angle=tmp['sdo_angle'],
+                     wcsx=tmp['wcsx'],wcsy=tmp['wcsy'])
+            os.remove(filename2+'_match_wcs.npz')
     return result
     
-def rot_trans(x,y,xc,yc,angle,dx=0,dy=0,inv=False):
-    """
-    rot_trans
-    
-    rotational transpose for input array of x, y and angle.
-    
-    
-    """
-    
-    if not inv:
-        xt=(x-xc)*np.cos(angle)+(y-yc)*np.sin(angle)+xc+dx
-        yt=-(x-xc)*np.sin(angle)+(y-yc)*np.cos(angle)+yc+dy
-    else:
-        xt=(x-xc-dx)*np.cos(angle)-(y-yc-dy)*np.sin(angle)+xc
-        yt=(x-xc-dx)*np.sin(angle)+(y-yc-dy)*np.cos(angle)+yc
-    return xt,yt
 
-def img_interpol(img,xa,ya,xt,yt):
-    """
-    img_interpol
-    """
-    shape=xt.shape
-    size=xt.size
-    smin=[ya[0,0],xa[0]]
-    smax=[ya[-1,0],xa[-1]]
-    order=[len(ya),len(xa)]
-    interp=LinearSpline(smin,smax,order,img)
     
-    a=np.array((yt.reshape(size),xt.reshape(size)))
-    b=interp(a.T)
-    return b.reshape(shape)
+def match_wcs(fiss_file,sdo_file=False,dirname=False,
+              filename=False,sil=True,sdo_path=False,
+              manual=True,wvref=-4,reflect=True,alpha=0.5):
+    """
+    match_wcs
+    """
+    
+    if not sdo_file:
+        h=getheader(fiss_file)
+        tlist=h['date']
+        t=Time(tlist,format='isot',scale='ut1')
+        tjd=t.jd
+        t1=tjd-20/24/3600
+        t2=tjd+20/24/3600
+        t1=Time(t1,format='jd')
+        t2=Time(t2,format='jd')
+        t1.format='isot'
+        t2.format='isot'
+        hmi=(vso.attrs.Instrument('HMI') &
+             vso.attrs.Time(t1.value,t2.value) &
+             vso.attrs.Physobs('intensity'))
+        vc=vso.VSOClient()
+        res=vc.query(hmi)
+        
+        if not sdo_path:
+            sdo_path=os.getcwd()+os.sep()
+        sdo_file=(vc.get(res,path=sdo_path+'{file}',methods=('URL-FILE','URL')).wait())[0]
+    
+    fiss_sdo_align_tool.manual(fiss_file,sdo_file,dirname=dirname,
+                               filename=filename,wvref=wvref,
+                               reflect=reflect,alpha=alpha)
+    return
