@@ -1,11 +1,10 @@
 """
-Coalignment
-
+Alignment FISS data.
 """
 from __future__ import absolute_import, print_function, division
 
-__author__="J. Kang : jhkang@astro.snu.ac.kr"
-__date__="Sep 01 2016"
+__author__ = "Juhyeong Kang"
+__email__ = "jhkang@astro.snu.ac.kr"
 
 from scipy.fftpack import ifft2,fft2
 import numpy as np
@@ -16,29 +15,40 @@ import os
 from sunpy.net import vso
 from .base import rotation
 
+__all__ = ['alignoffset', 'fiss_align_inform', 'match_wcs']
+
 def alignoffset(image0,template0):
     """
-    Alignoffset
-    
-    Based on the alignoffset.pro IDL code written by Chae 2004
+    Align the two images
     
     Parameters
-    Image : Images for coalignment with the template
-            A 2 or 3 Dimensional array ex) image[t,y,x]
-    Template : The reference image for coalignment
-               2D Dimensional arry ex) template[y,x]
+    ----------
+    image0 : 2 or 3d ndarray
+        Images for coalignment with the template
+        A 2 or 3 Dimensional array ex) image[t,y,x]
+    template0 : 2d ndarray
+        The reference image for coalignment
+        2D Dimensional arry ex) template[y,x]
            
-    Outputs
-        x, y : The single value or array of the offset values.
-    ========================================
-    Example)
-    >>> x, y = alignoffset(image,template)
-    ========================================
+    Returns
+    -------
+    x : float or 1d ndarray
+        The single value or array of the offset values.
+    y : float or 1d ndarray
+        The single value or array of the offset values.
     
-    Notification
-    Using for loop is faster than inputing the 3D array as,
-    >>> res=np.array([alignoffset(image[i],template) for i in range(nt)])
-    where nt is the number of elements for the first axis.
+    Notes
+    -----
+    * This code is based on the IDL code ALIGNOFFSET.PRO
+        written by J. Chae 2004.
+    * Using for loop is faster than inputing the 3D array as,
+        >>> res=np.array([alignoffset(image[i],template) for i in range(nt)])
+        where nt is the number of elements for the first axis.
+        
+    Example
+    -------
+    >>> x, y = alignoffset(image,template)
+    
     """
     st=template0.shape
     si=image0.shape
@@ -113,7 +123,69 @@ def fiss_align_inform(file,wvref=-4,dirname=False,
                       filename=False,save=True,pre_match_wcs=False,
                       sil=True,missing=0):
     """
-    fiss_align_infrom
+    Calculate the fiss align information, and save to npz file.
+    The reference image is the first one of the file list.
+    
+    Parameters
+    ----------
+    file : list
+        The list of fts file.
+    wvref : (optional) float
+        The referenced wavelength for making raster image.
+    dirname : (optional) str
+        The directory name for saving the npz data.
+        The the last string elements must be the directory seperation
+        ex) dirname='D:\\the\\greatest\\scientist\\kang\\'
+        If False, the dirname is the present working directory.
+    filename : (optional) str
+        The file name for saving the npz data.
+        There are no need to add the extension.
+        If False, the filename is the date of FISS data.
+    save : (optional) bool
+        If True, save the align information.
+        Default is True.
+    pre_match_wcs : (optional) bool
+        If False, it only save the align information of FISS. (level 0)
+        If True, it read the wcs file and remove it, then finally
+        save the align information and wcs information to the npz file. (level1)
+    sil : (optional) bool
+        If False, it print the ongoing time index.
+        Default is True.
+    missing : (optional) float
+        The extrapolated value of interpolation.
+        Default is 0.
+    
+    Returns
+    -------
+    npz file.
+    xc : float
+        Central position of image.
+    yc : float
+        Central position of image.
+    angle : 1d ndarray
+        The array of align angle.
+    dt : 1d ndarray
+        The array of time difference for reference image.
+    dx : 1d ndarray
+        The relative displacement along x-axis 
+        of the rotated images to the reference image.
+    dy : 1d ndarray
+        The relative displacement along y-axis 
+        of the rotated images to the reference image.
+    
+    Notes
+    -----
+    * This code is based on the IDL code FISS_ALIGN_DATA.PRO
+        written by J. Chae 2015
+    * The dirname must be have the directory seperation.
+    
+    Example
+    -------
+    >>> from glob import glob
+    >>> from fisspy.image import coalignment
+    >>> file=glob('*_A1_c.fts')
+    >>> dirname='D:\\im\\so\\hot\\'
+    >>> coalignment.fiss_align_inform(file,dirname=dirname,sil=False)
     
     """
     n=len(file)
@@ -173,27 +245,98 @@ def fiss_align_inform(file,wvref=-4,dirname=False,
             filename=t[0].value[:10]
         filename2=dirname+filename
         if not pre_match_wcs:
-            np.savez(filename2+'_align_lev0.npz',xc=xc,yc=yc,angle=angle,
+            fileout=filename2+'_align_lev0.npz'
+            np.savez(fileout,xc=xc,yc=yc,angle=angle,
                      dt=dtmin,dx=dx,dy=dy)
         else:
+            fileout=filename2+'_align_lev0.npz'
             tmp=np.load(filename2+'_match_wcs.npz')
-            np.savez(filename2+'_align_lev1.npz',xc=xc,yc=yc,angle=angle,
-                     dt=dtmin,dx=dx,dy=dy,sdo_angle=tmp['sdo_angle'],
+            np.savez(fileout+'_align_lev1.npz',xc=xc,yc=yc,angle=angle,
+                     dt=dtmin,dx=dx,dy=dy,sdo_angle=tmp['match_angle'],
                      wcsx=tmp['wcsx'],wcsy=tmp['wcsy'])
-            os.remove(filename2+'_match_wcs.npz')
+            matchfile=filename2+'_match_wcs.npz'
+            os.remove(matchfile)
+            print('Remove the %s'%matchfile)
+        print('The saving file name is %s'%fileout)
     return result
     
 
     
 def match_wcs(fiss_file,sdo_file=False,dirname=False,
               filename=False,sil=True,sdo_path=False,
-              manual=True,wvref=-4,reflect=True,alpha=0.5):
+              manual=True,wvref=-4,reflect=True,alpha=0.5,
+              missing=0):
     """
-    match_wcs
+    Match the wcs information of FISS files with the SDO/HMI file.
+    
+    Parameters
+    ----------
+    fiss_file : str or list
+        A single of fiss file or the list of fts file.
+    sdo_file : (optional) str
+        A SDO/HMI data to use for matching the wcs.
+        If False, then download the HMI data on the VSO site.
+    dirname : (optional) str
+        The directory name for saving the npz data.
+        The the last string elements must be the directory seperation.
+        ex) dirname='D:\\the\\greatest\\scientist\\kang\\'
+        If False, the dirname is the present working directory.
+    filename : (optional) str
+        The file name for saving the npz data.
+        There are no need to add the extension.
+        If False, the filename is the date of FISS data.
+    sil : (optional) bool
+        If False, it print the ongoing time index.
+        Default is True.
+    sdo_path : (optional) str
+        The directory name for saving the HMI data.
+        The the last string elements must be the directory seperation.
+    maunal : (optioinal) bool
+        If True, then manually match the wcs.
+        If False, you have a no choice to this yet. kkk.
+    wvref : (optional) float
+        The referenced wavelength for making raster image.
+    reflect : (optional) bool
+        Correct the reflection of FISS data.
+        Default is True.
+    alpha : (optional) float
+        The transparency of the image to 
+    missing : (optional) float
+        The extrapolated value of interpolation.
+        Default is 0.
+        
+    Returns
+    -------
+    match_angle : float
+        The angle to rotate the FISS data to match the wcs information.
+    wcsx : float
+        The x-axis value of image center in WCS arcesec unit.
+    wcsy : float
+        The y-axis value of image center in WCS arcesec unit.
+    
+    Notes
+    -----
+    * The dirname and sdo_path must be have the directory seperation.
+    
+    Example
+    -------
+    >>> from glob import glob
+    >>> from fisspy.image import coalignment
+    >>> file=glob('*_A1_c.fts')
+    >>> dirname='D:\\im\\so\\hot\\'
+    >>> sdo_path='D:\\im\\sdo\\path\\'
+    >>> coalignment.match_wcs(file,dirname=dirname,sil=False,
+                              sdo_path=sdo_path)
+    
     """
     
+    if type(fiss_file) == list and len(fiss_file) != 1:
+        fiss_file0=fiss_file[0]
+    else:
+        fiss_file0=fiss_file
+        
     if not sdo_file:
-        h=getheader(fiss_file)
+        h=getheader(fiss_file0)
         tlist=h['date']
         t=Time(tlist,format='isot',scale='ut1')
         tjd=t.jd
@@ -215,5 +358,6 @@ def match_wcs(fiss_file,sdo_file=False,dirname=False,
     
     fiss_sdo_align_tool.manual(fiss_file,sdo_file,dirname=dirname,
                                filename=filename,wvref=wvref,
-                               reflect=reflect,alpha=alpha)
+                               reflect=reflect,alpha=alpha,sil=sil,
+                               missing=0)
     return

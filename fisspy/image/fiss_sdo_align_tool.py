@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division, print_function
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import use
@@ -6,20 +7,29 @@ from fisspy import cm
 from PyQt4 import QtGui, QtCore
 from skimage.viewer.widgets.core import Slider, Button
 from .base import rescale, rot
+from .coalignment import fiss_align_inform
 from astropy.io import fits
 import os
+
+__author__ = "Juhyeong Kang"
+__email__ = "jhkang@astro.snu.ac.kr"
+__all__ = ['manual']
 
 use("Qt4Agg")
 
 def manual(fiss_file,sdo_file,dirname=False,filename=False,
-           wvref=-4,reflect=True,alpha=0.5):
-    
+           wvref=-4,reflect=True,alpha=0.5,sil=True,
+           missing=0):
 
+    if type(fiss_file) == list and len(fiss_file) != 1:
+        fiss_file0=fiss_file[0]
+    else:
+        fiss_file0=fiss_file
         
-    fiss0=read.raster(fiss_file,wvref,0.05)
+    fiss0=read.raster(fiss_file0,wvref,0.05)
     if reflect:
         fiss0=fiss0.T
-    fissh=read.getheader(fiss_file)
+    fissh=read.getheader(fiss_file0)
     xpos=fissh['tel_xpos']
     ypos=fissh['tel_ypos']
     time=fissh['date']
@@ -107,7 +117,6 @@ def manual(fiss_file,sdo_file,dirname=False,filename=False,
         print('========================================')
         
     def saveb():
-        print('act')
         filename2=dirname+filename+'.npz'
         
         px=x0+xsld.val+xsubsld.val-xc
@@ -117,7 +126,13 @@ def manual(fiss_file,sdo_file,dirname=False,filename=False,
         angle=major_angle.val+minor_angle.val
         
         print('save the parameter as %s'%filename2)
-        np.savez(filename2,sdo_angle=angle,wcsx=wcsx,wcsy=wcsy)
+        np.savez(filename2,match_angle=angle,wcsx=wcsx,wcsy=wcsy)
+        
+    def alignb():
+        print('Align the fiss data, it takes some time.')
+        res=fiss_align_inform(fiss_file,wvref=wvref,dirname=dirname,
+                              filename=filename,pre_match_wcs=True,
+                              sil=sil,missing=missing)
         
     root = fig.canvas.manager.window
     panel = QtGui.QWidget()
@@ -145,10 +160,15 @@ def manual(fiss_file,sdo_file,dirname=False,filename=False,
     hbox = QtGui.QHBoxLayout(panel)
     printbt=Button('print',printb)
     savebt=Button('save',saveb)
+    alignbt=Button('run align',alignb)
     hbox.addWidget(printbt)
     hbox.addWidget(savebt)
     
+    vbox2 = QtGui.QVBoxLayout(panel)
+    vbox2.addWidget(alignbt)
+    
     vbox.addLayout(hbox)
+    vbox.addLayout(vbox2)
     panel.setLayout(vbox)
     dock = QtGui.QDockWidget("Align Control Panel", root)
     root.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)

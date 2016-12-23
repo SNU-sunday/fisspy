@@ -1,59 +1,58 @@
 """
-FISS read module
-
-Read the FISS data
-
-===========================
-Including functions are
-    frame
-    pca_read
-    raster
-    getheader
-===========================
-
-Only input the original fts file or its PCA file '*_c.fts'.
-
-=============================================
-Example
->>> import fisspy
->>> import glob
->>> file=glob.glob('*_c.fts')
->>> data=fisspy.read.frame(file[0],70,80)
-=============================================
+Read the FISS fts file.
 """
-from __future__ import absolute_import, division, print_function
+from __future__ import absolute_import, division
 
-
-__date__="Aug 04 2016"
-__author__="J. Kang : jhkang@astro.snu.ac.kr"
+__author__ = "Juhyeong Kang"
+__email__ = "jhkang@astro.snu.ac.kr"
 
 from astropy.io import fits
 import numpy as np
 import os
 
+__all__ = ['frame', 'pca_read', 'raster', 'getheader']
 
 def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False):
     """
-    FISS READ FRAME
+    Read the FISS fts file.
 
     Parameters
-        file : string of file name to be read
-        x1   : the frame number along the scanning direction
-        x2   : the end of the frame number (optional)
-    Keywords
-        pca  : if set, data are read from the PCA file
-               default default is set
-        ncoeff : number of coefficients to be used for the construction of data
-                 in a pca file
-    ===========================================================      
-    Example)
-    >>> import fisspy
-    >>> data=fisspy.read.frame(file,70,100,ncoeff=10)
-    ===========================================================
-        
-    Using the astropy package
+    ----------
+    file : str
+        A string of file name to be read.
+    x1   : int
+        A starting index of the frame along the scanning direction.
+    x2   : (optional) int
+        An ending index of the frame along the scanning direction.
+        If not, then the only x1 frame is read.
+    pca  : (optional) bool
+        If True, the frame is read from the PCA file.
+        Default is True, but the function automatically check
+        the existance of the pca file.
+    ncoeff : (optional) int
+        The number of coefficients to be used for
+        the construction of frame in a pca file.
+    xmax : (optional) bool
+        If True, the x2 value is set as the maximum end point of the frame.
+        Default is False.
+            
+    Notes
+    -----
+    * This function is based on the IDL code FISS_READ_FRAME.PRO
+        written by J. Chae, 2013.
+    * This function automatically check the existance of the pca file by
+        reading the fts header.
     
-    Based on the IDL code FISS_READ_FRAME written by (J. Chae 2013)
+    Returns
+    -------
+    frame : 2d or 3d ndarry
+        FISS data frame with the information of (wavelength, y, x).
+        
+    Example
+    -------
+    >>> from fisspy.io import read
+    >>> data=read.frame(file,70,100,ncoeff=10)
+        
     """
     if not file:
         raise ValueError('Empty filename')
@@ -83,21 +82,35 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False):
 
 def pca_read(file,header,x1,x2=False,ncoeff=False):
     """
-    FISS READ PCA FILE
+    Read the pca compressed FISS fts file.
     
     Parameters
-        file : string of file name to be read
-        header : the fts file header
-        x1   : the starting frame number along the scanning direction
-        x2   : the end of the frame number (optional)
+    ----------
+    file : str
+        A string of file name to be read.
+    header : astropy.io.fits.header.Header
+        The fts file header.
+    x1   : int
+        A starting index of the frame along the scanning direction.
+    x2   : (optional) int
+        An ending index of the frame along the scanning direction.
+        If not, then the only x1 frame is read.
+    ncoeff : (optional) int
+        The number of coefficients to be used for
+        the construction of frame in a pca file.
+    
+    Returns
+    -------
+    frame : 2d or 3d ndarry
+        FISS data frame with the information of (wavelength, y, x).
         
-    Keywords
-        ncoeff : number of coefficients to be used for the construction of data
-                 in a pca file
+    Notes
+    -----
+    * This function is based on the IDL code FISS_PCA_READ.PRO
+        written by J. Chae, 2013.
+    * The required fts data are two. One is the "_c.fts",
+        and the other is "_p.fts"
     
-    Using the astropy package
-    
-    Based on the IDL code FISS_PCA_READ written by (J. Chae 2013)
     """
     if not file:
         raise ValueError('Empty filename')
@@ -124,27 +137,48 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
 
 def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True):
     """
-    FISS Raster
-    
     Make raster images for a given file at wv of wavelength within width hw
     
     Parameters
-        file : string of file name to be read
-        wv   : wavelengths
-        hw   : A half-width for wavelength integration
-               in unit of Angstrom
-        x1   : the starting frame number along the scanning direction (optional)
-        x2   : the end of the frame number (optional)
-        y1   : the starting slit position (optional)
-        y2   : the end of the slit position (optional)
+    ----------
+    file : str
+        A string of file name to be read.
+    wv   : float or 1d ndarray
+        Referenced wavelengths.
+    hw   : float
+        A half-width of wavelength integration in unit of Angstrom.
+        Default is 0.05
+    x1   : (optional) int
+        A starting index of the frame along the scanning direction.
+    x2   : (optional) int
+        An ending index of the frame along the scanning direction.
+        If not, x2 is set to the maximum end point of the frame.
+    y1   : (optional) int
+        A starting index of the frame along the slit position.
+    y2   : (optional0 int
+        A ending index of the frame along the slit position.
+    pca  : (optional) bool
+        If True, the frame is read from the PCA file.
+        Default is True, but the function automatically check
+        the existance of the pca file.
+            
+    Returns
+    -------
+    Raster : nd ndarray
+        Raster image at given wavelengths.
         
-    Keyword
-        pca : if set, data are read from the PCA file
-              default default is set
-    ==========================================
-    Example)
-    >>> import fisspy
-    >>> raster=fisspy.read.raster(file[0],np.array([-1,0,1]),0.05)
+    Notes
+    -----
+    * This function is based on the IDL code FISS_RASTER.PRO
+        written by J. Chae, 2013.
+    * This function automatically check the existance of the pca file by
+        reading the fts header.
+    
+    Example
+    -------
+    >>> from fisspy.io import read
+    >>> raster=read.raster(file[0],np.array([-1,0,1]),0.05)
+    
     """
     header=getheader(file,pca)
     nw=header['NAXIS1']
@@ -185,6 +219,34 @@ def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True):
 
 
 def getheader(file,pca=True):
+    """
+    Get the FISS fts file header.
+    
+    Parameters
+    ----------
+    file : str
+        A string of file name to be read.
+    pca  : (optional) bool
+        If True, the frame is read from the PCA file.
+        Default is True, but the function automatically check
+        the existance of the pca file.
+    
+    Returns
+    -------
+    header : astropy.io.fits.header.Header
+        The fts file header.
+    
+    Notes
+    -----
+    * This function automatically check the existance of the pca file by
+        reading the fts header.
+    
+    Example
+    -------
+    >>> from fisspy.io import read
+    >>> h=read.getheader(file[0])
+    
+    """
     header0=fits.getheader(file)
     header=fits.Header()
     try:
@@ -207,8 +269,6 @@ def getheader(file,pca=True):
                 svc = sori[1].split('/')
                 try:
                     item=float(svc[0])
-#                    if item-int(svc[0]) == 0:
-#                        item=int(item)
                 except:
                     item=svc[0].split("'")
                     if len(item) != 1:

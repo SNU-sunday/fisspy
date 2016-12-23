@@ -1,32 +1,50 @@
 """
 Doppler
 
-
+This module calculate line of sight doppler velocities for 
+each pixels of a FISS fts data.
 """
-from __future__ import absolute_import, division, print_function
+from __future__ import absolute_import, division
 
-__date__="Aug 08 2016"
-__author__="J. Kang : jhkang@astro.snu.ac.kr"
+__author__ = "Juhyeong Kang"
+__email__ = "jhkang@astro.snu.ac.kr"
 
 import numpy as np
 from interpolation.splines import LinearSpline
 
+__all__ = ['wavecalib', 'lambdameter']
+
 def wavecalib(band,profile,method=True):
     """
-    FISS Wavecalibration
+    Calibrate the wavelength for FISS spectrum profile.
     
-    Based on the IDL code written by (J. Chae 2013)
+    Parameters
+    ----------
+    band : str
+        A string to identify the wavelength.
+        Allowable wavelength bands are '6562','8542','5890','5434'
+    profile : 1d ndarray
+        A 1 dimensional numpy array of spectral profile.
+    Method : (optional) bool
+        Default is True
+        If true, the reference lines for calibration are the telluric lines.
+        Else if False, the reference lines are the solar absorption lines.
     
-    Arguments
-        band : a string wavelength band, '6562','8542','5890','5434'
-        profile : a 1-D spectral profile
+    Returns
+    -------
+    wavelength : 1d ndarray
+        Calibrated wavelength.
     
-    Keywords
-        Method : If true, the reference lines are the telluric lines.
-                 else if False, the reference lines are the solar absorption lines.
-    ==========================================
-    Example)
-    >>> wv=fisspy.doppler.wavecalib('6562',profile)
+    Notes
+    -----
+    * This function is based on the FISS IDL code FISS_WV_CALIB.PRO
+        written by J. Chae, 2013.
+    
+    Example
+    -------
+    >>> from fisspy.analysis import doppler
+    >>> wv=doppler.wavecalib('6562',profile)
+    
     """
     band=band[0:4]
     nw=profile.shape[0]
@@ -44,20 +62,27 @@ def wavecalib(band,profile,method=True):
             line=np.array([5889.951,5892.898])
             lamb0=5889.9509
             dldw=0.016847
-        else:
+        elif band == '5434':
             line=np.array([5434.524,5436.596])
             lamb0=5434.5235
             dldw=-0.016847
+        else:
+            raise ValueError("The wavelength band value is not allowable.\n"+
+                             "Please select the wavelenth "+
+                             "among '6562','8542','5890','5434'")
     else:
         if band == '6562':
             line=np.array([6562.817,6559.580])
             lamb0=6562.817
             dldw=0.019182
-        else:
+        elif band == '8542':
             line=np.array([8542.089,8537.930])
             lamb0=8542.090
             dldw=-0.026252
-    
+        else:
+            raise ValueError("The wavelength band value is not allowable.\n"
+                             "Please select the wavelenth "
+                             "among '6562','8542','5890','5434'")
     
     w=np.arange(nw)
     wl=np.zeros(2)
@@ -85,33 +110,53 @@ def wavecalib(band,profile,method=True):
     return wavelength
 
 
-def lambdameter(wv,data,hw=0.,sp=5000.,wvinput=True):
+def lambdameter(wv,data,hw=0.01,sp=5000.,wvinput=True):
     """
-    FISS Doppler Lambdameter
-    
     Determine the Lambdameter chord center for a given half width or intensity.
     
-    Based on the IDL code written by (J. Chae)
-    
-    Arguments
-        wv : A Calibrated wavelength.
-        data : n-D (n>=2) spectral profile data, 
-               the last dimension must be the spectral components
-               and size is equal to wv.
-               
-        Case wvinput=True
-        hw : A half width of the horizontal line segment
-        outputs are an array of central wavelength values
-                and an array of intensies of the line segment
+    Parameters
+    ----------
+    wv : 1d ndarray
+        A Calibrated wavelength.
+    data : nd ndarray
+        n (n>=2) dimensional spectral profile data, 
+        the last dimension component must be the spectral component,
+        and the size is equal to the size of wv.
+    wvinput : bool
+        There are two cases.
+            
+        Case wvinput==True
+        ------------------
+        hw : float
+            A half width of the horizontal line segment.
+        Returns
+        -------
+        wc : nd ndarray
+            n dimensional array of central wavelength values.
+        intc : nd ndarray
+            n dimensional array of intensies of the line segment.
         
-        Case wvinput=False
-        sp : A intensity of the horiznotal segment
-        outputs are an array of central wavelength values
-                and an array of half widths of the line segment
+        Case wvinput==False
+        -------------------
+        sp : float
+            An intensity of the horiznotal segment.
+        Returns
+        -------
+        wc : nd ndarray
+            n dimensional array of central wavelength values.
+        hwc : nd ndarray
+            n dimensional array of half widths of the line segment.
     
-    =======================================================
-    Example)
-    >>> wc, inten=fisspy.doppler.labdameter(wv,data,0.2)
+    Notes
+    -----
+    * This function is based on the IDL code BISECTOR_D.PRO
+        written by J. Chae.
+    
+    Example
+    -------
+    >>> from fisspy.analysis import doppler
+    >>> wc, inten = doppler.labdameter(wv,data,0.2)
+    
     """
     
     shape=data.shape

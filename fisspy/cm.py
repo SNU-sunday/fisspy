@@ -1,15 +1,19 @@
 """
-Color Table for FISS instrument
+Color Table for FISS instrument.
 
-The color tables are based on the FISS IDL code loadct_ch.pro
-written by Chae, J
-
-The output variables are ha, ca, ha_r, ca_r
+The Returns variables are ha, ca, ha_r, ca_r
 _r means the reverse color of each color maps
 
-Example
-plt.imshow(im,cmap=fisspy.cm.ha)
 
+Notes
+-----
+* This function is based on the IDL code LOADCT_CH
+    written by J. Chae 
+    
+Example
+-------
+>>> from fisspy import cm
+>>> plt.imshow(im,cmap=cm.ha)
 
 """
 from __future__ import absolute_import, print_function, division
@@ -17,12 +21,11 @@ from __future__ import absolute_import, print_function, division
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 
-__author__="J. Kang : jhkang@astro.snu.ac.kr"
-__date__="Jul 28 2016"
+__author__ = "Juhyeong Kang "
+__email__ = "jhkang@astro.snu.ac.kr"
+
 
 def create_cdict(r, g, b):
-    """ Create the color tuples in the correct format
-        This function written by Sunpy Group."""
     i = np.linspace(0, 1, 256)
 
     cdict = dict(

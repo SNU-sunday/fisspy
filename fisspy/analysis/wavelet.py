@@ -1,8 +1,7 @@
 """
-Wavelet
+Calculate the wavelet and its significance.
 """
-
-from __future__ import division, absolute_import, print_function
+from __future__ import division, absolute_import
 import numpy as np
 from scipy.special._ufuncs import gamma, gammainc
 from scipy.optimize import fminbound as fmin
@@ -10,15 +9,17 @@ from scipy.fftpack import fft, ifft
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter as sf
 
-__author__ = "J. Kang : jhkang@astro.snu.ac.kr"
-__date__= "Sep 2016"
+__author__ = "Juhyeong Kang"
+__email__ =  "jhkang@astro.snu.ac.kr"
+__all__ = ['wavelet', 'iwavelet', 'motherfunc', 'motherparam',
+           'wave_signif', 'chisquare_inv', 'chisquare_solve',
+           'waveletplot', 'wave_coherency', 'fast_conv', 'fast_conv2']
 
 def wavelet(y, dt,
             dj=0.25, s0=False, j=False,
-            mother='MORLET', param=False, pad=False):
+            mother='MORLET', param=False, pad=True):
     """
-    Wavelet
-    Computes the wavelet transform of the vecotr y
+    Compute the wavelet transform of the given y
     with sampling rate dt.
     
     By default, the MORLET wavelet (k0=6) is used.
@@ -26,49 +27,78 @@ def wavelet(y, dt,
     at all scales.
     
     Parameters
-        y      : The time series of length N.
-        dt     : The time step between each y values
-                 i.e. the sampling time.
-        dj     : The spacing between discrete scales.(optional)
-                 Default is 0.25
-                 The smaller, the better scale resolution.
-        s0     : The smallest scale of the wavelet.(optional)
-                 Default is 2*dt.
-        j      : The number of scales minus one.(optional)
-                 Scales range from s0 up to s0*2**(j*dj), to give
-                 a total of (j+1) scales.
-                 Default is j=log2(n*dt/s0)/dj.
-        mother : The mother wavelet function.(optional)
-                 The choices are 'MORLET', 'PAUL', or 'DOG'
-                 Default is 'MORLET'
-        param  : The mother wavelet parameter.(optional)
-                 For 'MORLET' param is k0, default is 6.
-                 For 'PAUL' param is m, default is 4.
-                 For 'DOG' param is m, default is 2.
+    ----------
+    y : 1d ndarray
+        The time series of length n.
+    dt : float
+        The time step between each y values.
+        i.e. the sampling time.
+    dj : (optional) float
+        The spacing between discrete scales.
+        The smaller, the better scale resolution.
+        Default is 0.25
+    s0 : (optional) float
+        The smallest scale of the wavelet.
+        Default is 2*dt.
+    j : (optional) int
+        The number of scales minus one.
+        Scales range from s0 up to s0*2**(j*dj), to give
+        a total of (j+1) scales.
+        Default is j=log2(n*dt/s0)/dj.
+    mother : (optional) str
+        The mother wavelet function.
+        The choices are 'MORLET', 'PAUL', or 'DOG'
+        Default is 'MORLET'
+    param  : (optional) int
+        The mother wavelet parameter.
+        For 'MORLET' param is k0, default is 6.
+        For 'PAUL' param is m, default is 4.
+        For 'DOG' param is m, default is 2.
+    pad : (optional) bool
+        If set True, pad time series with enough zeros to get
+        N up to the next higher power of 2.
+        This prevents wraparound from the end of the time series
+        to the beginning, and also speeds up the FFT's 
+        used to do the wavelet transform.
+        This will not eliminate all edge effects.
     
-    Keywords
-        pad : If set True, pad time series with enough zeros to get
-              N up to the next higher power of 2.
-              This prevents wraparound from the end of the time series
-              to the beginning, and also speeds up the FFT's 
-              used to do the wavelet transform.
-              This will not eliminate all edge effects.
+    Returns
+    -------
+    wave : 2d ndarray
+        The WAVELET transform of y.
+        (j+1,n) complex arry.
+        np.arctan2(wave.imag,wave.real) gives the WAVELET phase.
+        wave.real gives the WAVELET amplitude.
+        The WAVELET power spectrum is np.abs(wave)**2
+    period : 1d ndarray
+        The vecotr of "Fourier" periods (in time units)
+        that correspods to the scales.
+    scale : 1d ndarray
+        The vecotr of scale indices, given by s0*2**(j*dj),
+        j=0...j
+        where j+1 is the total number of scales.
+    coi : 1d ndarray
+        The Cone-of-Influence, which is a vector of N points
+        that contains the maximum period of useful information
+        at that particular time.
+        Periods greater than this are subject to edge effets.
     
-    Outputs
-        wave   : The WAVELET transform of y.
-                 (j+1,n) complex arry.
-                 np.arctan2(wave.imag,wave.real) gives the WAVELET phase.
-                 wave.real gives the WAVELET amplitude.
-                 The WAVELET power spectrum is np.abs(wave)**2
-        period : The vecotr of "Fourier" periods (in time units)
-                 that correspods to the scales.
-        scale  : The vecotr of scale indices, given by s0*2**(j*dj),
-                 j=0...j
-                 where j+1 is the total number of scales.
-        coi    : The Cone-of-Influence, which is a vector of N points
-                 that contains the maximum period of useful information
-                 at that particular time.
-                 Periods greater than this are subject to edge effets.
+    Notes
+    -----
+    * This function based on the IDL code WAVELET.PRO written by C. Torrence
+        and Python code waveletFuncitions.py written by E. Predybayalo.
+    
+    References
+    ----------
+    * Torrence, C. and Compo, G. P., 1998,
+        A Practical Guide to Wavelet Analysis, 
+        <I>Bull. Amer. Meteor. Soc.</I>, 79, 61-78.
+    
+    Example
+    -------
+    >>> from fisspy.analysis import wavelet
+    >>> wave, period, scale, coi = wavelet.wavelet(y,dt,dj=dj,
+                                                   j=j,mother=mother,pad=True)
     
     """
     n=len(y)
@@ -105,6 +135,52 @@ def wavelet(y, dt,
     return wave[:,:n0], period, scale, coi
 
 def iwavelet(wave,scale,dt,dj=0.25,mother='MORLET',param=False):
+    """
+    Inverse the wavelet to get the time-series
+    
+    Parameters
+    ----------
+    wave : 2d ndarray
+        wavelet power.
+    scale : 1d ndarray
+        The vecotr of scale indices, given by s0*2**(j*dj)
+    dt : float
+        The time step between each y values.
+    dj : (optional) float
+        The spacing between discrete scales.
+        The smaller, the better scale resolution.
+        Default is 0.25
+    mother : (optional) str
+        The mother wavelet function.
+        The choices are 'MORLET', 'PAUL', or 'DOG'
+        Default is 'MORLET'
+    param : (optional) int
+        The mother wavelet parameter.
+        For 'MORLET' param is k0, default is 6.
+        For 'PAUL' param is m, default is 4.
+        For 'DOG' param is m, default is 2.
+    
+    Returns
+    -------
+    iwave : 1d ndarray
+        Inverse wavelet.
+    
+    Notes
+    -----
+    * This function based on the IDL code WAVELET.PRO written by C. Torrence
+        and Python code waveletFuncitions.py written by E. Predybayalo.
+        
+    References
+    ----------
+    * Torrence, C. and Compo, G. P., 1998,
+        A Practical Guide to Wavelet Analysis, 
+        <I>Bull. Amer. Meteor. Soc.</I>, 79, 61-78.
+        
+    Example
+    -------
+    >>> from fisspy.analysis import wavelet
+    >>> iwave=wavelet.iwavelet(wave,scale,dt)
+    """
     a, b = wave.shape
     c = len(scale)
     scale2=1/scale**0.5
@@ -133,23 +209,41 @@ def iwavelet(wave,scale,dt,dj=0.25,mother='MORLET',param=False):
 
 def motherfunc(mother, k, scale, param):
     """
-    Motherfunc
-    
-    computes the wavelet function as a function of Fourier frequency,
-    used for the wavelet transform in Fourier space.
+    Compute the Fourier factor and period.
     
     Parameters
-        mother  : A string, Equal to 'MORLET' or 'PAUL' or 'DOG'
-        k       : The Fourier frequencies at which to calculate the wavelet
-        scale   : The wavelet scale
-        param   : The nondimensional parameter for the wavelet function
+    ----------
+    mother : str
+        A string, Equal to 'MORLET' or 'PAUL' or 'DOG'.
+    k : 1d ndarray
+        The Fourier frequencies at which to calculate the wavelet.
+    scale : 1d ndarray
+        The wavelet scale.
+    param : int
+        The nondimensional parameter for the wavelet function.
     
-        Outputs
-        nowf   : The nonorthogonal wavelet function
-        fourier_factor : the ratio of Fourier period to scale
-        coi    : The cone-of-influence size at the scale
-        dofmin : Degrees of freedom for each point in the wavelet power
-                 (either 2 for MORLET and PAUL, or 1 for the DOG)
+    Returns
+    -------
+    nowf : 1d ndarray
+        The nonorthogonal wavelet function.
+    period : 1d ndarrary
+        The vecotr of "Fourier" periods (in time units)
+    fourier_factor : float
+        the ratio of Fourier period to scale.
+    coi : int
+        The cone-of-influence size at the scale.
+    
+    Reference
+    ---------
+    * Torrence, C. and Compo, G. P., 1998,
+        A Practical Guide to Wavelet Analysis, 
+        <I>Bull. Amer. Meteor. Soc.</I>, 79, 61-78.
+        
+    Example
+    -------
+    >>> nowf, period, fourier_factor, coi = motherfunc(mother,
+                                                       k, scale,param)
+    
     """
     mother=mother.upper()
     n = len(k)
@@ -190,6 +284,41 @@ def motherfunc(mother, k, scale, param):
     return nowf, period, fourier_factor, coi
 
 def motherparam(mother,param=False):
+    """
+    Get the some values for given mother function of wavelet.
+    
+    Parameters
+    ----------
+    mother : str
+    param : int
+        The nondimensional parameter for the wavelet function.
+        
+    Returns
+    -------
+    fourier_factor : float
+        the ratio of Fourier period to scale.
+    dofmin : float
+        Degrees of freedom for each point in the wavelet power.
+        (either 2 for MORLET and PAUL, or 1 for the DOG)
+    cdelta : float
+        Reconstruction factor.
+    gamma_fac : float
+        decorrelation factor for time averaging.
+    dj0 : float
+        factor for scale averaging.
+    
+    Reference
+    ---------
+    * Torrence, C. and Compo, G. P., 1998,
+        A Practical Guide to Wavelet Analysis, 
+        <I>Bull. Amer. Meteor. Soc.</I>, 79, 61-78.
+    
+    Example
+    -------
+    >>> fourier_factor, dofmin, cdelta, \
+        gamma_fac, dj0 = motherparam(mother,param)
+        
+    """
     mother=mother.upper()
     if mother == 'MORLET':
         if not param:
@@ -242,44 +371,68 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
                 param=False,lag1=0.0,siglvl=0.95,dof=-1,
                 gws=False,confidence=False):
     """
-    Wave_signif
-    
     Compute the significance levels for a wavelet transform.
     
     Parameters
-        y     : The time series, or the variance of the time series.
-                If this is a single number, it is assumed to be the variance
-        dt    : The sampling time.
-        scale : The vecotr of scale indices, from previous call to WAVELET
-        sigtest : 0, 1, or 2 (optional)
-                  if 0 (default), then just do a regular chi-square test
-                      i.e. Eqn (18) from Torrence & Compo.
-                  If 1, then do a "time-average" test, i.e. Eqn (23).
-                      in this case, dof should be set to False,
-                      the nuber of local wavelet spectra 
-                      that were averaged together.
-                      For the Global Wavelet Spectrum(GWS), this would be N,
-                      where N is the number of points in y
-                  If 2, then do a "scale-average" test, i.e. Eqns (25)-(28).
-                      In this case, dof should be set to a two-element vector,
-                      which gives the scale range that was averaged together.
-                      e.g. if one scale-averaged scales between 2 and 8,
-                      then dof=[2,8]
-        lag1  : LAG 1 Autocorrelation, used for signif levels. (optional)
-                Default is 0.
-        siglvl : Significance level to use. (optional)
-                 Default is 0.95
-        dof   : degrees-of-freedom for sgnif test
-            Note: IF SIGTEST=1, then DOF can be a vector (same length as SCALEs),
-            in which case NA is assumed to vary with SCALE.
-            This allows one to average different numbers of times
-            together at different scales, or to take into account
-            things like the Cone of Influence.
-            See discussion following Eqn (23) in Torrence & Compo.
+    ----------
+    y : float or 1d ndarray
+        The time series, or the variance of the time series.
+        If this is a single number, it is assumed to be the variance.
+    dt : float
+        The sampling time.
+    scale : 1d ndarray
+        The vecotr of scale indices, from previous call to WAVELET.
+    sigtest : (optional) int
+        Allowable values are 0, 1, or 2
+        if 0 (default), then just do a regular chi-square test
+            i.e. Eqn (18) from Torrence & Compo.
+        If 1, then do a "time-average" test, i.e. Eqn (23).
+            in this case, dof should be set to False,
+            the nuber of local wavelet spectra 
+            that were averaged together.
+            For the Global Wavelet Spectrum(GWS), this would be N,
+            where N is the number of points in y
+        If 2, then do a "scale-average" test, i.e. Eqns (25)-(28).
+            In this case, dof should be set to a two-element vector,
+            which gives the scale range that was averaged together.
+            e.g. if one scale-averaged scales between 2 and 8,
+            then dof=[2,8]
+    lag1 : (optional) float
+        LAG 1 Autocorrelation, used for signif levels.
+        Default is 0.
+    siglvl : (optional) float
+        Significance level to use.
+        Default is 0.95
+    dof : (optional) float
+        degrees-of-freedom for sgnif test.
+        Default is -1, and it means the False.
+
             
-    Outputs
-        signif : significance levels as a function of scale
+    Returns
+    -------
+        signif : 1d ndarray
+            significance levels as a function of scale.
         
+    Notes
+    -----
+    * IF SIGTEST=1, then DOF can be a vector (same length as SCALEs),
+        in which case NA is assumed to vary with SCALE.
+        This allows one to average different numbers of times
+        together at different scales, or to take into account
+        things like the Cone of Influence.
+    * See discussion following Eqn (23) in Torrence & Compo.
+    
+    References
+    ----------
+    * Torrence, C. and Compo, G. P., 1998,
+        A Practical Guide to Wavelet Analysis, 
+        <I>Bull. Amer. Meteor. Soc.</I>, 79, 61-78.
+    
+    Example
+    -------
+    >>> signif=wavelet.wave_signif(y,dt,scale,2,mother='morlet',
+                                   dof=[s1,s2],gws=gws)
+    
     """
     if len(np.atleast_1d(y)) == 1:
         var = y
@@ -363,18 +516,24 @@ def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
 
 def chisquare_inv(p,v):
     """
-    CHISQUARE_INV
-    
     Inverse of chi-square cumulative distribution function(CDF).
     
-    Return the inverse of chi-square cdf
+    Parameters
+    ----------
+    p : float
+        probability
+    v : float
+        degrees of freedom of the chi-square distribution
     
-    parameter
-    p : probability
-    v : degrees of freedom of the chi-square distribution
-    =====================================
+    Returns
+    -------
+    x : float
+        the inverse of chi-square cdf
+        
     Example
+    -------
     >>> result = chisquare_inv(p,v)
+    
     """
     if not 0<p<1:
         raise ValueError('p must be 0<p<1')
@@ -438,9 +597,78 @@ def waveletplot(wave,time,period,scale,coi,levels=[0,2,5,10,20],
     plt.colorbar(im)
     plt.grid()
 
-def wave_coherency(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
-                   outall=True,nosmooth=False,coi=False):
-    """"""
+def wave_coherency(wave1,time1,scale1,wave2,time2,scale2,
+                   dt=False,dj=False,coi=False,nosmooth=False):
+    """
+    Compute the wavelet coherency between two time series.
+    
+    Parameters
+    ----------
+    wave1 : 2d ndarray
+        Wavelet power spectrum for time series 1.
+    time1 : 1d ndarray
+        A vector of times for time series 1.
+    scale1 : 1d ndarray
+        A vector of scales for time series 1.
+    wave2 : 2d ndarray
+        Wavelet power spectrum for time series 2.
+    time2 : 1d ndarray
+        A vector of times for time series 2.
+    scale2 : 1d ndarray
+        A vector of scales for time series 2.
+    dt : (optional) float
+        Amount of time between each Y value, i.e. the sampling time.
+        If not input, then calculated from time1[1]-time1[0]
+    dj : (optional) float
+        The spacing between discrete scales.
+        If not input, then calculated from scale1
+    coi : (optional) 1d ndarray
+        The array of the cone-of influence.
+    nosmooth : (optional) bool
+        if True, then just compute the global_coher, global_phase, and
+        the unsmoothed cross_wavelet and return.
+    
+    Returns
+    -------
+    result : dict
+        The result is dictionary has these information
+        cross_wavelet : 2d ndarray
+            The cross wavelet between the time series.
+        time : 1d ndarray
+            The time array given by the overlap of time1 and time2.
+        scale : 1d ndarray
+            The scale array of scale indices, given by the overlap of 
+            scale1 and scale2.
+        wave_phase : 2d ndarray
+            The phase difference between time series 1 and time series 2.
+        wave_coher : 2d ndarray
+            The wavelet coherency, as a function of time and scale.
+        global_phase : 1d ndarray
+            The global (or mean) phase averaged over all times.
+        global_coher : 1d ndarray
+            The global (or mean) coherence averaged over all times.
+        power1 : 2d ndarray
+            The wavelet power spectrum should be the same as wave1
+            if time1 and time2 are identical, otherwise it is only the
+            overlapping portion. If nosmooth is set,
+            then this is unsmoothed, otherwise it is smoothed.
+        power2 : 2d ndarray
+            same as power 1 but for time series 2.
+        coi : 1d ndarray
+            The array of the cone-of influence.
+        
+    References
+    ----------
+    * Torrence, C. and Compo, G. P., 1998,
+        A Practical Guide to Wavelet Analysis, 
+        <I>Bull. Amer. Meteor. Soc.</I>, 79, 61-78.
+    
+    Example
+    -------
+    res=wavelet.wave_coherency(wave1,time1,scale1,wave2,time2,scale2,
+                               dt,dj,coi=coi)
+    
+    """
     if not dt: dt=time1[1]-time1[0]
     if not dj: dj=np.log2(scale1[1]/scale1[0])
     if time1 is time2:
@@ -526,6 +754,9 @@ def wave_coherency(wave1,time1,scale1,wave2,time2,scale2,dt=False,dj=False,
 
 
 def fast_conv(f,g,nt):
+    """
+    Fast convolution two given function f and g (method 1)
+    """
     nf=f.shape
     ng=g.shape
     npad=2**(int(np.log2(max([nf[1],ng[1]])))+1)
@@ -540,6 +771,9 @@ def fast_conv(f,g,nt):
     return result
 
 def fast_conv2(f,g):
+    """
+    Fast convolution two given function f and g (method2)
+    """
     nf=f.shape
     ng=len(g)
     npad=2**(int(np.log2(max([nf[0],ng])))+1)

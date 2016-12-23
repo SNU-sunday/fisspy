@@ -1,17 +1,54 @@
-from __future__ import absolute_import, print_function, division
+"""
+Basic image process tool.
+"""
+
+from __future__ import absolute_import, division
 
 from sunpy.image.rescale import resample as rescale
 from scipy.ndimage.interpolation import shift as sci_shift
 import numpy as np
 from interpolation.splines import LinearSpline
 
+__author__ = "Juhyeong Kang"
+__email__ = "jhkang@astro.snu.ac.kr"
+__all__ = ['rescale', 'rot_trans', 'img_interpol',
+           'rotation', 'rot', 'shift']
+
 def rot_trans(x,y,xc,yc,angle,dx=0,dy=0,inv=False):
     """
-    rot_trans
+    Rotational transpose for input array of x, y and angle.
     
-    rotational transpose for input array of x, y and angle.
+    Parameters
+    ----------
+    x : 1d ndarray
+        Row vector of x.
+    y : 1d ndarray
+        Colomn vector of y.
+    xc : float
+        x-axis value of roatation center.
+    yc : float
+        y-axis value of rotation center.
+    angle : float
+        Roation angle in 'radian' unit.
+    dx : (optional) float
+        The relative displacement along x-axis 
+        of the rotated images to the reference image.
+    dy : (optional) float
+        The relative displacement along y-axis 
+        of the rotated images to the reference image.
+    inv : (optional) bool
+        If True, the do inverse roattion transpose.
     
-    
+    Returns
+    -------
+    xt : 2d ndarray
+        Transposed coordinates of the positions in the observed frame
+    yt : 2d ndarray
+        Transposed coordinates of the positions in the observed frame
+        
+    Notes
+    -----
+    The input angle must be in radian.
     """
     
     if not inv:
@@ -24,7 +61,31 @@ def rot_trans(x,y,xc,yc,angle,dx=0,dy=0,inv=False):
 
 def img_interpol(img,xa,ya,xt,yt,missing=-1):
     """
-    img_interpol
+    Interpolate the image for a given coordinates.
+    
+    Parameters
+    ----------
+    img : 2d ndarray
+        2 dimensional array of image.
+    x : 1d ndarray
+        Row vector of x.
+    y : 1d ndarray
+        Colomn vector of y.
+    xt : 2d ndarray
+        Coordinates of the positions in the observed frame.
+    yt : 2d ndarray
+        Coordinates of the positions in the observed frame.
+    missing : (optional) float
+        The value of extrapolated position.
+        Default is -1, and it means the False.
+        If False, then extrapolate the given position.
+    
+    Returns
+    -------
+    res : 2d ndarray
+        2 dimensional interpolated image.
+        The size of res is same as input img.
+    
     """
     shape=xt.shape
     size=xt.size
@@ -42,10 +103,91 @@ def img_interpol(img,xa,ya,xt,yt,missing=-1):
     return res
 
 def rotation(img,angle,x,y,xc,yc,dx=0,dy=0,inv=False,missing=-1):
+    """
+    Rotate the input image with angle and center position.
+    
+    Parameters
+    ----------
+    img : 2d ndarray
+        2 dimensional array of image.
+    x : 1d ndarray
+        Row vector of x.
+    y : 1d ndarray
+        Colomn vector of y.
+    xc : float
+        x-axis value of roatation center.
+    yc : float
+        y-axis value of rotation center.
+    angle : float
+        Roation angle in 'radian' unit.
+    dx : (optional) float
+        The relative displacement along x-axis 
+        of the rotated images to the reference image.
+    dy : (optional) float
+        The relative displacement along y-axis 
+        of the rotated images to the reference image.
+    inv : (optional) bool
+        If True, the do inverse roattion transpose.
+    missing : (optional) float
+        The value of extrapolated position.
+        Default is -1, and it means the False.
+        If False, then extrapolate the given position.
+    
+    Returns
+    -------
+    result : 2d ndarray
+        rotated image.
+        
+    Notes
+    -----
+    It is not conventional rotation.
+    It is just used for the coalignment module.
+    
+    """
     xt,yt=rot_trans(x,y,xc,yc,angle,dx,dy,inv)
     return img_interpol(img,x,y,xt,yt,missing=missing)
     
 def rot(img,angle,xc=False,yc=False,dx=0,dy=0,xmargin=0,ymargin=0,missing=0):
+    """
+    Rotate the input image.
+    
+    Parameters
+    ----------
+    img : 2d ndarray
+        2 dimensional array of image.
+    angle : float
+        Roation angle in 'radian' unit.
+    xc : (optional) float
+        x-axis value of roatation center.
+        Default is the image center.
+    yc : (optional) float
+        y-axis value of rotation center.
+        Default is the image center.
+    dx : (optional) float
+        The relative displacement along x-axis 
+        of the rotated images to the reference image.
+    dy : (optional) float
+        The relative displacement along y-axis 
+        of the rotated images to the reference image.
+    xmargin : (optional) float
+        The margin value of x-axis
+    ymargin : (optional) float
+        The margin value of y-axis
+    missing : (optional) float
+        The value of extrapolated position.
+        Default is -1, and it means the False.
+        If False, then extrapolate the given position.
+    
+    Returns
+    -------
+    result : 2d ndarray
+        rotated image.
+    
+    Notes
+    -----
+    The input angle must be in radian unit.
+    
+    """
     ny,nx=img.shape
     nx+=xmargin
     ny+=ymargin
@@ -59,18 +201,9 @@ def rot(img,angle,xc=False,yc=False,dx=0,dy=0,xmargin=0,ymargin=0,missing=0):
     
 def shift(image,x,y):
     """
-    Imageshift
+    It must be re coded.
     
-    Shifting the input image by x and y.
-    The x and y values are the outputs of the alignoffset.
-    
-    Parameter
-    Image : A 2 Dimensional array.
-    x, y  : The align offset values for image.
-            These are the outputs of the alignoffset code.
-    ==============================
-    Example)
-    >>> newimage=imageshift(image,x,y)
+    Shift the given iamge for given value.
     """
     
     return sci_shift(image,[y,x])
