@@ -9,13 +9,12 @@ __email__ = "jhkang@astro.snu.ac.kr"
 from scipy.fftpack import ifft2,fft2
 import numpy as np
 from fisspy.io.read import getheader,raster
-from . import fiss_sdo_align_tool
 from astropy.time import Time
+from time import clock
 import os
-from sunpy.net import vso
 from .base import rotation
 
-__all__ = ['alignoffset', 'fiss_align_inform', 'match_wcs']
+__all__ = ['alignoffset', 'fiss_align_inform']
 
 def alignoffset(image0,template0):
     """
@@ -84,7 +83,7 @@ def alignoffset(image0,template0):
     #give the cross-correlation weight on the image center
     #to avoid the fast change the image by the granular motion or strong flow
     
-    cor=ifft2(ifft2(image*gauss)*fft2(template*gauss)).real
+    cor=ifft2(ifft2(template*gauss)*fft2(image*gauss)).real
     
     # calculate the cross-correlation values by using convolution theorem and 
     # DFT-IDFT relation
@@ -188,6 +187,9 @@ def fiss_align_inform(file,wvref=-4,dirname=False,
     >>> coalignment.fiss_align_inform(file,dirname=dirname,sil=False)
     
     """
+    t0=clock()
+    if not sil:
+        print('====== Fiss Alignment ======')
     n=len(file)
     hlist=[getheader(i) for i in file]
     tlist=[i['date'] for i in hlist]
@@ -202,41 +204,43 @@ def fiss_align_inform(file,wvref=-4,dirname=False,
     xc=nx//2
     yc=ny//2
     
-    nx1=((nx//2)//2)*2
-    ny1=((ny//2)//2)*2
-    
-    x1=xc-nx1//2
-    y1=yc-ny1//2
-    
-    xa=(x1+np.arange(nx1))
-    ya=(y1+np.arange(ny1))[:,None]
-    
-    im1=raster(file[0],wvref,0.05,x1=x1,x2=x1+nx1,y1=y1,y2=y1+ny1)
-    
+#    nx1=((nx//2)//2)*2
+#    ny1=((ny//2)//2)*2
+#    
+#    x1=xc-nx1//2
+#    y1=yc-ny1//2
+#    
+#    xa=(x1+np.arange(nx1))
+#    ya=(y1+np.arange(ny1))[:,None]
+    xa=np.arange(nx)    
+    ya=np.arange(ny)[:,None]
+
+#    im1=raster(file[0],wvref,0.05,x1=x1,x2=x1+nx1,y1=y1,y2=y1+ny1)
+    im1=raster(file[0],wvref,0.05)
     dx=np.zeros(n)
     dy=np.zeros(n)
     
     for i in range(n-1):
         #align with next image
         #the alignment is not done with the reference, since the structure can be transformed
-        im2=raster(file[i+1],wvref,0.05,x1=x1,x2=x1+nx1-1,y1=y1,y2=y1+ny1-1)
+#        im2=raster(file[i+1],wvref,0.05,x1=x1,x2=x1+nx1,y1=y1,y2=y1+ny1)
+        im2=raster(file[i+1],wvref,0.05)
         img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=0)
-        img2=rotation(im1,angle[i+1],xa,ya,xc,yc,missing=0)
+        img2=rotation(im2,angle[i+1],xa,ya,xc,yc,missing=0)
         sh=alignoffset(img2,img1)
-        
         #align with reference
         img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=0)
-        img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[0],dx[i]+sh[1],missing=0)
+        img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=0)
         sh+=alignoffset(img2,img1)
-        
-        dx[i+1]=dx[i]+sh[0]
-        dy[i+1]=dy[i]+sh[1]
+        dx[i+1]=dx[i]+sh[1]
+        dy[i+1]=dy[i]+sh[0]
         
         im1=im2
         
         if not sil:
             print(i)
-    
+    if not sil:
+        print('end loop')
     result=dict(xc=xc,yc=yc,angle=angle,dt=dtmin,dx=dx,dy=dy)
     if save:
         if not dirname:
@@ -245,119 +249,25 @@ def fiss_align_inform(file,wvref=-4,dirname=False,
             filename=t[0].value[:10]
         filename2=dirname+filename
         if not pre_match_wcs:
+            if not sil:
+                print('You select the no pre_match_wcs')
             fileout=filename2+'_align_lev0.npz'
             np.savez(fileout,xc=xc,yc=yc,angle=angle,
-                     dt=dtmin,dx=dx,dy=dy)
+                     dt=dtmin,dx=dx,dy=dy,time=t)
+            if not sil:
+                print('The saving file name is %s'%fileout)
         else:
-            fileout=filename2+'_align_lev0.npz'
+            if not sil:
+                print('You select the pre_match_wcs')
+            fileout=filename2+'_align_lev1.npz'
+            if not sil:
+                print(filename2)
             tmp=np.load(filename2+'_match_wcs.npz')
-            np.savez(fileout+'_align_lev1.npz',xc=xc,yc=yc,angle=angle,
+            np.savez(fileout,xc=xc,yc=yc,angle=angle,
                      dt=dtmin,dx=dx,dy=dy,sdo_angle=tmp['match_angle'],
-                     wcsx=tmp['wcsx'],wcsy=tmp['wcsy'])
-            matchfile=filename2+'_match_wcs.npz'
-            os.remove(matchfile)
-            print('Remove the %s'%matchfile)
-        print('The saving file name is %s'%fileout)
+                     wcsx=tmp['wcsx'],wcsy=tmp['wcsy'],time=t)
+        if not sil:
+            print('The saving file name is %s'%fileout)
+    if not sil:
+        print('The running time is %.2f seconds'%(clock()-t0))
     return result
-    
-
-    
-def match_wcs(fiss_file,sdo_file=False,dirname=False,
-              filename=False,sil=True,sdo_path=False,
-              manual=True,wvref=-4,reflect=True,alpha=0.5,
-              missing=0):
-    """
-    Match the wcs information of FISS files with the SDO/HMI file.
-    
-    Parameters
-    ----------
-    fiss_file : str or list
-        A single of fiss file or the list of fts file.
-    sdo_file : (optional) str
-        A SDO/HMI data to use for matching the wcs.
-        If False, then download the HMI data on the VSO site.
-    dirname : (optional) str
-        The directory name for saving the npz data.
-        The the last string elements must be the directory seperation.
-        ex) dirname='D:\\the\\greatest\\scientist\\kang\\'
-        If False, the dirname is the present working directory.
-    filename : (optional) str
-        The file name for saving the npz data.
-        There are no need to add the extension.
-        If False, the filename is the date of FISS data.
-    sil : (optional) bool
-        If False, it print the ongoing time index.
-        Default is True.
-    sdo_path : (optional) str
-        The directory name for saving the HMI data.
-        The the last string elements must be the directory seperation.
-    maunal : (optioinal) bool
-        If True, then manually match the wcs.
-        If False, you have a no choice to this yet. kkk.
-    wvref : (optional) float
-        The referenced wavelength for making raster image.
-    reflect : (optional) bool
-        Correct the reflection of FISS data.
-        Default is True.
-    alpha : (optional) float
-        The transparency of the image to 
-    missing : (optional) float
-        The extrapolated value of interpolation.
-        Default is 0.
-        
-    Returns
-    -------
-    match_angle : float
-        The angle to rotate the FISS data to match the wcs information.
-    wcsx : float
-        The x-axis value of image center in WCS arcesec unit.
-    wcsy : float
-        The y-axis value of image center in WCS arcesec unit.
-    
-    Notes
-    -----
-    * The dirname and sdo_path must be have the directory seperation.
-    
-    Example
-    -------
-    >>> from glob import glob
-    >>> from fisspy.image import coalignment
-    >>> file=glob('*_A1_c.fts')
-    >>> dirname='D:\\im\\so\\hot\\'
-    >>> sdo_path='D:\\im\\sdo\\path\\'
-    >>> coalignment.match_wcs(file,dirname=dirname,sil=False,
-                              sdo_path=sdo_path)
-    
-    """
-    
-    if type(fiss_file) == list and len(fiss_file) != 1:
-        fiss_file0=fiss_file[0]
-    else:
-        fiss_file0=fiss_file
-        
-    if not sdo_file:
-        h=getheader(fiss_file0)
-        tlist=h['date']
-        t=Time(tlist,format='isot',scale='ut1')
-        tjd=t.jd
-        t1=tjd-20/24/3600
-        t2=tjd+20/24/3600
-        t1=Time(t1,format='jd')
-        t2=Time(t2,format='jd')
-        t1.format='isot'
-        t2.format='isot'
-        hmi=(vso.attrs.Instrument('HMI') &
-             vso.attrs.Time(t1.value,t2.value) &
-             vso.attrs.Physobs('intensity'))
-        vc=vso.VSOClient()
-        res=vc.query(hmi)
-        
-        if not sdo_path:
-            sdo_path=os.getcwd()+os.sep()
-        sdo_file=(vc.get(res,path=sdo_path+'{file}',methods=('URL-FILE','URL')).wait())[0]
-    
-    fiss_sdo_align_tool.manual(fiss_file,sdo_file,dirname=dirname,
-                               filename=filename,wvref=wvref,
-                               reflect=reflect,alpha=alpha,sil=sil,
-                               missing=0)
-    return

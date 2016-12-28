@@ -9,13 +9,115 @@ from skimage.viewer.widgets.core import Slider, Button
 from .base import rescale, rot
 from .coalignment import fiss_align_inform
 from astropy.io import fits
+from astropy.time import Time
 import os
+from sunpy.net import vso
 
 __author__ = "Juhyeong Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
-__all__ = ['manual']
+__all__ = ['match_wcs', 'manual']
 
 use("Qt4Agg")
+
+
+def match_wcs(fiss_file,sdo_file=False,dirname=False,
+              filename=False,sil=True,sdo_path=False,
+              method=True,wvref=-4,reflect=True,alpha=0.5,
+              missing=0):
+    """
+    Match the wcs information of FISS files with the SDO/HMI file.
+    
+    Parameters
+    ----------
+    fiss_file : str or list
+        A single of fiss file or the list of fts file.
+    sdo_file : (optional) str
+        A SDO/HMI data to use for matching the wcs.
+        If False, then download the HMI data on the VSO site.
+    dirname : (optional) str
+        The directory name for saving the npz data.
+        The the last string elements must be the directory seperation.
+        ex) dirname='D:\\the\\greatest\\scientist\\kang\\'
+        If False, the dirname is the present working directory.
+    filename : (optional) str
+        The file name for saving the npz data.
+        There are no need to add the extension.
+        If False, the filename is the date of FISS data.
+    sil : (optional) bool
+        If False, it print the ongoing time index.
+        Default is True.
+    sdo_path : (optional) str
+        The directory name for saving the HMI data.
+        The the last string elements must be the directory seperation.
+    method : (optioinal) bool
+        If True, then manually match the wcs.
+        If False, you have a no choice to this yet. kkk.
+    wvref : (optional) float
+        The referenced wavelength for making raster image.
+    reflect : (optional) bool
+        Correct the reflection of FISS data.
+        Default is True.
+    alpha : (optional) float
+        The transparency of the image to 
+    missing : (optional) float
+        The extrapolated value of interpolation.
+        Default is 0.
+        
+    Returns
+    -------
+    match_angle : float
+        The angle to rotate the FISS data to match the wcs information.
+    wcsx : float
+        The x-axis value of image center in WCS arcesec unit.
+    wcsy : float
+        The y-axis value of image center in WCS arcesec unit.
+    
+    Notes
+    -----
+    * The dirname and sdo_path must be have the directory seperation.
+    
+    Example
+    -------
+    >>> from glob import glob
+    >>> from fisspy.image import coalignment
+    >>> file=glob('*_A1_c.fts')
+    >>> dirname='D:\\im\\so\\hot\\'
+    >>> sdo_path='D:\\im\\sdo\\path\\'
+    >>> coalignment.match_wcs(file,dirname=dirname,sil=False,
+                              sdo_path=sdo_path)
+    
+    """
+    
+    if type(fiss_file) == list and len(fiss_file) != 1:
+        fiss_file0=fiss_file[0]
+    else:
+        fiss_file0=fiss_file
+        
+    if not sdo_file:
+        h=read.getheader(fiss_file0)
+        tlist=h['date']
+        t=Time(tlist,format='isot',scale='ut1')
+        tjd=t.jd
+        t1=tjd-20/24/3600
+        t2=tjd+20/24/3600
+        t1=Time(t1,format='jd')
+        t2=Time(t2,format='jd')
+        t1.format='isot'
+        t2.format='isot'
+        hmi=(vso.attrs.Instrument('HMI') &
+             vso.attrs.Time(t1.value,t2.value) &
+             vso.attrs.Physobs('intensity'))
+        vc=vso.VSOClient()
+        res=vc.query(hmi)
+        
+        if not sdo_path:
+            sdo_path=os.getcwd()+os.sep()
+        sdo_file=(vc.get(res,path=sdo_path+'{file}',methods=('URL-FILE','URL')).wait())[0]
+    
+    manual(fiss_file,sdo_file,dirname=dirname,
+           filename=filename,wvref=wvref,
+           reflect=reflect,alpha=alpha,sil=sil,missing=missing)
+    return
 
 def manual(fiss_file,sdo_file,dirname=False,filename=False,
            wvref=-4,reflect=True,alpha=0.5,sil=True,
@@ -33,13 +135,13 @@ def manual(fiss_file,sdo_file,dirname=False,filename=False,
     xpos=fissh['tel_xpos']
     ypos=fissh['tel_ypos']
     time=fissh['date']
+    wavelen=fissh['wavelen']
     
     if not filename:
-        filename=time[:10]
+        filename=time[:10]+'_'+wavelen[:4]
     if not dirname:
         dirname=os.getcwd()+os.sep    
     
-    filename+='_match_wcs'
     
     sdo=fits.getdata(sdo_file)
     sdoh=fits.getheader(sdo_file)
@@ -117,7 +219,7 @@ def manual(fiss_file,sdo_file,dirname=False,filename=False,
         print('========================================')
         
     def saveb():
-        filename2=dirname+filename+'.npz'
+        filename2=dirname+filename+'_match_wcs.npz'
         
         px=x0+xsld.val+xsubsld.val-xc
         py=y0+ysld.val+ysubsld.val-yc

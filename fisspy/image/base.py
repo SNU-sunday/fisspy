@@ -5,7 +5,7 @@ Basic image process tool.
 from __future__ import absolute_import, division
 
 from sunpy.image.rescale import resample as rescale
-from scipy.ndimage.interpolation import shift as sci_shift
+from scipy.ndimage.interpolation import shift
 import numpy as np
 from interpolation.splines import LinearSpline
 
@@ -93,7 +93,6 @@ def img_interpol(img,xa,ya,xt,yt,missing=-1):
     smax=[ya[-1,0],xa[-1]]
     order=[len(ya),len(xa)]
     interp=LinearSpline(smin,smax,order,img)
-    
     a=np.array((yt.reshape(size),xt.reshape(size)))
     b=interp(a.T)
     res=b.reshape(shape)
@@ -189,21 +188,18 @@ def rot(img,angle,xc=False,yc=False,dx=0,dy=0,xmargin=0,ymargin=0,missing=0):
     
     """
     ny,nx=img.shape
-    nx+=xmargin
-    ny+=ymargin
-    xa=np.arange(nx)
-    ya=np.arange(ny)[:,None]
+    nx1=int(nx+2*xmargin)
+    ny1=int(ny+2*ymargin)
+    x=np.arange(nx)
+    y=np.arange(ny)[:,None]
+    xa=np.arange(nx1)-xmargin
+    ya=(np.arange(ny1)-ymargin)[:,None]
+    
+
     if not xc:
         xc=nx/2
     if not yc:
         yc=ny/2
-    return rotation(img,angle,xa,ya,xc,yc,dx,dy,missing=missing)
+    xt, yt=rot_trans(xa,ya,xc,yc,angle,dx=dx,dy=dy)
+    return img_interpol(img,x,y,xt,yt,missing=missing)
     
-def shift(image,x,y):
-    """
-    It must be re coded.
-    
-    Shift the given iamge for given value.
-    """
-    
-    return sci_shift(image,[y,x])
