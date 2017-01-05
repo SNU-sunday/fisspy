@@ -10,7 +10,7 @@ from fisspy.image import base
 __author__="Juhyeong Kang"
 __email__="jhkang@astro.snu.ac.kr"
 
-def fiss_align_cube(fiss_img,alignfile,ref_frame=0,
+def fiss_align_cube(fiss_img,alignfile,
                     reflection=True,margin=True,level=False):
     """
     
@@ -27,10 +27,6 @@ def fiss_align_cube(fiss_img,alignfile,ref_frame=0,
     yc=inform['yc']
     n=len(dt)
     
-    if ref_frame != 0:
-        dx-=dx[ref_frame]
-        dy-=dy[ref_frame]
-    
     nt,ny,nx=fiss_img.shape
     
     if nt != n:
@@ -38,7 +34,6 @@ def fiss_align_cube(fiss_img,alignfile,ref_frame=0,
                          'align information')
         
     if level=='lev0':
-        angle-=angle[ref_frame]
         x=np.array((0,nx-1,nx-1,0))
         y=np.array((0,0,ny-1,ny-1))
         xt1,yt1=base.rot_trans(x,y,xc,yc,angle.max())
@@ -55,10 +50,8 @@ def fiss_align_cube(fiss_img,alignfile,ref_frame=0,
             imgout[i]=base.rot(fiss_img[i],angle[i],xc,yc,dx[i],dy[i],
                                     xmargin,ymargin,missing=0)
     elif level=='lev1':
-        sdo_angle=np.deg2rad(inform['sdo_angle'])
         if reflection:
             fiss_img=fiss_img.T
-            angle=sdo_angle-angle
             x=np.array((0,ny-1,ny-1,0))
             y=np.array((0,0,nx-1,nx-1))
             xt1,yt1=base.rot_trans(x,y,yc,xc,angle.max())
@@ -75,7 +68,6 @@ def fiss_align_cube(fiss_img,alignfile,ref_frame=0,
                 imgout[i]=base.rot(fiss_img[:,:,i],angle[i],yc,xc,
                                         dy[i],dx[i],xmargin,ymargin,missing=0)
         else:
-            angle=sdo_angle+angle
             xt1,yt1=base.rot_trans(x,y,xc,yc,angle.max())
             xt2,yt2=base.rot_trans(x,y,xc,yc,angle.min())
             tmpx=np.concatenate((xt1,xt2))

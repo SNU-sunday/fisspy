@@ -121,7 +121,7 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     pfile=header['pfile']
     
     if dir:
-        pfile=dir+os.sep()+pfile
+        pfile=dir+os.sep+pfile
         
     pdata=fits.getdata(pfile)
     data=fits.getdata(file)[x1:x2]
@@ -248,14 +248,14 @@ def getheader(file,pca=True):
     
     """
     header0=fits.getheader(file)
+    
+    pfile=header0.pop('pfile')
+    if not pfile:
+        return header0
+        
     header=fits.Header()
-    try:
-        header0['pfile']
-    except:
-        pca=False
     if pca:
-        header['pfile']=header0['pfile']
-        header['bscale']=header0['bscale']
+        header['pfile']=pfile
         for i in header0['comment']:
             sori = i.split('=')
             if len(sori) == 1:
@@ -284,4 +284,24 @@ def getheader(file,pca=True):
                     header[key]=item
                 else:
                     header[key]=(item,svc[1])
+                    
+    header['simple']=True
+    alignl=header0.pop('alignl',-1)
+    
+    if alignl == 0:
+        keys=['reflect','reffr','reffi','cdelt2','cdelt3','crota2',
+              'crpix3','shift3','crpix2','shift2','margin2','margin3']
+        header['alignl']=(alignl,'Alignment level')
+        for i in keys:
+            header[i]=(header0[i],header0.comments[i])
+        header['history']=str(header0['history'])
+    if alignl == 1:
+        keys=['reflect','reffr','reffi','cdelt2','cdelt3','crota1',
+              'crota2','crpix3','crval3','shift3','crpix2','crval2',
+              'shift2','margin2','margin3']
+        header['alignl']=(alignl,'Alignment level')
+        for i in keys:
+            header[i]=(header0[i],header0.comments[i])
+        header['history']=str(header0['history'])
+        
     return header

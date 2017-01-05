@@ -22,8 +22,8 @@ use("Qt4Agg")
 
 def match_wcs(fiss_file,sdo_file=False,dirname=False,
               filename=False,sil=True,sdo_path=False,
-              method=True,wvref=-4,reflect=True,alpha=0.5,
-              missing=0):
+              method=True,wvref=-4,ref_frame=-1,reflect=True,alpha=0.5,
+              missing=0,update_header=True):
     """
     Match the wcs information of FISS files with the SDO/HMI file.
     
@@ -89,7 +89,9 @@ def match_wcs(fiss_file,sdo_file=False,dirname=False,
     """
     
     if type(fiss_file) == list and len(fiss_file) != 1:
-        fiss_file0=fiss_file[0]
+        if ref_frame==-1:
+            ref_frame=len(fiss_file)//2
+        fiss_file0=fiss_file[ref_frame]
     else:
         fiss_file0=fiss_file
         
@@ -109,22 +111,28 @@ def match_wcs(fiss_file,sdo_file=False,dirname=False,
              vso.attrs.Physobs('intensity'))
         vc=vso.VSOClient()
         res=vc.query(hmi)
-        
+        if not sil:
+            print('Download the SDO/HMI file')
         if not sdo_path:
-            sdo_path=os.getcwd()+os.sep()
-        sdo_file=(vc.get(res,path=sdo_path+'{file}',methods=('URL-FILE','URL')).wait())[0]
-    
+            sdo_path=os.getcwd()+os.sep
+        sdo_file=(vc.get(res,path=sdo_path+'{file}',methods=('URL-FILE','URL')).wait())
+        sdo_file=sdo_file[0]
+        if not sil:
+            print('SDO/HMI file name is %s'%sdo_file)
     manual(fiss_file,sdo_file,dirname=dirname,
            filename=filename,wvref=wvref,
-           reflect=reflect,alpha=alpha,sil=sil,missing=missing)
+           reflect=reflect,alpha=alpha,ref_frame=ref_frame,
+           sil=sil,missing=missing,update_header=update_header)
     return
 
 def manual(fiss_file,sdo_file,dirname=False,filename=False,
-           wvref=-4,reflect=True,alpha=0.5,sil=True,
-           missing=0):
+           wvref=-4,reflect=True,alpha=0.5,ref_frame=-1,sil=True,
+           missing=0,update_header=True):
 
     if type(fiss_file) == list and len(fiss_file) != 1:
-        fiss_file0=fiss_file[0]
+        if ref_frame==-1:
+            ref_frame=len(fiss_file)//2
+        fiss_file0=fiss_file[ref_frame]
     else:
         fiss_file0=fiss_file
         
@@ -141,7 +149,6 @@ def manual(fiss_file,sdo_file,dirname=False,filename=False,
         filename=time[:10]+'_'+wavelen[:4]
     if not dirname:
         dirname=os.getcwd()+os.sep    
-    
     
     sdo=fits.getdata(sdo_file)
     sdoh=fits.getheader(sdo_file)
@@ -179,7 +186,7 @@ def manual(fiss_file,sdo_file,dirname=False,filename=False,
     ax.set_title(time)
     im2 = ax.imshow(sdo1,origin='lower',cmap=plt.cm.Greys,
                     alpha=alpha,extent=extent)
-    
+    im2.set_clim(0.6,1)
     
     def update_angle():
         angle = np.deg2rad(major_angle.val+minor_angle.val)
@@ -228,13 +235,16 @@ def manual(fiss_file,sdo_file,dirname=False,filename=False,
         angle=major_angle.val+minor_angle.val
         
         print('save the parameter as %s'%filename2)
-        np.savez(filename2,match_angle=angle,wcsx=wcsx,wcsy=wcsy)
+        np.savez(filename2,match_angle=angle,wcsx=wcsx,
+                 wcsy=wcsy,reflect=reflect)
         
     def alignb():
         print('Align the fiss data, it takes some time.')
-        res=fiss_align_inform(fiss_file,wvref=wvref,dirname=dirname,
+        res=fiss_align_inform(fiss_file,wvref=wvref,ref_frame=ref_frame,
+                              dirname=dirname,
                               filename=filename,pre_match_wcs=True,
-                              sil=sil,missing=missing)
+                              sil=sil,missing=missing,reflect=reflect,
+                              update_header=update_header)
         
     root = fig.canvas.manager.window
     panel = QtGui.QWidget()

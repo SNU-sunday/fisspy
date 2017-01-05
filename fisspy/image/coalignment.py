@@ -10,9 +10,13 @@ from scipy.fftpack import ifft2,fft2
 import numpy as np
 from fisspy.io.read import getheader,raster
 from astropy.time import Time
+from sunpy.physics.differential_rotation import rot_hpc
+import astropy.units as u
+from astropy.io import fits
 from time import clock
 import os
-from .base import rotation
+from .base import rotation,rot_trans
+from shutil import copy2
 
 __all__ = ['alignoffset', 'fiss_align_inform']
 
@@ -118,9 +122,9 @@ def alignoffset(image0,template0):
     return x, y
 
 
-def fiss_align_inform(file,wvref=-4,dirname=False,
+def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
                       filename=False,save=True,pre_match_wcs=False,
-                      sil=True,missing=0):
+                      sil=True,missing=0,reflect=False,update_header=True):
     """
     Calculate the fiss align information, and save to npz file.
     The reference image is the first one of the file list.
@@ -188,13 +192,18 @@ def fiss_align_inform(file,wvref=-4,dirname=False,
     
     """
     t0=clock()
+    
     if not sil:
         print('====== Fiss Alignment ======')
+        
     n=len(file)
+    if ref_frame==-1:
+        ref_frame=n//2
+     
     hlist=[getheader(i) for i in file]
     tlist=[i['date'] for i in hlist]
     t=Time(tlist,format='isot',scale='ut1')
-    dtmin=(t.jd-t.jd[0])*24*60
+    dtmin=(t.jd-t.jd[ref_frame])*24*60
     
     nx=hlist[0]['naxis3']
     ny=hlist[0]['naxis2']
@@ -204,41 +213,69 @@ def fiss_align_inform(file,wvref=-4,dirname=False,
     xc=nx//2
     yc=ny//2
     
-#    nx1=((nx//2)//2)*2
-#    ny1=((ny//2)//2)*2
-#    
-#    x1=xc-nx1//2
-#    y1=yc-ny1//2
-#    
-#    xa=(x1+np.arange(nx1))
-#    ya=(y1+np.arange(ny1))[:,None]
     xa=np.arange(nx)    
     ya=np.arange(ny)[:,None]
 
-#    im1=raster(file[0],wvref,0.05,x1=x1,x2=x1+nx1,y1=y1,y2=y1+ny1)
-    im1=raster(file[0],wvref,0.05)
+    im1=raster(file[ref_frame],wvref,0.05)
     dx=np.zeros(n)
     dy=np.zeros(n)
     
-    for i in range(n-1):
-        #align with next image
-        #the alignment is not done with the reference, since the structure can be transformed
-#        im2=raster(file[i+1],wvref,0.05,x1=x1,x2=x1+nx1,y1=y1,y2=y1+ny1)
-        im2=raster(file[i+1],wvref,0.05)
-        img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=0)
-        img2=rotation(im2,angle[i+1],xa,ya,xc,yc,missing=0)
-        sh=alignoffset(img2,img1)
-        #align with reference
-        img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=0)
-        img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=0)
-        sh+=alignoffset(img2,img1)
-        dx[i+1]=dx[i]+sh[1]
-        dy[i+1]=dy[i]+sh[0]
-        
-        im1=im2
-        
-        if not sil:
-            print(i)
+
+    print('The reference frame is %d'%ref_frame)
+    if ref_frame==0:
+        for i in range(n-1):
+            #align with next image
+            im2=raster(file[i+1],wvref,0.05)
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=0)
+            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,missing=0)
+            sh=alignoffset(img2,img1)
+            
+            #align with reference
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=0)
+            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=0)
+            sh+=alignoffset(img2,img1)
+            dx[i+1]=dx[i]+sh[1]
+            dy[i+1]=dy[i]+sh[0]
+            
+            im1=im2
+            
+            if not sil:
+                print(i)
+    else:
+        for i in range(ref_frame,n-1):
+            #align with next image
+            im2=raster(file[i+1],wvref,0.05)
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=0)
+            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,missing=0)
+            sh=alignoffset(img2,img1)
+            
+            #align with reference
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=0)
+            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=0)
+            sh+=alignoffset(img2,img1)
+            dx[i+1]=dx[i]+sh[1]
+            dy[i+1]=dy[i]+sh[0]
+            
+            im1=im2
+            if not sil:
+                print(i)
+        for i in range(ref_frame,0,-1):
+            #align with next image
+            im2=raster(file[i+1],wvref,0.05)
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=0)
+            img2=rotation(im2,angle[i-1],xa,ya,xc,yc,missing=0)
+            sh=alignoffset(img2,img1)
+            
+            #align with reference
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=0)
+            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=0)
+            sh+=alignoffset(img2,img1)
+            dx[i-1]=dx[i]+sh[1]
+            dy[i-1]=dy[i]+sh[0]
+            
+            im1=im2
+            if not sil:
+                print(i)
     if not sil:
         print('end loop')
     result=dict(xc=xc,yc=yc,angle=angle,dt=dtmin,dx=dx,dy=dy)
@@ -252,22 +289,165 @@ def fiss_align_inform(file,wvref=-4,dirname=False,
             if not sil:
                 print('You select the no pre_match_wcs')
             fileout=filename2+'_align_lev0.npz'
-            np.savez(fileout,xc=xc,yc=yc,angle=angle,
-                     dt=dtmin,dx=dx,dy=dy,time=t)
-            if not sil:
-                print('The saving file name is %s'%fileout)
+            np.savez(fileout,
+                     xc=xc,
+                     yc=yc,
+                     angle=angle,
+                     dt=dtmin,
+                     dx=dx,
+                     dy=dy,
+                     time=t,
+                     reflect=False,
+                     reffr=ref_frame,
+                     reffi=file[ref_frame])
         else:
-            if not sil:
-                print('You select the pre_match_wcs')
             fileout=filename2+'_align_lev1.npz'
             if not sil:
+                print('You select the pre_match_wcs')
                 print(filename2)
             tmp=np.load(filename2+'_match_wcs.npz')
-            np.savez(fileout,xc=xc,yc=yc,angle=angle,
-                     dt=dtmin,dx=dx,dy=dy,sdo_angle=tmp['match_angle'],
-                     wcsx=tmp['wcsx'],wcsy=tmp['wcsy'],time=t)
+            if reflect:
+                angle=np.deg2rad(tmp['match_angle'])-angle
+            else:
+                angle+=np.deg2rad(tmp['match_angle'])
+            np.savez(fileout,
+                     xc=xc,
+                     yc=yc,
+                     angle=angle,
+                     dt=dtmin,
+                     dx=dx,
+                     dy=dy,
+                     sdo_angle=np.deg2rad(tmp['match_angle']),
+                     wcsx=tmp['wcsx'],
+                     wcsy=tmp['wcsy'],
+                     reflect=reflect,
+                     reffr=ref_frame,
+                     reffi=file[ref_frame])
         if not sil:
             print('The saving file name is %s'%fileout)
     if not sil:
         print('The running time is %.2f seconds'%(clock()-t0))
+        
+    if update_header:
+        update_fiss_header(file,fileout)
     return result
+
+def update_fiss_header(file,alignfile,sil=False):
+    """
+    Update the header of FISS data
+    
+    Parameters
+    ----------
+    Returns
+    -------
+    Notes
+    -----
+    """
+    if not sil:
+        print('Add the align information to the haeder.')
+    level=alignfile[-8:-4]
+    inform=np.load(alignfile)
+    fissht=[getheader(i) for i in file]
+    fissh=[fits.getheader(i) for i in file]
+    tlist=[i['date'] for i in fissht]
+    
+    time=Time(tlist,format='isot',scale='ut1')
+    angle=inform['angle']
+    ny=fissht[0]['naxis2']
+    nx=fissht[0]['naxis3']
+    x=np.array((0,nx-1,nx-1,0))
+    y=np.array((0,0,ny-1,ny-1))
+    xc=inform['xc'].item()
+    yc=inform['yc'].item()
+    dx=inform['dx']
+    dy=inform['dy']
+    
+    xt1,yt1=rot_trans(x,y,xc,yc,angle.max())
+    xt2,yt2=rot_trans(x,y,xc,yc,angle.min())
+    
+    tmpx=np.concatenate((xt1,xt2))
+    tmpy=np.concatenate((yt1,yt2))
+    
+    xmargin=int(np.abs(np.round(tmpx.min()+dx.min())))+1
+    ymargin=int(np.abs(np.around(tmpy.min()+dy.min())))+1
+    
+    if level=='lev0':
+        for i,h in enumerate(fissh):
+            h['alignl']=(0,'Alignment level')
+            h['reflect']=(False,'Mirror reverse')
+            h['reffr']=(inform['reffr'].item(),'Reference frame in alignment')
+            h['reffi']=(inform['reffi'].item(),'Reference file name in alignment')
+            h['cdelt2']=(0.16,'arcsec per pixel')
+            h['cdelt3']=(0.16,'arcsec per pixel')
+            h['crota2']=(angle[i],
+                        'Roation angle about reference pixel')
+            h['crpix3']=(inform['xc'].item(),'Reference pixel in data axis 3')
+            h['shift3']=(inform['dx'][i],
+                        'Shifting pixel value along data axis 2')
+            h['crpix2']=(inform['yc'].item(),'Reference pixel in data axis 2')
+            h['shift2']=(inform['dy'][i],
+                        'Shifting pixel value along data axis 3')
+            h['margin2']=(ymargin,'Rotation margin in axis 2')
+            h['margin3']=(xmargin,'Rotation margin in axis 3')
+            
+            h['history']='FISS aligned (lev0)'
+    elif level=='lev1':
+        xref=inform['wcsx']*u.arcsec
+        yref=inform['wcsy']*u.arcsec
+        reffr=inform['reffr']
+        for i,h in enumerate(fissh):
+            wcsx, wcsy=rot_hpc(xref,yref,time[reffr],time[i])
+            h['alignl']=(1,'Alignment level')
+            h['reflect']=(inform['reflect'].item(),'Mirror reverse')
+            h['reffr']=(inform['reffr'].item(),'Reference frame in alignment')
+            h['reffi']=(inform['reffi'].item(),'Reference file name in alignment')
+            h['cdelt2']=(0.16,'arcsec per pixel')
+            h['cdelt3']=(0.16,'arcsec per pixel')
+            h['crota1']=(inform['sdo_angle'].item(),
+                        'Rotation angle of reference frame to match wcs')
+            h['crota2']=(inform['angle'][i],
+                        'Rotation angle about reference pixel')
+            h['crpix3']=(inform['xc'].item(),'Reference pixel in data axis 3')
+            h['crval3']=(wcsx.value,
+                        'Location of pixel in x-direction(arcsec)')
+            h['shift3']=(inform['dx'][i],
+                        'Shifting pixel value along data axis 3')
+            h['crpix2']=(inform['yc'].item(),'Reference pixel in data axis 2')
+            h['crval2']=(wcsy.value,
+                        'Location of pixel in y-direction(arcsec)')
+            h['shift2']=(inform['dy'][i],
+                        'Shifting pixel value along data axis 2')
+            h['margin2']=(ymargin,'Rotation margin in axis 2')
+            h['margin3']=(xmargin,'Rotation margin in axis 3')
+            h['history']='FISS aligned and matched wcs (lev1)'
+    else:
+        raise ValueError('The level of alignfile is neither lev0 or lev1.')
+    
+    data=[fits.getdata(i) for i in file]
+    
+    odirname=os.path.dirname(file[0])
+    if not odirname:
+        odirname=os.getcwd()
+    dirname=odirname+os.sep+'match'
+    
+    try:
+        os.mkdir(dirname)
+    except:
+        pass
+    
+    for i,oname in enumerate(file):
+        name,ext=os.path.splitext(os.path.basename(oname))
+        name+='m'+ext
+        fits.writeto(dirname+os.sep+name,data[i],fissh[i])
+    try:
+        pfilelist=[i['pfile'] for i in fissh]
+        pfileset=set(pfilelist)
+        for i in pfileset:
+            copy2(odirname+os.sep+i,dirname+os.sep+i)
+    except:
+        pass
+    
+    if not sil:
+        print("The align information is updated to the header, "
+              "and new fts file is locate %s the file name is '*_cm.fts'"%dirname)
+    
