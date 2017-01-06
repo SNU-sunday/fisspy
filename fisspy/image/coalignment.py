@@ -50,7 +50,7 @@ def alignoffset(image0,template0):
         
     Example
     -------
-    >>> x, y = alignoffset(image,template)
+    >>> y, x = alignoffset(image,template)
     
     """
     st=template0.shape
@@ -88,7 +88,7 @@ def alignoffset(image0,template0):
     #to avoid the fast change the image by the granular motion or strong flow
     
     cor=ifft2(ifft2(template*gauss)*fft2(image*gauss)).real
-    
+
     # calculate the cross-correlation values by using convolution theorem and 
     # DFT-IDFT relation
     
@@ -119,12 +119,12 @@ def alignoffset(image0,template0):
     x=x0+x1
     y=y0+y1
     
-    return x, y
+    return y, x
 
 
 def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
                       filename=False,save=True,pre_match_wcs=False,
-                      sil=True,missing=0,reflect=False,update_header=True):
+                      sil=True,reflect=False,update_header=True):
     """
     Calculate the fiss align information, and save to npz file.
     The reference image is the first one of the file list.
@@ -226,13 +226,13 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
         for i in range(n-1):
             #align with next image
             im2=raster(file[i+1],wvref,0.05)
-            img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=0)
-            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,missing=0)
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=-1)
+            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,missing=-1)
             sh=alignoffset(img2,img1)
             
             #align with reference
-            img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=0)
-            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=0)
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=-1)
+            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=-1)
             sh+=alignoffset(img2,img1)
             dx[i+1]=dx[i]+sh[1]
             dy[i+1]=dy[i]+sh[0]
@@ -245,13 +245,13 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
         for i in range(ref_frame,n-1):
             #align with next image
             im2=raster(file[i+1],wvref,0.05)
-            img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=0)
-            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,missing=0)
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=-1)
+            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,missing=-1)
             sh=alignoffset(img2,img1)
             
             #align with reference
-            img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=0)
-            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=0)
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=-1)
+            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=-1)
             sh+=alignoffset(img2,img1)
             dx[i+1]=dx[i]+sh[1]
             dy[i+1]=dy[i]+sh[0]
@@ -259,19 +259,20 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
             im1=im2
             if not sil:
                 print(i)
+        im1=raster(file[ref_frame],wvref,0.05)
         for i in range(ref_frame,0,-1):
             #align with next image
-            im2=raster(file[i+1],wvref,0.05)
-            img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=0)
-            img2=rotation(im2,angle[i-1],xa,ya,xc,yc,missing=0)
+            im2=raster(file[i-1],wvref,0.05)
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=-1)
+            img2=rotation(im2,angle[i-1],xa,ya,xc,yc,missing=-1)
             sh=alignoffset(img2,img1)
             
             #align with reference
-            img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=0)
-            img2=rotation(im2,angle[i+1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=0)
-            sh+=alignoffset(img2,img1)
-            dx[i-1]=dx[i]+sh[1]
-            dy[i-1]=dy[i]+sh[0]
+            img1=rotation(im1,angle[i],xa,ya,xc,yc,dx[i],dy[i],missing=-1)
+            img2=rotation(im2,angle[i-1],xa,ya,xc,yc,dx[i]+sh[1],dy[i]+sh[0],missing=-1)
+            sh2=alignoffset(img2,img1)
+            dx[i-1]=dx[i]+sh[1]+sh2[1]
+            dy[i-1]=dy[i]+sh[0]+sh2[0]
             
             im1=im2
             if not sil:
@@ -451,3 +452,4 @@ def update_fiss_header(file,alignfile,sil=False):
         print("The align information is updated to the header, "
               "and new fts file is locate %s the file name is '*_cm.fts'"%dirname)
     
+

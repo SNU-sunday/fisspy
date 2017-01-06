@@ -97,7 +97,7 @@ def img_interpol(img,xa,ya,xt,yt,missing=-1):
     b=interp(a.T)
     res=b.reshape(shape)
     if missing!=-1:
-        mask=np.invert((xt<xa.max())*(xt>xa.min())*(yt<ya.max())*(yt>ya.min()))
+        mask=np.invert((xt<=xa.max())*(xt>=xa.min())*(yt<=ya.max())*(yt>=ya.min()))
         res[mask]=missing
     return res
 

@@ -243,7 +243,7 @@ def manual(fiss_file,sdo_file,dirname=False,filename=False,
         res=fiss_align_inform(fiss_file,wvref=wvref,ref_frame=ref_frame,
                               dirname=dirname,
                               filename=filename,pre_match_wcs=True,
-                              sil=sil,missing=missing,reflect=reflect,
+                              sil=sil,reflect=reflect,
                               update_header=update_header)
         
     root = fig.canvas.manager.window
