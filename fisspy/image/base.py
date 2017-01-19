@@ -5,7 +5,6 @@ Basic image process tool.
 from __future__ import absolute_import, division
 
 from sunpy.image.rescale import resample as rescale
-from scipy.ndimage.interpolation import shift
 import numpy as np
 from interpolation.splines import LinearSpline
 
@@ -203,3 +202,13 @@ def rot(img,angle,xc=False,yc=False,dx=0,dy=0,xmargin=0,ymargin=0,missing=0):
     xt, yt=rot_trans(xa,ya,xc,yc,angle,dx=dx,dy=dy)
     return img_interpol(img,x,y,xt,yt,missing=missing)
     
+def shift(image,shift):
+    """
+    """
+    ny, nx =image.shape
+    x=np.arange(nx)
+    y=np.arange(ny)[:,None]
+    xt=x-shift[1]+y*0
+    yt=y-shift[0]+x*0
+    
+    return img_interpol(image,x,y,xt,yt,missing=0)
