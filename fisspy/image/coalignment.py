@@ -122,9 +122,7 @@ def alignoffset(image0,template0):
     return y, x
 
 
-def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
-                      filename=False,save=True,pre_match_wcs=False,
-                      sil=True,reflect=False,update_header=True):
+def fiss_align_inform(file,**kwargs):
     """
     Calculate the fiss align information, and save to npz file.
     The reference image is the first one of the file list.
@@ -133,8 +131,6 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
     ----------
     file : list
         The list of fts file.
-    wvref : (optional) float
-        The referenced wavelength for making raster image.
     dirname : (optional) str
         The directory name for saving the npz data.
         The the last string elements must be the directory seperation
@@ -144,20 +140,30 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
         The file name for saving the npz data.
         There are no need to add the extension.
         If False, the filename is the date of FISS data.
-    save : (optional) bool
-        If True, save the align information.
-        Default is True.
+    half_way : (optional) bool
+        If True, use the central half image to align.
+        Default is True
     pre_match_wcs : (optional) bool
         If False, it only save the align information of FISS. (level 0)
         If True, it read the wcs file and remove it, then finally
         save the align information and wcs information to the npz file. (level1)
+    save : (optional) bool
+        If True, save the align information.
+        Default is True.
     sil : (optional) bool
         If False, it print the ongoing time index.
         Default is True.
-    missing : (optional) float
-        The extrapolated value of interpolation.
-        Default is 0.
-    
+    sol_rot : (optional) bool
+        If True, correct the solar rotation when update the file header.
+        Default is False.
+    update_header : (optional bool)
+        If true, update the FISS header to add the align information.
+        The fts files with updated header is copyed on the match directory and
+        marked by adding m to the file name.
+        e.g. (/data/*_c.fts -> /data/match/*_cm.fts)
+        Defualt is True.
+    wvref : (optional) float
+        The referenced wavelength for making raster image.    
     Returns
     -------
     npz file.
@@ -192,18 +198,30 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
     
     """
     t0=clock()
+    sil=kwargs.get('sil',False)
+    half_way=kwargs.pop('half_way',True)
     
     if not sil:
         print('====== Fiss Alignment ======')
         
     n=len(file)
-    if ref_frame==-1:
-        ref_frame=n//2
-     
+    ref_frame=kwargs.pop('ref_frame',n//2)
+    wvref=kwargs.pop('wvref',-4)
+    save=kwargs.pop('save',True)
+    dirname=kwargs.pop('dirname',os.getcwd()+os.sep)
+    
+    
     hlist=[getheader(i) for i in file]
     tlist=[i['date'] for i in hlist]
     t=Time(tlist,format='isot',scale='ut1')
     dtmin=(t.jd-t.jd[ref_frame])*24*60
+    
+           
+           
+    filename=kwargs.pop('filename',t[0].value[:10])
+    pre_match_wcs=kwargs.pop('pre_match_wcs',False)
+    reflect=kwargs.pop('reflect',True)
+    update_header=kwargs.pop('update_header',True)
     
     nx=hlist[0]['naxis3']
     ny=hlist[0]['naxis2']
@@ -213,10 +231,22 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
     xc=nx//2
     yc=ny//2
     
-    xa=np.arange(nx)    
-    ya=np.arange(ny)[:,None]
-
-    im1=raster(file[ref_frame],wvref,0.05)
+    if half_way:
+        nx1=nx//2
+        ny1=ny//2
+        nx1=(nx1//2)*2
+        ny1=(ny1//2)*2
+        x1=xc-nx1//2
+        y1=yc-ny1//2
+    else:
+        x1=1
+        y1=1
+        nx1=nx-1
+        ny1=ny-1
+    
+    xa=(x1+np.arange(nx1))
+    ya=(y1+np.arange(ny1))[:,None]
+    im1=raster(file[ref_frame],wvref,0.05,x1,x1+nx1,y1,y1+ny1)
     dx=np.zeros(n)
     dy=np.zeros(n)
     
@@ -225,7 +255,7 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
     if ref_frame==0:
         for i in range(n-1):
             #align with next image
-            im2=raster(file[i+1],wvref,0.05)
+            im2=raster(file[i+1],wvref,0.05,x1,x1+nx1,y1,y1+ny1)
             img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=-1)
             img2=rotation(im2,angle[i+1],xa,ya,xc,yc,missing=-1)
             sh=alignoffset(img2,img1)
@@ -244,7 +274,7 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
     else:
         for i in range(ref_frame,n-1):
             #align with next image
-            im2=raster(file[i+1],wvref,0.05)
+            im2=raster(file[i+1],wvref,0.05,x1,x1+nx1,y1,y1+ny1)
             img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=-1)
             img2=rotation(im2,angle[i+1],xa,ya,xc,yc,missing=-1)
             sh=alignoffset(img2,img1)
@@ -259,10 +289,10 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
             im1=im2
             if not sil:
                 print(i)
-        im1=raster(file[ref_frame],wvref,0.05)
+        im1=raster(file[ref_frame],wvref,0.05,x1,x1+nx1,y1,y1+ny1)
         for i in range(ref_frame,0,-1):
             #align with next image
-            im2=raster(file[i-1],wvref,0.05)
+            im2=raster(file[i-1],wvref,0.05,x1,x1+nx1,y1,y1+ny1)
             img1=rotation(im1,angle[i],xa,ya,xc,yc,missing=-1)
             img2=rotation(im2,angle[i-1],xa,ya,xc,yc,missing=-1)
             sh=alignoffset(img2,img1)
@@ -281,10 +311,6 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
         print('end loop')
     result=dict(xc=xc,yc=yc,angle=angle,dt=dtmin,dx=dx,dy=dy)
     if save:
-        if not dirname:
-            dirname=os.getcwd()+os.sep
-        if not filename:
-            filename=t[0].value[:10]
         filename2=dirname+filename
         if not pre_match_wcs:
             if not sil:
@@ -330,10 +356,10 @@ def fiss_align_inform(file,wvref=-4,ref_frame=-1,dirname=False,
         print('The running time is %.2f seconds'%(clock()-t0))
         
     if update_header:
-        update_fiss_header(file,fileout)
+        update_fiss_header(file,fileout,**kwargs)
     return result
 
-def update_fiss_header(file,alignfile,sil=False):
+def update_fiss_header(file,alignfile,**kwargs):
     """
     Update the header of FISS data
     
@@ -344,6 +370,9 @@ def update_fiss_header(file,alignfile,sil=False):
     Notes
     -----
     """
+    sil=kwargs.pop('sil',False)
+    sol_rot=kwargs.pop('sol_rot',False)
+    
     if not sil:
         print('Add the align information to the haeder.')
     level=alignfile[-8:-4]
@@ -393,11 +422,24 @@ def update_fiss_header(file,alignfile,sil=False):
             
             h['history']='FISS aligned (lev0)'
     elif level=='lev1':
-        xref=inform['wcsx']*u.arcsec
-        yref=inform['wcsy']*u.arcsec
+        wcsx=inform['wcsx']
+        wcsy=inform['wcsy']
+        xref=wcsx*u.arcsec
+        yref=wcsy*u.arcsec
         reffr=inform['reffr']
         for i,h in enumerate(fissh):
-            wcsx, wcsy=rot_hpc(xref,yref,time[reffr],time[i])
+            if sol_rot:
+                wcsx, wcsy=rot_hpc(xref,yref,time[reffr],time[i])
+                h['crval3']=(wcsx.value,
+                            'Location of pixel in x-direction(arcsec)')
+                h['crval2']=(wcsy.value,
+                            'Location of pixel in y-direction(arcsec)')
+            else:
+                h['crval3']=(wcsx,
+                            'Location of pixel for reference frame in x-direction(arcsec)')
+                h['crval3']=(wcsy,
+                            'Location of pixel for reference frame in y-direction(arcsec)')
+
             h['alignl']=(1,'Alignment level')
             h['reflect']=(inform['reflect'].item(),'Mirror reverse')
             h['reffr']=(inform['reffr'].item(),'Reference frame in alignment')
@@ -409,17 +451,15 @@ def update_fiss_header(file,alignfile,sil=False):
             h['crota2']=(inform['angle'][i],
                         'Rotation angle about reference pixel')
             h['crpix3']=(inform['xc'].item(),'Reference pixel in data axis 3')
-            h['crval3']=(wcsx.value,
-                        'Location of pixel in x-direction(arcsec)')
             h['shift3']=(inform['dx'][i],
                         'Shifting pixel value along data axis 3')
             h['crpix2']=(inform['yc'].item(),'Reference pixel in data axis 2')
-            h['crval2']=(wcsy.value,
-                        'Location of pixel in y-direction(arcsec)')
+
             h['shift2']=(inform['dy'][i],
                         'Shifting pixel value along data axis 2')
             h['margin2']=(ymargin,'Rotation margin in axis 2')
             h['margin3']=(xmargin,'Rotation margin in axis 3')
+            h['srot']=(True,'Solar Rotation correction')
             h['history']='FISS aligned and matched wcs (lev1)'
     else:
         raise ValueError('The level of alignfile is neither lev0 or lev1.')

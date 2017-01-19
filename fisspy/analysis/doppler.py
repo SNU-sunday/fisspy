@@ -11,8 +11,10 @@ __email__ = "jhkang@astro.snu.ac.kr"
 
 import numpy as np
 from interpolation.splines import LinearSpline
+from astropy.constants import c
+from scipy.signal import savgol_filter
 
-__all__ = ['wavecalib', 'lambdameter']
+__all__ = ['wavecalib', 'lambdameter','LOS_velocity']
 
 def wavecalib(band,profile,method=True):
     """
@@ -110,7 +112,8 @@ def wavecalib(band,profile,method=True):
     return wavelength
 
 
-def lambdameter(wv,data,hw=0.01,sp=5000.,wvinput=True):
+def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True,
+                smooth=False,**kwargs):
     """
     Determine the Lambdameter chord center for a given half width or intensity.
     
@@ -159,17 +162,26 @@ def lambdameter(wv,data,hw=0.01,sp=5000.,wvinput=True):
     
     """
     
-    shape=data.shape
+    shape=data0.shape
     nw=shape[-1]
     reshape=shape[:-1]
     if wv.shape[0] != nw:
-        raise ValueError('The number of elements of wv and'
+        raise ValueError('The number of elements of wv and '
         'the number of elements of last axis for data are not equal.')
     
-    na=int(data.size/nw)
-    data=data.reshape((na,nw))
+    na=int(data0.size/nw)
+    data=data0.reshape((na,nw))
     s=data.argmin(axis=-1)
-
+    
+    if smooth:
+        winl=kwargs.pop('window_length',5)
+        pord=kwargs.pop('polyorder',3)
+        deriv=kwargs.pop('deriv',0)
+        delta=kwargs.pop('delta',1.0)
+        mode=kwargs.pop('mode','interp')
+        cval=kwargs.pop('cval',0.0)
+        data=savgol_filter(data,winl,pord,deriv=deriv,
+                           delta=delta,mode=mode,cval=cval)
     
     if wvinput and hw == 0.:
         raise ValueError('The half-width value must be greater than 0.')
@@ -196,14 +208,15 @@ def lambdameter(wv,data,hw=0.01,sp=5000.,wvinput=True):
     else:
         intc=np.ones(na)*sp
     
-    wc=np.empty(na)
-    hwc=np.empty(na)
+    wc=np.zeros(na)
+    hwc=np.zeros(na)
     ref=1    
     rep=0
-    more=np.ones(na,dtype=bool)
+    s0=s.copy()
+    more=data[posi0,s0]>100
     
-    while ref > 0.0001 and rep <6:
-        sp1=data-intc[:,np.newaxis]
+    while ref > 0.00001 and rep <6:
+        sp1=data-intc[:,None]
         comp=sp1[:,0:nw-1]*sp1[:,1:nw]
         
         s=comp[more] <=0.
@@ -225,15 +238,35 @@ def lambdameter(wv,data,hw=0.01,sp=5000.,wvinput=True):
             intc[more]=0.5*(interp(wl)+interp(wr))
             ref0=np.abs(hwc-hw)
             ref=ref0.max()
-            more=ref0>0.0001
+            more=(ref0>0.00001)*(data[posi0,s0]>100)
         else:
             ref=0
         rep+=1
     
-    wc=wc.reshape(reshape).T
+    wc=wc.reshape(reshape)
     if wvinput:
-        intc=intc.reshape(reshape).T
+        intc=intc.reshape(reshape)
         return wc, intc
     else:
-        hwc=hwc.reshape(reshape).T
+        hwc=hwc.reshape(reshape)
         return wc, hwc
+
+def LOS_velocity(wv,data,hw=0.01,band=False,
+                 smooth=False,**kwargs):
+    """"""
+    if not band:
+        raise ValueError("Please insert the parameter band (str)")
+        
+    wc, intc =  lambdameter(wv,data,hw,wvinput=True,smooth=smooth,**kwargs)
+    
+    if band=='6562':
+        return wc*c.to('km/s').value/6562.817
+    elif band=='8542':
+        return wc*c.to('km/s').value/8542.09
+    elif band=='5890':
+        return wc*c.to('km/s').value/5890.9399
+    elif band=='5434':
+        return wc*c.to('km/s').value/5434.3398
+    else:
+        raise ValueError("Value of band must be one among"
+                         "'6562', '8542', '5890', '5434'")

@@ -3,14 +3,27 @@ from __future__ import absolute_import, division
 import numpy as np
 from fisspy.image.base import rot
 from fisspy import cm
+import astropy.units as u
 import sunpy.map
+from sunpy.physics.differential_rotation import rot_hpc
 
 __author__="Juhyeong Kang"
 __email__="jhkang@astro.snu.ac.kr"
 
+__all__=["fissmap", "map_header", "data_resize", "map_rot_correct"]
 
-def Map(data0,header0):
+def fissmap(data0,header0):
     """
+    
+    
+    Parameters
+    ----------
+    returns
+    -------
+    notes
+    -----
+    Example
+    -------
     """
     if data0.ndim !=2:
         raise ValueError('Data must be 2-dimensional numpy.ndarray')
@@ -96,3 +109,17 @@ def data_resize(data0,mheader0):
     
     return img, mheader
     
+def map_rot_correct(mmap,refx,refy,reftime):
+    """
+    
+    """
+    t=mmap.date
+    if type(refx) == float:
+        refx*=u.arcsec
+    if type(refy) == float:
+        refy*=u.arcsec
+    x,y=rot_hpc(refx,refy,reftime,t)
+    sx=x-refx
+    sy=y-refy
+    smap=mmap.shift(-sx,-sy)
+    return smap

@@ -7,12 +7,14 @@ __author__ = "Juhyeong Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
 from astropy.io import fits
+from scipy.signal import savgol_filter
 import numpy as np
 import os
 
 __all__ = ['frame', 'pca_read', 'raster', 'getheader']
 
-def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False):
+def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
+          smooth=False,nsmooth=False,**kwargs):
     """
     Read the FISS fts file.
 
@@ -77,7 +79,24 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False):
         spec=fits.getdata(file)[x1:x2]
     if x1+1 == x2:
         spec=spec[0]
-    return spec.transpose((1,0,2)).astype(float)
+        return spec
+    spec=spec.transpose((1,0,2)).astype(float)
+    
+    if smooth:
+        winl=kwargs.pop('window_length',7)
+        pord=kwargs.pop('polyorder',3)
+        deriv=kwargs.pop('deriv',0)
+        delta=kwargs.pop('delta',1.0)
+        mode=kwargs.pop('mode','interp')
+        cval=kwargs.pop('cval',0.0)
+        
+        if not nsmooth:
+            nsmooth=int(not pca)+1
+            
+        for i in range(nsmooth):
+            spec=savgol_filter(spec,winl,pord,deriv=deriv,
+                               delta=delta,mode=mode,cval=cval)
+    return spec
 
 
 def pca_read(file,header,x1,x2=False,ncoeff=False):
@@ -249,7 +268,7 @@ def getheader(file,pca=True):
     """
     header0=fits.getheader(file)
     
-    pfile=header0.pop('pfile')
+    pfile=header0.pop('pfile',False)
     if not pfile:
         return header0
         
