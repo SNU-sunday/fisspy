@@ -12,7 +12,7 @@ __email__="jhkang@astro.snu.ac.kr"
 
 __all__=["fissmap", "map_header", "data_resize", "map_rot_correct"]
 
-def fissmap(data0,header0):
+def fissmap(data0,header0,**kwargs):
     """
     
     
@@ -28,14 +28,27 @@ def fissmap(data0,header0):
     if data0.ndim !=2:
         raise ValueError('Data must be 2-dimensional numpy.ndarray')
     
-    mheader=map_header(header0)
-    data,header=data_resize(data0,mheader)
+    data,header=data_resize(data0,header0)
     
     fmap=sunpy.map.Map(data,header)
-    if mheader['wavelen']=='6562.8':
-        fmap.plot_settings['cmap']=cm.ha
-    elif mheader['wavelen']=='8542':
-        fmap.plot_settings['cmap']=cm.ca
+    fmap.plot_settings['title']=fmap.name.replace('Angstrom','$\AA$')
+    interp=kwargs.pop('interpolation','bilinear')
+    fmap.plot_settings['interpolation']=interp
+    clim=kwargs.pop('clim',False)
+    if clim:
+        fmap.plot_settings['clim']=clim
+    cmap=kwargs.pop('cmap',False)
+    if cmap:
+        fmap.plot_settings['cmap']=cmap
+    else:
+        if header['wavelen']=='6562.8':
+            fmap.plot_settings['cmap']=cm.ha
+        elif header['wavelen']=='8542':
+            fmap.plot_settings['cmap']=cm.ca
+    title=kwargs.pop('title',False)
+    if title:
+        fmap.plot_settings['title']=title
+
     return fmap
     
 def map_header(header0):
@@ -86,10 +99,10 @@ def map_header(header0):
     header['date-obs']=header['date']
     return header 
 
-def data_resize(data0,mheader0):
+def data_resize(data0,header0):
     """
     """
-    mheader=mheader0.copy()
+    mheader=map_header(header0)
     reflect=mheader['reflect']
     
     if reflect:

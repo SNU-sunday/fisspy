@@ -218,7 +218,7 @@ def fiss_align_inform(file,**kwargs):
     
            
            
-    filename=kwargs.pop('filename',t[0].value[:10])
+    filename=kwargs.pop('filename',t[0].value[:10]+'_'+hlist[0]['wavelen'][:4])
     pre_match_wcs=kwargs.pop('pre_match_wcs',False)
     reflect=kwargs.pop('reflect',True)
     update_header=kwargs.pop('update_header',True)
@@ -431,14 +431,14 @@ def update_fiss_header(file,alignfile,**kwargs):
             if sol_rot:
                 wcsx, wcsy=rot_hpc(xref,yref,time[reffr],time[i])
                 h['crval3']=(wcsx.value,
-                            'Location of pixel in x-direction(arcsec)')
+                            'Location of ref pixel x (arcsec)')
                 h['crval2']=(wcsy.value,
-                            'Location of pixel in y-direction(arcsec)')
+                            'Location of ref pixel y (arcsec)')
             else:
-                h['crval3']=(wcsx,
-                            'Location of pixel for reference frame in x-direction(arcsec)')
-                h['crval3']=(wcsy,
-                            'Location of pixel for reference frame in y-direction(arcsec)')
+                h['crval3']=(wcsx.item(),
+                            'Location of ref pixel for ref frame x (arcsec)')
+                h['crval2']=(wcsy.item(),
+                            'Location of ref pixel for ref frame y (arcsec)')
 
             h['alignl']=(1,'Alignment level')
             h['reflect']=(inform['reflect'].item(),'Mirror reverse')
@@ -447,9 +447,9 @@ def update_fiss_header(file,alignfile,**kwargs):
             h['cdelt2']=(0.16,'arcsec per pixel')
             h['cdelt3']=(0.16,'arcsec per pixel')
             h['crota1']=(inform['sdo_angle'].item(),
-                        'Rotation angle of reference frame to match wcs')
+                        'Rotation angle of reference frame (radian)')
             h['crota2']=(inform['angle'][i],
-                        'Rotation angle about reference pixel')
+                        'Rotation angle about reference pixel (radian)')
             h['crpix3']=(inform['xc'].item(),'Reference pixel in data axis 3')
             h['shift3']=(inform['dx'][i],
                         'Shifting pixel value along data axis 3')
