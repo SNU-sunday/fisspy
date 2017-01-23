@@ -14,7 +14,7 @@ import os
 __all__ = ['frame', 'pca_read', 'raster', 'getheader']
 
 def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
-          smooth=False,nsmooth=False,**kwargs):
+          smooth=False,**kwargs):
     """
     Read the FISS fts file.
 
@@ -37,7 +37,18 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
     xmax : (optional) bool
         If True, the x2 value is set as the maximum end point of the frame.
         Default is False.
-            
+    smooth : (optional) bool
+        If True, apply the Savitzky-Golay filter to increase the signal to
+        noise without greatly distorting the signal of the given fts file.
+        Default is False.
+    nsmooth : (optional) int
+        The number of smooting.
+        Default is 1 for the case of the compressed file,
+        and is 2 for the case of the uncompresseed file.
+    kwargs :
+        The parameters for smooth (savitzky-golay filter),
+        See the docstring of the scipy.signal.savgol_filter.
+        
     Notes
     -----
     * This function is based on the IDL code FISS_READ_FRAME.PRO
@@ -89,9 +100,7 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
         delta=kwargs.pop('delta',1.0)
         mode=kwargs.pop('mode','interp')
         cval=kwargs.pop('cval',0.0)
-        
-        if not nsmooth:
-            nsmooth=int(not pca)+1
+        nsmooth=kwargs.pop('nsmooth',int(not pca)+1)
             
         for i in range(nsmooth):
             spec=savgol_filter(spec,winl,pord,deriv=deriv,
@@ -154,7 +163,8 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     spec*=10.**data[:,:,ncoeff][:,:,np.newaxis]
     return spec
 
-def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True):
+def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True,
+           smooth=False,**kwargs):
     """
     Make raster images for a given file at wv of wavelength within width hw
     
@@ -180,7 +190,10 @@ def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True):
         If True, the frame is read from the PCA file.
         Default is True, but the function automatically check
         the existance of the pca file.
-            
+    kwargs :
+        The parameters for frame.
+        See the docstring of fisspy.io.read.frame
+        
     Returns
     -------
     Raster : nd ndarray
@@ -227,7 +240,7 @@ def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True):
         hw=abs(dldw)/2.
     
     s=np.abs(wl-wv[:,np.newaxis])<=hw
-    sp=frame(file,x1,x2,pca=pca)
+    sp=frame(file,x1,x2,pca=pca,smooth=smooth,**kwargs)
     leng=s.sum(1)
     if num == 1:
         img=sp[y1:y2,:,s[0,:]].sum(2)/leng[0]

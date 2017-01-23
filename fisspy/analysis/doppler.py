@@ -112,8 +112,7 @@ def wavecalib(band,profile,method=True):
     return wavelength
 
 
-def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True,
-                smooth=False,**kwargs):
+def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True):
     """
     Determine the Lambdameter chord center for a given half width or intensity.
     
@@ -172,16 +171,6 @@ def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True,
     na=int(data0.size/nw)
     data=data0.reshape((na,nw))
     s=data.argmin(axis=-1)
-    
-    if smooth:
-        winl=kwargs.pop('window_length',5)
-        pord=kwargs.pop('polyorder',3)
-        deriv=kwargs.pop('deriv',0)
-        delta=kwargs.pop('delta',1.0)
-        mode=kwargs.pop('mode','interp')
-        cval=kwargs.pop('cval',0.0)
-        data=savgol_filter(data,winl,pord,deriv=deriv,
-                           delta=delta,mode=mode,cval=cval)
     
     if wvinput and hw == 0.:
         raise ValueError('The half-width value must be greater than 0.')
@@ -251,13 +240,40 @@ def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True,
         hwc=hwc.reshape(reshape)
         return wc, hwc
 
-def LOS_velocity(wv,data,hw=0.01,band=False,
-                 smooth=False,**kwargs):
-    """"""
+def LOS_velocity(wv,data,hw=0.01,band=False):
+    """
+    Calculte the Line-of-Sight velocity of given data.
+    
+    Parameters
+    ----------
+    wv : 1d ndarray
+        A Calibrated wavelength.
+    data : nd ndarray
+        n (n>=2) dimensional spectral profile data, 
+        the last dimension component must be the spectral component,
+        and the size is equal to the size of wv.
+    hw : float
+        A half width of the horizontal line segment.
+    band : str
+        A string of the wavelength band.
+        It must be the 4 characters in Angstrom unit. ex) '6562', '8542'
+        
+    Returns
+    -------
+    losv : nd ndarray
+        n-1 (n>=2) dimensional Line-of_sight velocity value, where n is the
+        dimension of the given data.
+        
+    Example
+    -------
+    >>> from fisspy.doppler import LOS_velocity
+    >>> mask = np.abs(wv) < 1
+    >>> losv = LOS_velocity(wv[mask],data[:,:,mask],hw=0.03,band='6562')
+    """
     if not band:
         raise ValueError("Please insert the parameter band (str)")
         
-    wc, intc =  lambdameter(wv,data,hw,wvinput=True,smooth=smooth,**kwargs)
+    wc, intc =  lambdameter(wv,data,hw,wvinput=True)
     
     if band=='6562':
         return wc*c.to('km/s').value/6562.817
