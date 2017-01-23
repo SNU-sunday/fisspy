@@ -487,8 +487,7 @@ def update_fiss_header(file,alignfile,**kwargs):
         pass
     
     for i,oname in enumerate(file):
-        name,ext=os.path.splitext(os.path.basename(oname))
-        name+='m'+ext
+        name='m'+oname
         fits.writeto(dirname+os.sep+name,data[i],fissh[i])
     try:
         pfilelist=[i['pfile'] for i in fissh]
