@@ -10,7 +10,7 @@ def ARcast(data,time,dt=False,axis=-1):
     
     shape=list(data.shape)
     shape0=list(data.shape)
-    if shape[axis]==len(time):
+    if shape[axis]!=len(time):
         raise ValueError('The size of data is different from the size of time.')
         
     t=(time-time[0])*24*3600
@@ -37,7 +37,7 @@ def ARcast(data,time,dt=False,axis=-1):
             bar=AR(datat[:,i])
             car=bar.fit()
             wh2=wh+int(td[wh]/dt-1)
-            dar=car.predict(wh,wh2)
+            dar=car.predict(int(wh),int(wh2))
             datat[wh:wh2+1,i]=dar
         
     datat=datat.reshape((shapei))
