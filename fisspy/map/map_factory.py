@@ -10,26 +10,37 @@ from sunpy.physics.differential_rotation import rot_hpc
 __author__="Juhyeong Kang"
 __email__="jhkang@astro.snu.ac.kr"
 
-__all__=["fissmap", "map_header", "data_resize", "map_rot_correct"]
+__all__=["fissmap", "map_header", "align", "map_rot_correct"]
 
-def fissmap(data0,header0,**kwargs):
+def fissmap(data0,header0,pre_align=False,**kwargs):
     """
-    
+    Make sunpy.map.Map for given data and header.
     
     Parameters
     ----------
-    returns
+    
+    Returns
     -------
-    notes
+    
+    Notes
     -----
+    
     Example
     -------
+    
     """
     if data0.ndim !=2:
         raise ValueError('Data must be 2-dimensional numpy.ndarray')
     
-    data,header=data_resize(data0,header0)
-    
+    if not pre_align:
+        data,header=align(data0,header0)
+    else:
+        data=data0.copy()
+        header=map_header(header0)
+        header['crpix1']=header['crpix1']+header['shift1']+header['margin1']
+        header['crpix2']=header['crpix2']+header['shift2']+header['margin2']
+        header['crota2']=0
+        
     fmap=sunpy.map.Map(data,header)
     fmap.plot_settings['title']=fmap.name.replace('Angstrom','$\AA$')
     interp=kwargs.pop('interpolation','bilinear')
@@ -53,6 +64,18 @@ def fissmap(data0,header0,**kwargs):
     
 def map_header(header0):
     """
+    Parameters
+    ----------
+    
+    Returns
+    -------
+    
+    Notes
+    -----
+    
+    Example
+    -------
+    
     """
     header=header0.copy()
     header['naxis']=2
@@ -99,8 +122,20 @@ def map_header(header0):
     header['date-obs']=header['date']
     return header 
 
-def data_resize(data0,header0):
+def align(data0,header0):
     """
+    Parameters
+    ----------
+    
+    Returns
+    -------
+    
+    Notes
+    -----
+    
+    Example
+    -------
+    
     """
     mheader=map_header(header0)
     reflect=mheader['reflect']
@@ -124,6 +159,17 @@ def data_resize(data0,header0):
     
 def map_rot_correct(mmap,refx,refy,reftime):
     """
+    Parameters
+    ----------
+    
+    Returns
+    -------
+    
+    Notes
+    -----
+    
+    Example
+    -------
     
     """
     t=mmap.date
