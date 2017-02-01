@@ -21,9 +21,9 @@ def ARcast(data,time,dt=False,axis=-1):
     datai=interp(tf)
     
     shape.pop(axis)
-    ind0=[shape0.index(i) for i in shape0]
     ind=[shape0.index(i) for i in shape]
-    datat=datai.transpose([axis]+ind)
+    ind=[axis]+ind
+    datat=datai.transpose(ind)
     
     shapei=datat.shape
     datat=datat.reshape((shapei[0],np.prod(shapei[1:])))
@@ -42,5 +42,5 @@ def ARcast(data,time,dt=False,axis=-1):
         
     datat=datat.reshape((shapei))
     
-    return datat.transpose(ind0)
+    return datat.transpose(ind), tf
                 
