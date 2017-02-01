@@ -122,7 +122,7 @@ def map_header(header0):
     header['date-obs']=header['date']
     return header 
 
-def align(data0,header0):
+def align(data0,header0,missing=0):
     """
     Parameters
     ----------

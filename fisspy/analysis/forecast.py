@@ -2,7 +2,7 @@ from statsmodels.tsa.ar_model import AR
 import numpy as np
 from scipy.interpolate import interp1d
 
-def ARcast(data,time,dt=False,axis=-1):
+def ARcast(data,time,dt=False,axis=-1,missing=0):
     """
     """
     if not dt:
@@ -34,12 +34,15 @@ def ARcast(data,time,dt=False,axis=-1):
     
     for wh in addi:
         for i in range(shapet[1]):
-            bar=AR(datat[:,i])
-            car=bar.fit()
+            y=datat[:,i]
             wh2=wh+int(td[wh]/dt-1)
-            dar=car.predict(int(wh),int(wh2))
-            datat[wh:wh2+1,i]=dar
-        
+            if (y==missing).sum()<4:
+                bar=AR(y)
+                car=bar.fit()
+                dar=car.predict(int(wh),int(wh2))
+                datat[wh:wh2+1,i]=dar
+            else:
+                datat[wh:wh2+1,i]=missing
     datat=datat.reshape((shapei))
     
     return datat.transpose(ind), tf
