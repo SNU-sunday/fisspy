@@ -1,4 +1,6 @@
 # FISSpy
+
+[![Build Status](https://ci.appveyor.com/api/projects/status/xow461iejsjvp9vl?svg=true)](https://ci.appveyor.com/project/kailia0209/fisspy)
 The PYTHON Package for data analysis of the [NST/FISS instrument](http://fiss.snu.ac.kr/)
 
 Installation
