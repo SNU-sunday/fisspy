@@ -15,7 +15,6 @@ if sys.version_info[0] >= 3:
     import builtins
 else:
     import __builtin__ as builtins
-builtins._ASTROPY_SETUP_ = True
 
 # -- Read the Docs Setup  -----------------------------------------------------
 
