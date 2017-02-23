@@ -81,7 +81,9 @@ setup(name=PACKAGENAME,
                         'pandas>=0.12.0',
                         'matplotlib>=1.1'
                         'sunpy>=0.7.6'
-                        'interpolation'],
+                        'interpolation'
+                        'statsmodels>=0.6.0'
+                        'pyqt=4.11.4'],
       extras_require=extras_require,
       provides=[PACKAGENAME],
       author=AUTHOR,
