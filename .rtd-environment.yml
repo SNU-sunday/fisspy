@@ -1,7 +1,6 @@
 name: fisspy-rtd
 channels:
     - conda-forge
-    - albop
 dependencies:
 - astropy
 - beautiful-soup
