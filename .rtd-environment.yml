@@ -3,6 +3,7 @@ dependencies:
 - astropy
 - cython
 - matplotlib
+- astropy-helpers
 - numpy
 - pillow
 - python=2.7*
