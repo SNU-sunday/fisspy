@@ -1,4 +1,6 @@
 name: fisspy
+channels:
+    - conda-forge
 dependencies:
 - astropy
 - cython
