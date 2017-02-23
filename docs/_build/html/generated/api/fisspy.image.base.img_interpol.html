@@ -1,0 +1,258 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>img_interpol &mdash; FISSPy 0.7 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../../_static/astropy_logo.ico"/>
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="FISSPy 0.7 documentation" href="../../index.html"/>
+        <link rel="up" title="FISSPy Image" href="../../code/image.html"/>
+        <link rel="next" title="rotation" href="fisspy.image.base.rotation.html"/>
+        <link rel="prev" title="rot_trans" href="fisspy.image.base.rot_trans.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> FISSPy
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../code/index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../code/fisspy.html">FISSPy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../code/analysis.html">FISSPy Analysis</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../../code/image.html">FISSPy Image</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../../code/image.html#module-fisspy.image.base">fisspy.image.base Module</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="../../code/image.html#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../code/image.html#module-fisspy.image.coalignment">fisspy.image.coalignment Module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../code/io.html">FISSPy Io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../code/map.html">FISSPy Map</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">FISSPy</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../code/index.html">API Reference</a> &raquo;</li>
+      
+          <li><a href="../../code/image.html">FISSPy Image</a> &raquo;</li>
+      
+    <li>img_interpol</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../../_sources/generated/api/fisspy.image.base.img_interpol.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="img-interpol">
+<h1>img_interpol<a class="headerlink" href="#img-interpol" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="fisspy.image.base.img_interpol">
+<code class="descclassname">fisspy.image.base.</code><code class="descname">img_interpol</code><span class="sig-paren">(</span><em>img</em>, <em>xa</em>, <em>ya</em>, <em>xt</em>, <em>yt</em>, <em>missing=-1</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/fisspy/image/base.html#img_interpol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fisspy.image.base.img_interpol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolate the image for a given coordinates.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>img</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.12)"><em>ndarray</em></a>) &#8211; 2 dimensional array of image.</li>
+<li><strong>x</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.12)"><em>ndarray</em></a>) &#8211; Row vector of x.</li>
+<li><strong>y</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.12)"><em>ndarray</em></a>) &#8211; Colomn vector of y.</li>
+<li><strong>xt</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.12)"><em>ndarray</em></a>) &#8211; Coordinates of the positions in the observed frame.</li>
+<li><strong>yt</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.12)"><em>ndarray</em></a>) &#8211; Coordinates of the positions in the observed frame.</li>
+<li><strong>missing</strong> (<em></em><em>(</em><em>optional</em><em>) </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; The value of extrapolated position.
+Default is -1, and it means the False.
+If False, then extrapolate the given position.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>res</strong> &#8211; 2 dimensional interpolated image.
+The size of res is same as input img.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.12)">ndarray</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="fisspy.image.base.rotation.html" class="btn btn-neutral float-right" title="rotation" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="fisspy.image.base.rot_trans.html" class="btn btn-neutral" title="rot_trans" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, SNU Solar Group.
+      Last updated on 22 Feb 2017.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

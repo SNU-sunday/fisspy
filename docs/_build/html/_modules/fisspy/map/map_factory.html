@@ -1,0 +1,422 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>fisspy.map.map_factory &mdash; FISSPy 0.7 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../../../_static/astropy_logo.ico"/>
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="FISSPy 0.7 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> FISSPy
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../code/index.html">API Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">FISSPy</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>fisspy.map.map_factory</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for fisspy.map.map_factory</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">absolute_import</span><span class="p">,</span> <span class="n">division</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">fisspy.image.base</span> <span class="k">import</span> <span class="n">rot</span>
+<span class="kn">import</span> <span class="nn">fisspy</span>
+<span class="kn">import</span> <span class="nn">astropy.units</span> <span class="k">as</span> <span class="nn">u</span>
+<span class="kn">import</span> <span class="nn">sunpy.map</span>
+<span class="kn">from</span> <span class="nn">sunpy.physics.differential_rotation</span> <span class="k">import</span> <span class="n">rot_hpc</span>
+
+<span class="n">__author__</span><span class="o">=</span><span class="s2">&quot;Juhyeong Kang&quot;</span>
+<span class="n">__email__</span><span class="o">=</span><span class="s2">&quot;jhkang@astro.snu.ac.kr&quot;</span>
+
+<span class="n">__all__</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fissmap&quot;</span><span class="p">,</span> <span class="s2">&quot;map_header&quot;</span><span class="p">,</span> <span class="s2">&quot;align&quot;</span><span class="p">,</span> <span class="s2">&quot;map_rot_correct&quot;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="fissmap"><a class="viewcode-back" href="../../../generated/api/fisspy.map.fissmap.html#fisspy.map.fissmap">[docs]</a><span class="k">def</span> <span class="nf">fissmap</span><span class="p">(</span><span class="n">data0</span><span class="p">,</span><span class="n">header0</span><span class="p">,</span><span class="n">pre_align</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Make sunpy.map.Map for given data and header.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data0 : ~numpy.ndarray</span>
+<span class="sd">        2 dimensional image.</span>
+<span class="sd">    header0 : astropy.io.fits.Header</span>
+<span class="sd">        FTS file header.\n</span>
+<span class="sd">        It must has the wcs informations.</span>
+<span class="sd">    pre_align : bool</span>
+<span class="sd">        If False, data0 is aligned with its wcs information.</span>
+<span class="sd">    kwargs</span>
+<span class="sd">        plot_setting keyword arguments. \n</span>
+<span class="sd">        See : `sunpy.map &lt;http://docs.sunpy.org/en/stable/code_ref/map.html&gt;`_</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fmap : sunpy.map.GenericMap</span>
+<span class="sd">        Map class.</span>
+<span class="sd">        </span>
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    fisspy.image.coalignment.match_wcs : The routine to match wcs information</span>
+<span class="sd">        of FISS data with SDO</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The header0 must has the infromations of the coalignment for FISS with SDO.</span>
+<span class="sd">    </span>
+<span class="sd">    .. warning::</span>
+<span class="sd">        This code use the SunPy Map structure, but it may has errors</span>
+<span class="sd">        since sunpy is the developing package.</span>
+<span class="sd">    </span>
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    `SunPy &lt;http://sunpy.org/&gt;`_.\n</span>
+<span class="sd">    `SunPy docs &lt;http://docs.sunpy.org/en/stable/&gt;`_.\n</span>
+<span class="sd">    `sunpy.map.Map &lt;http://docs.sunpy.org/en/stable/code_ref/map.html&gt;`_.</span>
+<span class="sd">    </span>
+<span class="sd">    </span>
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    .. plot::</span>
+<span class="sd">        :include-source:</span>
+<span class="sd">            </span>
+<span class="sd">        from fisspy.io import read</span>
+<span class="sd">        from fisspy.map.map_factory import fissmap</span>
+<span class="sd">        import fisspy.data.smaple</span>
+<span class="sd">        raster=read.raster(fisspy.data.smaple.FISS_IMAGE,0,smooth=True)</span>
+<span class="sd">        header=read.getheader(fisspy.data.smaple.FISS_IMAGE)</span>
+<span class="sd">        fmap=fissmap(raster,header)</span>
+<span class="sd">        fmap.peek()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">data0</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span><span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Data must be 2-dimensional numpy.ndarray&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pre_align</span><span class="p">:</span>
+        <span class="n">data</span><span class="p">,</span><span class="n">header</span><span class="o">=</span><span class="n">align</span><span class="p">(</span><span class="n">data0</span><span class="p">,</span><span class="n">header0</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">data0</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">header</span><span class="o">=</span><span class="n">map_header</span><span class="p">(</span><span class="n">header0</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;crpix1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;crpix1&#39;</span><span class="p">]</span><span class="o">+</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;shift1&#39;</span><span class="p">]</span><span class="o">+</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;margin1&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;crpix2&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;crpix2&#39;</span><span class="p">]</span><span class="o">+</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;shift2&#39;</span><span class="p">]</span><span class="o">+</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;margin2&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;crota2&#39;</span><span class="p">]</span><span class="o">=</span><span class="mi">0</span>
+        
+    <span class="n">fmap</span><span class="o">=</span><span class="n">sunpy</span><span class="o">.</span><span class="n">map</span><span class="o">.</span><span class="n">Map</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">header</span><span class="p">)</span>
+    <span class="n">fmap</span><span class="o">.</span><span class="n">plot_settings</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">fmap</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Angstrom&#39;</span><span class="p">,</span><span class="s1">&#39;$\AA$&#39;</span><span class="p">)</span>
+    <span class="n">interp</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;interpolation&#39;</span><span class="p">,</span><span class="s1">&#39;bilinear&#39;</span><span class="p">)</span>
+    <span class="n">fmap</span><span class="o">.</span><span class="n">plot_settings</span><span class="p">[</span><span class="s1">&#39;interpolation&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">interp</span>
+    <span class="n">clim</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;clim&#39;</span><span class="p">,</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">clim</span><span class="p">:</span>
+        <span class="n">fmap</span><span class="o">.</span><span class="n">plot_settings</span><span class="p">[</span><span class="s1">&#39;clim&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">clim</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;cmap&#39;</span><span class="p">,</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cmap</span><span class="p">:</span>
+        <span class="n">fmap</span><span class="o">.</span><span class="n">plot_settings</span><span class="p">[</span><span class="s1">&#39;cmap&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">cmap</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;wavelen&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;6562.8&#39;</span><span class="p">:</span>
+            <span class="n">fmap</span><span class="o">.</span><span class="n">plot_settings</span><span class="p">[</span><span class="s1">&#39;cmap&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">fisspy</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">ha</span>
+        <span class="k">elif</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;wavelen&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;8542&#39;</span><span class="p">:</span>
+            <span class="n">fmap</span><span class="o">.</span><span class="n">plot_settings</span><span class="p">[</span><span class="s1">&#39;cmap&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">fisspy</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">ca</span>
+    <span class="n">title</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;title&#39;</span><span class="p">,</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">title</span><span class="p">:</span>
+        <span class="n">fmap</span><span class="o">.</span><span class="n">plot_settings</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">title</span>
+
+    <span class="k">return</span> <span class="n">fmap</span></div>
+    
+<div class="viewcode-block" id="map_header"><a class="viewcode-back" href="../../../generated/api/fisspy.map.map_header.html#fisspy.map.map_header">[docs]</a><span class="k">def</span> <span class="nf">map_header</span><span class="p">(</span><span class="n">header0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Header change to correct the fissmap</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">header</span><span class="o">=</span><span class="n">header0</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">header</span><span class="p">[</span><span class="s1">&#39;naxis&#39;</span><span class="p">]</span><span class="o">=</span><span class="mi">2</span>
+    
+    <span class="k">if</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;reflect&#39;</span><span class="p">]:</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;naxis1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;naxis2&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;naxis2&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;naxis3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;crpix1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;crpix2&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;crpix2&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;crpix3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;crval1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;crval3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;cdelt1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;cdelt2&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;cdelt2&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;cdelt3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;shift1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;shift2&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;shift2&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;shift3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;crota2&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">rad2deg</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;crota2&#39;</span><span class="p">])</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;margin1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;margin2&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;margin2&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;margin3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;naxis3&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;crpix3&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;crval3&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;cdelt3&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;crota1&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;shift3&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;naxis1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;naxis3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;crpix1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;crpix3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;crval1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;crval3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;cdelt1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;cdelt3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;shift1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;shift3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;crota2&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">rad2deg</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;crota2&#39;</span><span class="p">])</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;margin1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;margin3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;naxis3&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;crpix3&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;crval3&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;cdelt3&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;crota1&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;shift3&#39;</span><span class="p">)</span>
+    
+    <span class="n">header</span><span class="p">[</span><span class="s1">&#39;instrume&#39;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;FISS&#39;</span>
+    <span class="n">header</span><span class="p">[</span><span class="s1">&#39;detector&#39;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;FISS&#39;</span>
+    <span class="n">header</span><span class="p">[</span><span class="s1">&#39;telescop&#39;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;NST&#39;</span>
+    <span class="n">header</span><span class="p">[</span><span class="s1">&#39;wavelnth&#39;</span><span class="p">]</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;wavelen&#39;</span><span class="p">])</span>
+    <span class="n">header</span><span class="p">[</span><span class="s1">&#39;waveunit&#39;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;Angstrom&#39;</span>
+    <span class="n">header</span><span class="p">[</span><span class="s1">&#39;date-obs&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">header</span> </div>
+
+<div class="viewcode-block" id="align"><a class="viewcode-back" href="../../../generated/api/fisspy.map.align.html#fisspy.map.align">[docs]</a><span class="k">def</span> <span class="nf">align</span><span class="p">(</span><span class="n">data0</span><span class="p">,</span><span class="n">header0</span><span class="p">,</span><span class="n">missing</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Align the input data with its header.</span>
+<span class="sd">    </span>
+<span class="sd">    Header must has the wcs informations.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data0 : ~numpy.ndarray</span>
+<span class="sd">        2 dimensional numpy array.</span>
+<span class="sd">    header0 : astropy.io.fits.Header</span>
+<span class="sd">        An Header for input data.</span>
+<span class="sd">    missing : (optional) float</span>
+<span class="sd">        Missing value for 2d interpolation.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    img : ~numpy.ndarray</span>
+<span class="sd">    mheader : astropy.io.fits.Header</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The header0 must has the infromations of the coalignment for FISS with SDO.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mheader</span><span class="o">=</span><span class="n">map_header</span><span class="p">(</span><span class="n">header0</span><span class="p">)</span>
+    <span class="n">reflect</span><span class="o">=</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;reflect&#39;</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">reflect</span><span class="p">:</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">data0</span><span class="o">.</span><span class="n">T</span>
+        
+    <span class="n">xmargin</span><span class="o">=</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;margin1&#39;</span><span class="p">]</span>
+    <span class="n">ymargin</span><span class="o">=</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;margin2&#39;</span><span class="p">]</span>
+    
+    
+    <span class="n">img</span><span class="o">=</span><span class="n">rot</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;crota2&#39;</span><span class="p">]),</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;crpix1&#39;</span><span class="p">],</span>
+            <span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;crpix2&#39;</span><span class="p">],</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;shift1&#39;</span><span class="p">],</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;shift2&#39;</span><span class="p">],</span>
+            <span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;margin1&#39;</span><span class="p">],</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;margin2&#39;</span><span class="p">])</span>
+    
+    <span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;crpix1&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;crpix1&#39;</span><span class="p">]</span><span class="o">+</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;shift1&#39;</span><span class="p">]</span><span class="o">+</span><span class="n">xmargin</span>
+    <span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;crpix2&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;crpix2&#39;</span><span class="p">]</span><span class="o">+</span><span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;shift2&#39;</span><span class="p">]</span><span class="o">+</span><span class="n">ymargin</span>
+    <span class="n">mheader</span><span class="p">[</span><span class="s1">&#39;crota2&#39;</span><span class="p">]</span><span class="o">=</span><span class="mi">0</span>
+    
+    <span class="k">return</span> <span class="n">img</span><span class="p">,</span> <span class="n">mheader</span></div>
+    
+<div class="viewcode-block" id="map_rot_correct"><a class="viewcode-back" href="../../../generated/api/fisspy.map.map_rot_correct.html#fisspy.map.map_rot_correct">[docs]</a><span class="k">def</span> <span class="nf">map_rot_correct</span><span class="p">(</span><span class="n">mmap</span><span class="p">,</span><span class="n">refx</span><span class="p">,</span><span class="n">refy</span><span class="p">,</span><span class="n">reftime</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Correct the solar rotation.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mmap : sunpy.map.GenericMap</span>
+<span class="sd">        Single map class.</span>
+<span class="sd">    refx : astropy.units.Quantity</span>
+<span class="sd">        Horizontal wcs information of reference frame.</span>
+<span class="sd">    refy : astropy.units.Quantity</span>
+<span class="sd">        Vertical wcs information of reference frame.</span>
+<span class="sd">    reftime : astropy.time.Time</span>
+<span class="sd">        Time for the reference frame.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    smap : sunpy.map.GenericMap</span>
+<span class="sd">        Solar rotation corrected map class.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">t</span><span class="o">=</span><span class="n">mmap</span><span class="o">.</span><span class="n">date</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">refx</span><span class="p">)</span> <span class="o">==</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="n">refx</span><span class="o">*=</span><span class="n">u</span><span class="o">.</span><span class="n">arcsec</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">refy</span><span class="p">)</span> <span class="o">==</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="n">refy</span><span class="o">*=</span><span class="n">u</span><span class="o">.</span><span class="n">arcsec</span>
+    <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="n">rot_hpc</span><span class="p">(</span><span class="n">refx</span><span class="p">,</span><span class="n">refy</span><span class="p">,</span><span class="n">reftime</span><span class="p">,</span><span class="n">t</span><span class="p">)</span>
+    <span class="n">sx</span><span class="o">=</span><span class="n">x</span><span class="o">-</span><span class="n">refx</span>
+    <span class="n">sy</span><span class="o">=</span><span class="n">y</span><span class="o">-</span><span class="n">refy</span>
+    <span class="n">smap</span><span class="o">=</span><span class="n">mmap</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="n">sx</span><span class="p">,</span><span class="o">-</span><span class="n">sy</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">smap</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, SNU Solar Group.
+      Last updated on 23 Feb 2017.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

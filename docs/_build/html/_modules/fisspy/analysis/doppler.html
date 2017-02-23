@@ -1,0 +1,485 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>fisspy.analysis.doppler &mdash; FISSPy 0.7 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../../../_static/astropy_logo.ico"/>
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="FISSPy 0.7 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> FISSPy
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../code/index.html">API Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">FISSPy</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>fisspy.analysis.doppler</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for fisspy.analysis.doppler</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Doppler</span>
+
+<span class="sd">This module calculate line of sight doppler velocities for </span>
+<span class="sd">each pixels of a FISS fts data.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">absolute_import</span><span class="p">,</span> <span class="n">division</span>
+
+<span class="n">__author__</span> <span class="o">=</span> <span class="s2">&quot;Juhyeong Kang&quot;</span>
+<span class="n">__email__</span> <span class="o">=</span> <span class="s2">&quot;jhkang@astro.snu.ac.kr&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">interpolation.splines</span> <span class="k">import</span> <span class="n">LinearSpline</span>
+<span class="kn">from</span> <span class="nn">astropy.constants</span> <span class="k">import</span> <span class="n">c</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;wavecalib&#39;</span><span class="p">,</span> <span class="s1">&#39;lambdameter&#39;</span><span class="p">,</span><span class="s1">&#39;LOS_velocity&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="wavecalib"><a class="viewcode-back" href="../../../generated/api/fisspy.analysis.doppler.wavecalib.html#fisspy.analysis.doppler.wavecalib">[docs]</a><span class="k">def</span> <span class="nf">wavecalib</span><span class="p">(</span><span class="n">band</span><span class="p">,</span><span class="n">profile</span><span class="p">,</span><span class="n">method</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calibrate the wavelength for FISS spectrum profile.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    band : str</span>
+<span class="sd">        A string to identify the wavelength.</span>
+<span class="sd">        Allowable wavelength bands are &#39;6562&#39;,&#39;8542&#39;,&#39;5890&#39;,&#39;5434&#39;</span>
+<span class="sd">    profile : ~numpy.ndarray</span>
+<span class="sd">        A 1 dimensional numpy array of spectral profile.</span>
+<span class="sd">    Method : (optional) bool</span>
+<span class="sd">        * Default is True.</span>
+<span class="sd">        If true, the reference lines for calibration are the telluric lines.</span>
+<span class="sd">        Else if False, the reference lines are the solar absorption lines.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    wavelength : ~numpy.ndarray</span>
+<span class="sd">        Calibrated wavelength.</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">        This function is based on the FISS IDL code FISS_WV_CALIB.PRO</span>
+<span class="sd">        written by J. Chae, 2013.</span>
+<span class="sd">    </span>
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    &gt;&gt;&gt; from fisspy.analysis import doppler</span>
+<span class="sd">    &gt;&gt;&gt; wv=doppler.wavecalib(&#39;6562&#39;,profile)</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">band</span><span class="o">=</span><span class="n">band</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span>
+    <span class="n">nw</span><span class="o">=</span><span class="n">profile</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">method</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">band</span> <span class="o">==</span> <span class="s1">&#39;6562&#39;</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">6561.097</span><span class="p">,</span><span class="mf">6564.206</span><span class="p">])</span>
+            <span class="n">lamb0</span><span class="o">=</span><span class="mf">6562.817</span>
+            <span class="n">dldw</span><span class="o">=</span><span class="mf">0.019182</span>
+        <span class="k">elif</span> <span class="n">band</span> <span class="o">==</span> <span class="s1">&#39;8542&#39;</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">8540.817</span><span class="p">,</span><span class="mf">8546.222</span><span class="p">])</span>
+            <span class="n">lamb0</span><span class="o">=</span><span class="mf">8542.090</span>
+            <span class="n">dldw</span><span class="o">=-</span><span class="mf">0.026252</span>
+        <span class="k">elif</span> <span class="n">band</span> <span class="o">==</span> <span class="s1">&#39;5890&#39;</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">5889.951</span><span class="p">,</span><span class="mf">5892.898</span><span class="p">])</span>
+            <span class="n">lamb0</span><span class="o">=</span><span class="mf">5889.9509</span>
+            <span class="n">dldw</span><span class="o">=</span><span class="mf">0.016847</span>
+        <span class="k">elif</span> <span class="n">band</span> <span class="o">==</span> <span class="s1">&#39;5434&#39;</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">5434.524</span><span class="p">,</span><span class="mf">5436.596</span><span class="p">])</span>
+            <span class="n">lamb0</span><span class="o">=</span><span class="mf">5434.5235</span>
+            <span class="n">dldw</span><span class="o">=-</span><span class="mf">0.016847</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The wavelength band value is not allowable.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">+</span>
+                             <span class="s2">&quot;Please select the wavelenth &quot;</span><span class="o">+</span>
+                             <span class="s2">&quot;among &#39;6562&#39;,&#39;8542&#39;,&#39;5890&#39;,&#39;5434&#39;&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">band</span> <span class="o">==</span> <span class="s1">&#39;6562&#39;</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">6562.817</span><span class="p">,</span><span class="mf">6559.580</span><span class="p">])</span>
+            <span class="n">lamb0</span><span class="o">=</span><span class="mf">6562.817</span>
+            <span class="n">dldw</span><span class="o">=</span><span class="mf">0.019182</span>
+        <span class="k">elif</span> <span class="n">band</span> <span class="o">==</span> <span class="s1">&#39;8542&#39;</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">8542.089</span><span class="p">,</span><span class="mf">8537.930</span><span class="p">])</span>
+            <span class="n">lamb0</span><span class="o">=</span><span class="mf">8542.090</span>
+            <span class="n">dldw</span><span class="o">=-</span><span class="mf">0.026252</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The wavelength band value is not allowable.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                             <span class="s2">&quot;Please select the wavelenth &quot;</span>
+                             <span class="s2">&quot;among &#39;6562&#39;,&#39;8542&#39;,&#39;5890&#39;,&#39;5434&#39;&quot;</span><span class="p">)</span>
+    
+    <span class="n">w</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nw</span><span class="p">)</span>
+    <span class="n">wl</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">wc</span><span class="o">=</span><span class="n">profile</span><span class="p">[</span><span class="mi">20</span><span class="p">:</span><span class="n">nw</span><span class="o">-</span><span class="mi">20</span><span class="p">]</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span><span class="o">+</span><span class="mi">20</span>
+    <span class="n">lamb</span><span class="o">=</span><span class="p">(</span><span class="n">w</span><span class="o">-</span><span class="n">wc</span><span class="p">)</span><span class="o">*</span><span class="n">dldw</span><span class="o">+</span><span class="n">lamb0</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+        <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lamb</span><span class="o">-</span><span class="n">line</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="mf">0.3</span>
+        <span class="n">wtmp</span><span class="o">=</span><span class="n">w</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+        <span class="n">ptmp</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">profile</span><span class="p">[</span><span class="n">mask</span><span class="p">],[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span><span class="s1">&#39;same&#39;</span><span class="p">)</span>
+        <span class="n">mask2</span><span class="o">=</span><span class="n">ptmp</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span><span class="o">+</span><span class="mi">1</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">wtmp</span><span class="o">=</span><span class="n">wtmp</span><span class="p">[</span><span class="n">mask2</span><span class="o">-</span><span class="mi">3</span><span class="p">:</span><span class="n">mask2</span><span class="o">+</span><span class="mi">4</span><span class="p">]</span>
+            <span class="n">ptmp</span><span class="o">=</span><span class="n">ptmp</span><span class="p">[</span><span class="n">mask2</span><span class="o">-</span><span class="mi">3</span><span class="p">:</span><span class="n">mask2</span><span class="o">+</span><span class="mi">4</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Fail to wavelength calibration</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="s1">&#39;please change the method </span><span class="si">%s</span><span class="s1"> to </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">method</span><span class="p">),</span> <span class="nb">repr</span><span class="p">(</span><span class="ow">not</span> <span class="n">method</span><span class="p">)))</span>
+        <span class="n">c</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">wtmp</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">wtmp</span><span class="p">),</span><span class="n">ptmp</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">wl</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">wtmp</span><span class="p">)</span><span class="o">-</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>    <span class="c1">#local minimum of the profile</span>
+    
+    <span class="n">dldw</span><span class="o">=</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">wl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">wl</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">wc</span><span class="o">=</span><span class="n">wl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">lamb0</span><span class="p">)</span><span class="o">/</span><span class="n">dldw</span>
+    <span class="n">wavelength</span><span class="o">=</span><span class="p">(</span><span class="n">w</span><span class="o">-</span><span class="n">wc</span><span class="p">)</span><span class="o">*</span><span class="n">dldw</span>
+    
+    <span class="k">return</span> <span class="n">wavelength</span></div>
+
+
+<div class="viewcode-block" id="lambdameter"><a class="viewcode-back" href="../../../generated/api/fisspy.analysis.doppler.lambdameter.html#fisspy.analysis.doppler.lambdameter">[docs]</a><span class="k">def</span> <span class="nf">lambdameter</span><span class="p">(</span><span class="n">wv</span><span class="p">,</span><span class="n">data0</span><span class="p">,</span><span class="n">hw</span><span class="o">=</span><span class="mf">0.03</span><span class="p">,</span><span class="n">sp</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span><span class="n">wvinput</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determine the Lambdameter chord center for a given half width or intensity.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    wv : ~numpy.ndarray</span>
+<span class="sd">        A Calibrated wavelength.</span>
+<span class="sd">    data : ~numpy.ndarray</span>
+<span class="sd">        n (n&gt;=2) dimensional spectral profile data, </span>
+<span class="sd">        the last dimension component must be the spectral component,</span>
+<span class="sd">        and the size is equal to the size of wv.</span>
+<span class="sd">    wvinput : bool</span>
+<span class="sd">        There are two cases.</span>
+<span class="sd">            </span>
+<span class="sd">    * Case wvinput==True</span>
+<span class="sd">        </span>
+<span class="sd">            hw : float</span>
+<span class="sd">                A half width of the horizontal line segment.</span>
+<span class="sd">                </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        wc : nd ndarray</span>
+<span class="sd">            n dimensional array of central wavelength values.</span>
+<span class="sd">        intc : nd ndarray</span>
+<span class="sd">            n dimensional array of intensies of the line segment.\\</span>
+<span class="sd">        </span>
+<span class="sd">    * Case wvinput==False</span>
+<span class="sd">        </span>
+<span class="sd">            sp : float</span>
+<span class="sd">                An intensity of the horiznotal segment.</span>
+<span class="sd">                </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        wc : nd ndarray</span>
+<span class="sd">            n dimensional array of central wavelength values.</span>
+<span class="sd">        hwc : nd ndarray</span>
+<span class="sd">            n dimensional array of half widths of the line segment.</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">        This function is based on the IDL code BISECTOR_D.PRO</span>
+<span class="sd">        written by J. Chae.</span>
+<span class="sd">    </span>
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    &gt;&gt;&gt; from fisspy.analysis import doppler</span>
+<span class="sd">    &gt;&gt;&gt; wc, inten = doppler.labdameter(wv,data,0.2)</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">shape</span><span class="o">=</span><span class="n">data0</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">nw</span><span class="o">=</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">reshape</span><span class="o">=</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">wv</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">nw</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The number of elements of wv and &#39;</span>
+        <span class="s1">&#39;the number of elements of last axis for data are not equal.&#39;</span><span class="p">)</span>
+    
+    <span class="n">na</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">data0</span><span class="o">.</span><span class="n">size</span><span class="o">/</span><span class="n">nw</span><span class="p">)</span>
+    <span class="n">data</span><span class="o">=</span><span class="n">data0</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">na</span><span class="p">,</span><span class="n">nw</span><span class="p">))</span>
+    <span class="n">s</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">wvinput</span> <span class="ow">and</span> <span class="n">hw</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The half-width value must be greater than 0.&#39;</span><span class="p">)</span>
+<span class="c1">#        fna=range(na)</span>
+<span class="c1">#        wtmp=wv[np.array((s-5,s-4,s-3,s-2,s-1,s,s+1,s+2,s+3,s+4,s+5))]</span>
+<span class="c1">#        mwtmp=np.median(wtmp,axis=0)</span>
+<span class="c1">#        sp0=np.array([data[i,s[i]-5:s[i]+6] for i in fna])</span>
+<span class="c1">#        c=np.array([scipy.polyfit(wtmp[:,i]-mwtmp[i],sp0[i,:],2) for i in fna])</span>
+<span class="c1">#        wc=mwtmp-c[:,1]/(2*c[:,0])</span>
+<span class="c1">#        p=[scipy.poly1d(c[i,:]) for i in fna]</span>
+<span class="c1">#        intc=np.array([p[i](wc[i]-mwtmp[i]) for i in fna])</span>
+<span class="c1">#        wc=wc.reshape(reshape).T</span>
+<span class="c1">#        intc=intc.reshape(reshape).T</span>
+<span class="c1">#        return wc, intc</span>
+        
+    <span class="n">posi0</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">na</span><span class="p">)</span>
+    <span class="n">smin</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">wv</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+    <span class="n">smax</span><span class="o">=</span><span class="p">[</span><span class="n">na</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">wv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="n">order</span><span class="o">=</span><span class="p">[</span><span class="n">na</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">wv</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">wvinput</span><span class="p">:</span>
+            <span class="n">interp</span><span class="o">=</span><span class="n">LinearSpline</span><span class="p">(</span><span class="n">smin</span><span class="p">,</span><span class="n">smax</span><span class="p">,</span><span class="n">order</span><span class="p">,</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">wl</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">posi0</span><span class="p">,</span><span class="n">wv</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">-</span><span class="n">hw</span><span class="p">))</span><span class="o">.</span><span class="n">T</span><span class="p">;</span> <span class="n">wr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">posi0</span><span class="p">,</span><span class="n">wv</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">+</span><span class="n">hw</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+            <span class="n">intc</span><span class="o">=</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">interp</span><span class="p">(</span><span class="n">wl</span><span class="p">)</span><span class="o">+</span><span class="n">interp</span><span class="p">(</span><span class="n">wr</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">intc</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">na</span><span class="p">)</span><span class="o">*</span><span class="n">sp</span>
+    
+    <span class="n">wc</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">na</span><span class="p">)</span>
+    <span class="n">hwc</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">na</span><span class="p">)</span>
+    <span class="n">ref</span><span class="o">=</span><span class="mi">1</span>    
+    <span class="n">rep</span><span class="o">=</span><span class="mi">0</span>
+    <span class="n">s0</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">more</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="n">posi0</span><span class="p">,</span><span class="n">s0</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">100</span>
+    
+    <span class="k">while</span> <span class="n">ref</span> <span class="o">&gt;</span> <span class="mf">0.00001</span> <span class="ow">and</span> <span class="n">rep</span> <span class="o">&lt;</span><span class="mi">6</span><span class="p">:</span>
+        <span class="n">sp1</span><span class="o">=</span><span class="n">data</span><span class="o">-</span><span class="n">intc</span><span class="p">[:,</span><span class="kc">None</span><span class="p">]</span>
+        <span class="n">comp</span><span class="o">=</span><span class="n">sp1</span><span class="p">[:,</span><span class="mi">0</span><span class="p">:</span><span class="n">nw</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">sp1</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:</span><span class="n">nw</span><span class="p">]</span>
+        
+        <span class="n">s</span><span class="o">=</span><span class="n">comp</span><span class="p">[</span><span class="n">more</span><span class="p">]</span> <span class="o">&lt;=</span><span class="mf">0.</span>
+        <span class="n">nsol</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">j</span><span class="o">=</span><span class="n">nsol</span><span class="o">//</span><span class="mi">2</span>
+        <span class="n">whl</span><span class="o">=</span><span class="n">nsol</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span><span class="o">-</span><span class="n">nsol</span><span class="o">+</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span>
+        <span class="n">whr</span><span class="o">=</span><span class="n">nsol</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span><span class="o">-</span><span class="n">nsol</span><span class="o">+</span><span class="n">j</span>
+        <span class="n">whp</span><span class="p">,</span> <span class="n">whs</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="n">l</span><span class="o">=</span><span class="n">whs</span><span class="p">[</span><span class="n">whl</span><span class="p">]</span>
+        <span class="n">r</span><span class="o">=</span><span class="n">whs</span><span class="p">[</span><span class="n">whr</span><span class="p">]</span>
+        <span class="n">posi</span><span class="o">=</span><span class="n">posi0</span><span class="p">[</span><span class="n">more</span><span class="p">]</span>
+        <span class="n">wl0</span><span class="o">=</span><span class="n">wv</span><span class="p">[</span><span class="n">l</span><span class="p">]</span><span class="o">-</span><span class="p">(</span><span class="n">wv</span><span class="p">[</span><span class="n">l</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">wv</span><span class="p">[</span><span class="n">l</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">sp1</span><span class="p">[</span><span class="n">posi</span><span class="p">,</span><span class="n">l</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">sp1</span><span class="p">[</span><span class="n">posi</span><span class="p">,</span><span class="n">l</span><span class="p">])</span><span class="o">*</span><span class="n">sp1</span><span class="p">[</span><span class="n">posi</span><span class="p">,</span><span class="n">l</span><span class="p">]</span>
+        <span class="n">wr0</span><span class="o">=</span><span class="n">wv</span><span class="p">[</span><span class="n">r</span><span class="p">]</span><span class="o">-</span><span class="p">(</span><span class="n">wv</span><span class="p">[</span><span class="n">r</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">wv</span><span class="p">[</span><span class="n">r</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">sp1</span><span class="p">[</span><span class="n">posi</span><span class="p">,</span><span class="n">r</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">sp1</span><span class="p">[</span><span class="n">posi</span><span class="p">,</span><span class="n">r</span><span class="p">])</span><span class="o">*</span><span class="n">sp1</span><span class="p">[</span><span class="n">posi</span><span class="p">,</span><span class="n">r</span><span class="p">]</span>
+        <span class="n">wc</span><span class="p">[</span><span class="n">more</span><span class="p">]</span><span class="o">=</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">wl0</span><span class="o">+</span><span class="n">wr0</span><span class="p">)</span>
+        <span class="n">hwc</span><span class="p">[</span><span class="n">more</span><span class="p">]</span><span class="o">=</span><span class="mf">0.5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">wr0</span><span class="o">-</span><span class="n">wl0</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">wvinput</span><span class="p">:</span>
+            <span class="n">wl</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">posi</span><span class="p">,</span><span class="n">wc</span><span class="p">[</span><span class="n">more</span><span class="p">]</span><span class="o">-</span><span class="n">hw</span><span class="p">))</span><span class="o">.</span><span class="n">T</span><span class="p">;</span> <span class="n">wr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">posi</span><span class="p">,</span><span class="n">wc</span><span class="p">[</span><span class="n">more</span><span class="p">]</span><span class="o">+</span><span class="n">hw</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+            <span class="n">intc</span><span class="p">[</span><span class="n">more</span><span class="p">]</span><span class="o">=</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">interp</span><span class="p">(</span><span class="n">wl</span><span class="p">)</span><span class="o">+</span><span class="n">interp</span><span class="p">(</span><span class="n">wr</span><span class="p">))</span>
+            <span class="n">ref0</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">hwc</span><span class="o">-</span><span class="n">hw</span><span class="p">)</span>
+            <span class="n">ref</span><span class="o">=</span><span class="n">ref0</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            <span class="n">more</span><span class="o">=</span><span class="p">(</span><span class="n">ref0</span><span class="o">&gt;</span><span class="mf">0.00001</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">posi0</span><span class="p">,</span><span class="n">s0</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">100</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ref</span><span class="o">=</span><span class="mi">0</span>
+        <span class="n">rep</span><span class="o">+=</span><span class="mi">1</span>
+    
+    <span class="n">wc</span><span class="o">=</span><span class="n">wc</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">reshape</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">wvinput</span><span class="p">:</span>
+        <span class="n">intc</span><span class="o">=</span><span class="n">intc</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">reshape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">wc</span><span class="p">,</span> <span class="n">intc</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">hwc</span><span class="o">=</span><span class="n">hwc</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">reshape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">wc</span><span class="p">,</span> <span class="n">hwc</span></div>
+
+<div class="viewcode-block" id="LOS_velocity"><a class="viewcode-back" href="../../../generated/api/fisspy.analysis.doppler.LOS_velocity.html#fisspy.analysis.doppler.LOS_velocity">[docs]</a><span class="k">def</span> <span class="nf">LOS_velocity</span><span class="p">(</span><span class="n">wv</span><span class="p">,</span><span class="n">data</span><span class="p">,</span><span class="n">hw</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span><span class="n">band</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculte the Line-of-Sight velocity of given data.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    wv : ~numpy.ndarray</span>
+<span class="sd">        A Calibrated wavelength.</span>
+<span class="sd">    data : ~numpy.ndarray</span>
+<span class="sd">        n (n&gt;=2) dimensional spectral profile data, </span>
+<span class="sd">        the last dimension component must be the spectral component,</span>
+<span class="sd">        and the size is equal to the size of wv.</span>
+<span class="sd">    hw : float</span>
+<span class="sd">        A half width of the horizontal line segment.</span>
+<span class="sd">    band : str</span>
+<span class="sd">        A string of the wavelength band.</span>
+<span class="sd">        It must be the 4 characters in Angstrom unit. ex) &#39;6562&#39;, &#39;8542&#39;</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    losv : ~numpy.ndarray</span>
+<span class="sd">        n-1 (n&gt;=2) dimensional Line-of_sight velocity value, where n is the</span>
+<span class="sd">        dimension of the given data.</span>
+<span class="sd">        </span>
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    &gt;&gt;&gt; from fisspy.doppler import LOS_velocity</span>
+<span class="sd">    &gt;&gt;&gt; mask = np.abs(wv) &lt; 1</span>
+<span class="sd">    &gt;&gt;&gt; losv = LOS_velocity(wv[mask],data[:,:,mask],hw=0.03,band=&#39;6562&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">band</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Please insert the parameter band (str)&quot;</span><span class="p">)</span>
+        
+    <span class="n">wc</span><span class="p">,</span> <span class="n">intc</span> <span class="o">=</span>  <span class="n">lambdameter</span><span class="p">(</span><span class="n">wv</span><span class="p">,</span><span class="n">data</span><span class="p">,</span><span class="n">hw</span><span class="p">,</span><span class="n">wvinput</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">band</span><span class="o">==</span><span class="s1">&#39;6562&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">wc</span><span class="o">*</span><span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;km/s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="mf">6562.817</span>
+    <span class="k">elif</span> <span class="n">band</span><span class="o">==</span><span class="s1">&#39;8542&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">wc</span><span class="o">*</span><span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;km/s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="mf">8542.09</span>
+    <span class="k">elif</span> <span class="n">band</span><span class="o">==</span><span class="s1">&#39;5890&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">wc</span><span class="o">*</span><span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;km/s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="mf">5890.9399</span>
+    <span class="k">elif</span> <span class="n">band</span><span class="o">==</span><span class="s1">&#39;5434&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">wc</span><span class="o">*</span><span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;km/s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="mf">5434.3398</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Value of band must be one among&quot;</span>
+                         <span class="s2">&quot;&#39;6562&#39;, &#39;8542&#39;, &#39;5890&#39;, &#39;5434&#39;&quot;</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, SNU Solar Group.
+      Last updated on 23 Feb 2017.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
