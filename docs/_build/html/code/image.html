@@ -1,0 +1,285 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>FISSPy Image &mdash; FISSPy 0.7 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="FISSPy 0.7 documentation" href="../index.html"/>
+        <link rel="up" title="API Reference" href="index.html"/>
+        <link rel="prev" title="fast_conv2" href="../generated/api/fisspy.analysis.wavelet.fast_conv2.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> FISSPy
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="fisspy.html">FISSPy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.html">FISSPy Analysis</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">FISSPy Image</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-fisspy.image.base">fisspy.image.base Module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-fisspy.image.coalignment">fisspy.image.coalignment Module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">Functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="io.html">FISSPy Io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="map.html">FISSPy Map</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">FISSPy</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="index.html">API Reference</a> &raquo;</li>
+      
+    <li>FISSPy Image</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/code/image.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-fisspy.image">
+<span id="fisspy-image"></span><h1>FISSPy Image<a class="headerlink" href="#module-fisspy.image" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-fisspy.image.base">
+<span id="fisspy-image-base-module"></span><h2>fisspy.image.base Module<a class="headerlink" href="#module-fisspy.image.base" title="Permalink to this headline">¶</a></h2>
+<p>Basic image process tool.</p>
+<div class="section" id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">rescale</span></code>(orig,&nbsp;dimensions[,&nbsp;method,&nbsp;center,&nbsp;...])</td>
+<td>Returns a new <a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.12)"><code class="xref py py-obj docutils literal"><span class="pre">numpy.ndarray</span></code></a> that has been resampled up or down.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="../generated/api/fisspy.image.base.rot_trans.html#fisspy.image.base.rot_trans" title="fisspy.image.base.rot_trans"><code class="xref py py-obj docutils literal"><span class="pre">rot_trans</span></code></a>(x,&nbsp;y,&nbsp;xc,&nbsp;yc,&nbsp;angle[,&nbsp;dx,&nbsp;dy,&nbsp;inv])</td>
+<td>Rotational transpose for input array of x, y and angle.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="../generated/api/fisspy.image.base.img_interpol.html#fisspy.image.base.img_interpol" title="fisspy.image.base.img_interpol"><code class="xref py py-obj docutils literal"><span class="pre">img_interpol</span></code></a>(img,&nbsp;xa,&nbsp;ya,&nbsp;xt,&nbsp;yt[,&nbsp;missing])</td>
+<td>Interpolate the image for a given coordinates.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="../generated/api/fisspy.image.base.rotation.html#fisspy.image.base.rotation" title="fisspy.image.base.rotation"><code class="xref py py-obj docutils literal"><span class="pre">rotation</span></code></a>(img,&nbsp;angle,&nbsp;x,&nbsp;y,&nbsp;xc,&nbsp;yc[,&nbsp;dx,&nbsp;dy,&nbsp;...])</td>
+<td>Rotate the input image with angle and center position.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="../generated/api/fisspy.image.base.rot.html#fisspy.image.base.rot" title="fisspy.image.base.rot"><code class="xref py py-obj docutils literal"><span class="pre">rot</span></code></a>(img,&nbsp;angle[,&nbsp;xc,&nbsp;yc,&nbsp;dx,&nbsp;dy,&nbsp;xmargin,&nbsp;...])</td>
+<td>Rotate the input image.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="../generated/api/fisspy.image.base.shift.html#fisspy.image.base.shift" title="fisspy.image.base.shift"><code class="xref py py-obj docutils literal"><span class="pre">shift</span></code></a>(image,&nbsp;shift)</td>
+<td>Shift the given image.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="module-fisspy.image.coalignment">
+<span id="fisspy-image-coalignment-module"></span><h2>fisspy.image.coalignment Module<a class="headerlink" href="#module-fisspy.image.coalignment" title="Permalink to this headline">¶</a></h2>
+<p>Alignment FISS data.</p>
+<div class="section" id="id1">
+<h3>Functions<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="../generated/api/fisspy.image.coalignment.alignoffset.html#fisspy.image.coalignment.alignoffset" title="fisspy.image.coalignment.alignoffset"><code class="xref py py-obj docutils literal"><span class="pre">alignoffset</span></code></a>(image0,&nbsp;template0)</td>
+<td>Align the two images</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="../generated/api/fisspy.image.coalignment.fiss_align_inform.html#fisspy.image.coalignment.fiss_align_inform" title="fisspy.image.coalignment.fiss_align_inform"><code class="xref py py-obj docutils literal"><span class="pre">fiss_align_inform</span></code></a>(file[,&nbsp;smooth])</td>
+<td>Calculate the fiss align information, and save to npz file.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="../generated/api/fisspy.image.coalignment.match_wcs.html#fisspy.image.coalignment.match_wcs" title="fisspy.image.coalignment.match_wcs"><code class="xref py py-obj docutils literal"><span class="pre">match_wcs</span></code></a>(fiss_file[,&nbsp;smooth])</td>
+<td>Match the wcs information of FISS files with the SDO/HMI file.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="../generated/api/fisspy.image.coalignment.manual.html#fisspy.image.coalignment.manual" title="fisspy.image.coalignment.manual"><code class="xref py py-obj docutils literal"><span class="pre">manual</span></code></a>(fiss_file,&nbsp;sdo_file[,&nbsp;smooth])</td>
+<td>Align the FISS data with the SDO maually.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../generated/api/fisspy.analysis.wavelet.fast_conv2.html" class="btn btn-neutral" title="fast_conv2" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, SNU Solar Group.
+      Last updated on 22 Feb 2017.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

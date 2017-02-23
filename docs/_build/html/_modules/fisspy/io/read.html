@@ -1,0 +1,561 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>fisspy.io.read &mdash; FISSPy 0.7 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../../../_static/astropy_logo.ico"/>
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="FISSPy 0.7 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> FISSPy
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../code/index.html">API Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">FISSPy</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>fisspy.io.read</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for fisspy.io.read</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Read the FISS fts file and its header.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">absolute_import</span><span class="p">,</span> <span class="n">division</span>
+
+<span class="n">__author__</span> <span class="o">=</span> <span class="s2">&quot;Juhyeong Kang&quot;</span>
+<span class="n">__email__</span> <span class="o">=</span> <span class="s2">&quot;jhkang@astro.snu.ac.kr&quot;</span>
+
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="k">import</span> <span class="n">fits</span>
+<span class="kn">from</span> <span class="nn">scipy.signal</span> <span class="k">import</span> <span class="n">savgol_filter</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;frame&#39;</span><span class="p">,</span> <span class="s1">&#39;pca_read&#39;</span><span class="p">,</span> <span class="s1">&#39;raster&#39;</span><span class="p">,</span> <span class="s1">&#39;getheader&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="frame"><a class="viewcode-back" href="../../../generated/api/fisspy.io.read.frame.html#fisspy.io.read.frame">[docs]</a><span class="k">def</span> <span class="nf">frame</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="n">x1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">x2</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">pca</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">ncoeff</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">xmax</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+          <span class="n">smooth</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read the FISS fts file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : str</span>
+<span class="sd">        A string of file name to be read.</span>
+<span class="sd">    x1 : int</span>
+<span class="sd">        A starting index of the frame along the scanning direction.</span>
+<span class="sd">    x2 : (optional) int</span>
+<span class="sd">        An ending index of the frame along the scanning direction.</span>
+<span class="sd">        If not, then the only x1 frame is read.</span>
+<span class="sd">    pca : (optional) bool</span>
+<span class="sd">        If True, the frame is read from the PCA file.</span>
+<span class="sd">        Default is True, but the function automatically check</span>
+<span class="sd">        the existance of the pca file.</span>
+<span class="sd">    ncoeff : (optional) int</span>
+<span class="sd">        The number of coefficients to be used for</span>
+<span class="sd">        the construction of frame in a pca file.</span>
+<span class="sd">    xmax : (optional) bool</span>
+<span class="sd">        If True, the x2 value is set as the maximum end point of the frame.</span>
+<span class="sd">            * Default is False.</span>
+<span class="sd">    smooth : (optional) bool</span>
+<span class="sd">        If True, apply the Savitzky-Golay filter to increase the signal to</span>
+<span class="sd">        noise without greatly distorting the signal of the given fts file.</span>
+<span class="sd">            * Default is False.</span>
+<span class="sd">    nsmooth : (optional) int</span>
+<span class="sd">        The number of smooting.</span>
+<span class="sd">        Default is 1 for the case of the compressed file,</span>
+<span class="sd">        and is 2 for the case of the uncompresseed file.</span>
+<span class="sd">    kwargs </span>
+<span class="sd">        The parameters for smooth (savitzky-golay filter), \n</span>
+<span class="sd">        See the docstring of the `scipy.signal.savgol_filter`.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    frame : ~numpy.ndarray</span>
+<span class="sd">        FISS data frame with the information of (wavelength, y, x).</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    `Savitzky-Golay filter &lt;https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter&gt;`_.\n</span>
+<span class="sd">    `scipy.signal.savgol_filter &lt;https://docs.scipy.org/doc/scipy-0.18.1/reference/generated/scipy.signal.savgol_filter.html#scipy.signal.savgol_filter&gt;`_</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">        This function is based on the IDL code FISS_READ_FRAME.PRO </span>
+<span class="sd">        written by J. Chae, 2013.</span>
+<span class="sd">    </span>
+<span class="sd">        This function automatically check the existance of the pca</span>
+<span class="sd">        file by reading the fts header.</span>
+<span class="sd">        </span>
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    .. plot::</span>
+<span class="sd">        :include-source:</span>
+<span class="sd">            </span>
+<span class="sd">        import matplotlib.pyplot as plt</span>
+<span class="sd">        from fisspy.io import read</span>
+<span class="sd">        import fisspy</span>
+<span class="sd">        import fisspy.data.sample</span>
+<span class="sd">        data=read.frame(fisspy.data.sample.FISS_IMAGE,xmax=True)</span>
+<span class="sd">        plt.imshow(data[:,75],cmap=fisspy.cm.ca,origin=&#39;lower&#39;)</span>
+<span class="sd">        plt.title(r&quot;NST/FISS 8542 $\AA$ Spectrogram&quot;)</span>
+<span class="sd">        plt.show()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Empty filename&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">x2</span> <span class="ow">and</span> <span class="n">x2</span> <span class="o">&lt;=</span> <span class="n">x1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;x2 must be larger than x1&#39;</span><span class="p">)</span>
+    
+    <span class="n">header</span><span class="o">=</span><span class="n">fits</span><span class="o">.</span><span class="n">getheader</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;pfile&#39;</span><span class="p">]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">pca</span><span class="o">=</span><span class="kc">False</span>
+    
+    <span class="k">if</span> <span class="n">xmax</span><span class="p">:</span>
+        <span class="n">x2</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;naxis3&#39;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">x2</span><span class="p">:</span>
+        <span class="n">x2</span><span class="o">=</span><span class="n">x1</span><span class="o">+</span><span class="mi">1</span>
+    
+    <span class="k">if</span> <span class="n">pca</span><span class="p">:</span>
+        <span class="n">spec</span><span class="o">=</span><span class="n">pca_read</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="n">header</span><span class="p">,</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">ncoeff</span><span class="o">=</span><span class="n">ncoeff</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>        
+        <span class="n">spec</span><span class="o">=</span><span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">file</span><span class="p">)[</span><span class="n">x1</span><span class="p">:</span><span class="n">x2</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">x1</span><span class="o">+</span><span class="mi">1</span> <span class="o">==</span> <span class="n">x2</span><span class="p">:</span>
+        <span class="n">spec</span><span class="o">=</span><span class="n">spec</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">spec</span>
+    <span class="n">spec</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">transpose</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">smooth</span><span class="p">:</span>
+        <span class="n">winl</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;window_length&#39;</span><span class="p">,</span><span class="mi">7</span><span class="p">)</span>
+        <span class="n">pord</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;polyorder&#39;</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">deriv</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;deriv&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">delta</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;delta&#39;</span><span class="p">,</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">mode</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;mode&#39;</span><span class="p">,</span><span class="s1">&#39;interp&#39;</span><span class="p">)</span>
+        <span class="n">cval</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;cval&#39;</span><span class="p">,</span><span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">nsmooth</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;nsmooth&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">(</span><span class="ow">not</span> <span class="n">pca</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nsmooth</span><span class="p">):</span>
+            <span class="n">spec</span><span class="o">=</span><span class="n">savgol_filter</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span><span class="n">winl</span><span class="p">,</span><span class="n">pord</span><span class="p">,</span><span class="n">deriv</span><span class="o">=</span><span class="n">deriv</span><span class="p">,</span>
+                               <span class="n">delta</span><span class="o">=</span><span class="n">delta</span><span class="p">,</span><span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span><span class="n">cval</span><span class="o">=</span><span class="n">cval</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">spec</span></div>
+
+
+<div class="viewcode-block" id="pca_read"><a class="viewcode-back" href="../../../generated/api/fisspy.io.read.pca_read.html#fisspy.io.read.pca_read">[docs]</a><span class="k">def</span> <span class="nf">pca_read</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="n">header</span><span class="p">,</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">ncoeff</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read the pca compressed FISS fts file.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : str</span>
+<span class="sd">        A string of file name to be read.</span>
+<span class="sd">    header : astropy.io.fits.header.Header</span>
+<span class="sd">        The fts file header.</span>
+<span class="sd">    x1   : int</span>
+<span class="sd">        A starting index of the frame along the scanning direction.</span>
+<span class="sd">    x2   : (optional) int</span>
+<span class="sd">        An ending index of the frame along the scanning direction.</span>
+<span class="sd">        If not, then the only x1 frame is read.</span>
+<span class="sd">    ncoeff : (optional) int</span>
+<span class="sd">        The number of coefficients to be used for</span>
+<span class="sd">        the construction of frame in a pca file.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    frame : ~numpy.ndarry</span>
+<span class="sd">        FISS data frame with the information of (wavelength, y, x).</span>
+<span class="sd">        </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">        This function is based on the IDL code FISS_PCA_READ.PRO</span>
+<span class="sd">        written by J. Chae, 2013.</span>
+<span class="sd">        The required fts data are two. One is the &quot;_c.fts&quot;,</span>
+<span class="sd">        and the other is &quot;_p.fts&quot;</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Empty filename&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">x2</span><span class="p">:</span>
+        <span class="n">x2</span><span class="o">=</span><span class="n">x1</span><span class="o">+</span><span class="mi">1</span>
+        
+    <span class="nb">dir</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+    <span class="n">pfile</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;pfile&#39;</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="nb">dir</span><span class="p">:</span>
+        <span class="n">pfile</span><span class="o">=</span><span class="nb">dir</span><span class="o">+</span><span class="n">os</span><span class="o">.</span><span class="n">sep</span><span class="o">+</span><span class="n">pfile</span>
+        
+    <span class="n">pdata</span><span class="o">=</span><span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">pfile</span><span class="p">)</span>
+    <span class="n">data</span><span class="o">=</span><span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">file</span><span class="p">)[</span><span class="n">x1</span><span class="p">:</span><span class="n">x2</span><span class="p">]</span>
+    <span class="n">ncoeff1</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ncoeff</span><span class="p">:</span>
+        <span class="n">ncoeff</span><span class="o">=</span><span class="n">ncoeff1</span>
+    <span class="k">elif</span> <span class="n">ncoeff</span> <span class="o">&gt;</span> <span class="n">ncoeff1</span><span class="p">:</span>
+        <span class="n">ncoeff</span><span class="o">=</span><span class="n">ncoeff1</span>
+    
+    <span class="n">spec</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">data</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">:</span><span class="n">ncoeff</span><span class="p">],</span><span class="n">pdata</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">ncoeff</span><span class="p">,:])</span>
+    <span class="n">spec</span><span class="o">*=</span><span class="mf">10.</span><span class="o">**</span><span class="n">data</span><span class="p">[:,:,</span><span class="n">ncoeff</span><span class="p">][:,:,</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">spec</span></div>
+
+<div class="viewcode-block" id="raster"><a class="viewcode-back" href="../../../generated/api/fisspy.io.read.raster.html#fisspy.io.read.raster">[docs]</a><span class="k">def</span> <span class="nf">raster</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="n">wv</span><span class="p">,</span><span class="n">hw</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span><span class="n">x1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">x2</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">y1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">y2</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">pca</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+           <span class="n">smooth</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Make raster images for a given file at wv of wavelength within width hw</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : str</span>
+<span class="sd">        A string of file name to be read.</span>
+<span class="sd">    wv   : float or 1d ndarray</span>
+<span class="sd">        Referenced wavelengths.</span>
+<span class="sd">    hw   : float</span>
+<span class="sd">        A half-width of wavelength integration in unit of Angstrom.</span>
+<span class="sd">        Default is 0.05</span>
+<span class="sd">    x1   : (optional) int</span>
+<span class="sd">        A starting index of the frame along the scanning direction.</span>
+<span class="sd">    x2   : (optional) int</span>
+<span class="sd">        An ending index of the frame along the scanning direction.</span>
+<span class="sd">        If not, x2 is set to the maximum end point of the frame.</span>
+<span class="sd">    y1   : (optional) int</span>
+<span class="sd">        A starting index of the frame along the slit position.</span>
+<span class="sd">    y2   : (optional0 int</span>
+<span class="sd">        A ending index of the frame along the slit position.</span>
+<span class="sd">    pca  : (optional) bool</span>
+<span class="sd">        If True, the frame is read from the PCA file.</span>
+<span class="sd">        Default is True, but the function automatically check</span>
+<span class="sd">        the existance of the pca file.</span>
+<span class="sd">    smooth : (optional) bool</span>
+<span class="sd">        If True, apply the Savitzky-Golay filter to increase the signal to</span>
+<span class="sd">        noise without greatly distorting the signal of the given fts file.</span>
+<span class="sd">            * Default is False.</span>
+<span class="sd">    kwargs</span>
+<span class="sd">        Any additional keyword arguments to read frame.</span>
+<span class="sd">        See the docstring of `fisspy.io.read.frame`</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Raster : ~numpy.ndarray</span>
+<span class="sd">        Raster image at given wavelengths.</span>
+<span class="sd">        </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">        This function is based on the IDL code FISS_RASTER.PRO</span>
+<span class="sd">        written by J. Chae, 2013.</span>
+<span class="sd">        This function automatically check the existance of the pca file by</span>
+<span class="sd">        reading the fts header.</span>
+<span class="sd">    </span>
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    .. plot::</span>
+<span class="sd">        :include-source:</span>
+<span class="sd">            </span>
+<span class="sd">        import matplotlib.pyplot as plt</span>
+<span class="sd">        from fisspy.io import read</span>
+<span class="sd">        import fisspy</span>
+<span class="sd">        import fisspy.data.sample</span>
+<span class="sd">        raster=read.raster(fisspy.data.sample.FISS_IMAGE,0.3)</span>
+<span class="sd">        plt.imshow(raster,cmap=fisspy.cm.ha,origin=&#39;lower&#39;)</span>
+<span class="sd">        plt.title(r&quot;NST/FISS 8542+0.3 $\AA$ Spectrogram&quot;)</span>
+<span class="sd">        plt.show()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">header</span><span class="o">=</span><span class="n">getheader</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="n">pca</span><span class="p">)</span>
+    <span class="n">nw</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;NAXIS1&#39;</span><span class="p">]</span>
+    <span class="n">ny</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;NAXIS2&#39;</span><span class="p">]</span>
+    <span class="n">nx</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;NAXIS3&#39;</span><span class="p">]</span>
+    <span class="n">wc</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;CRPIX1&#39;</span><span class="p">]</span>
+    <span class="n">dldw</span><span class="o">=</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;CDELT1&#39;</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Empty filename&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">x2</span> <span class="ow">and</span> <span class="n">x2</span> <span class="o">&lt;=</span> <span class="n">x1</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;x2 must be larger than x1+1&#39;</span><span class="p">)</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">num</span><span class="o">=</span><span class="n">wv</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>    
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">num</span><span class="o">=</span><span class="mi">1</span>
+        <span class="n">wv</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">wv</span><span class="p">])</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">x2</span><span class="p">:</span>
+        <span class="n">x2</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">nx</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">y2</span><span class="p">:</span>
+        <span class="n">y2</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">ny</span><span class="p">)</span>
+    
+    <span class="n">wl</span><span class="o">=</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nw</span><span class="p">)</span><span class="o">-</span><span class="n">wc</span><span class="p">)</span><span class="o">*</span><span class="n">dldw</span>
+    <span class="k">if</span> <span class="n">hw</span> <span class="o">&lt;</span> <span class="nb">abs</span><span class="p">(</span><span class="n">dldw</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span><span class="p">:</span>
+        <span class="n">hw</span><span class="o">=</span><span class="nb">abs</span><span class="p">(</span><span class="n">dldw</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span>
+    
+    <span class="n">s</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">wl</span><span class="o">-</span><span class="n">wv</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span><span class="o">&lt;=</span><span class="n">hw</span>
+    <span class="n">sp</span><span class="o">=</span><span class="n">frame</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">pca</span><span class="o">=</span><span class="n">pca</span><span class="p">,</span><span class="n">smooth</span><span class="o">=</span><span class="n">smooth</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">leng</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">num</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">img</span><span class="o">=</span><span class="n">sp</span><span class="p">[</span><span class="n">y1</span><span class="p">:</span><span class="n">y2</span><span class="p">,:,</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">leng</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">img</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">y2</span><span class="o">-</span><span class="n">y1</span><span class="p">,</span><span class="n">x2</span><span class="o">-</span><span class="n">x1</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">img</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sp</span><span class="p">[</span><span class="n">y1</span><span class="p">:</span><span class="n">y2</span><span class="p">,:,</span><span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">,:]]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">leng</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num</span><span class="p">)])</span>
+        <span class="k">return</span> <span class="n">img</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">num</span><span class="p">,</span><span class="n">y2</span><span class="o">-</span><span class="n">y1</span><span class="p">,</span><span class="n">x2</span><span class="o">-</span><span class="n">x1</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="getheader"><a class="viewcode-back" href="../../../generated/api/fisspy.io.read.getheader.html#fisspy.io.read.getheader">[docs]</a><span class="k">def</span> <span class="nf">getheader</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="n">pca</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the FISS fts file header.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : str</span>
+<span class="sd">        A string of file name to be read.</span>
+<span class="sd">    pca  : (optional) bool</span>
+<span class="sd">        If True, the frame is read from the PCA file.</span>
+<span class="sd">        Default is True, but the function automatically check</span>
+<span class="sd">        the existance of the pca file.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    header : astropy.io.fits.Header</span>
+<span class="sd">        The fts file header.</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">        This function automatically check the existance of the pca file by</span>
+<span class="sd">        reading the fts header.</span>
+<span class="sd">    </span>
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    &gt;&gt;&gt; from fisspy.io import read</span>
+<span class="sd">    &gt;&gt;&gt; h=read.getheader(file)</span>
+<span class="sd">    &gt;&gt;&gt; h[&#39;date&#39;]</span>
+<span class="sd">    &#39;2014-06-03T16:49:42&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">header0</span><span class="o">=</span><span class="n">fits</span><span class="o">.</span><span class="n">getheader</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+    
+    <span class="n">pfile</span><span class="o">=</span><span class="n">header0</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;pfile&#39;</span><span class="p">,</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pfile</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">header0</span>
+        
+    <span class="n">header</span><span class="o">=</span><span class="n">fits</span><span class="o">.</span><span class="n">Header</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">pca</span><span class="p">:</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;pfile&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">pfile</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">header0</span><span class="p">[</span><span class="s1">&#39;comment&#39;</span><span class="p">]:</span>
+            <span class="n">sori</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sori</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">skv</span> <span class="o">=</span> <span class="n">sori</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">maxsplit</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">skv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">header</span><span class="p">[</span><span class="n">skv</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">skv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="n">sori</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">svc</span> <span class="o">=</span> <span class="n">sori</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">item</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">svc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">item</span><span class="o">=</span><span class="n">svc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">item</span><span class="o">=</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">maxsplit</span><span class="o">=</span><span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">item</span><span class="o">=</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">maxsplit</span><span class="o">=</span><span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">item</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="n">svc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">item</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">svc</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">header</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">=</span><span class="n">item</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">header</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="n">item</span><span class="p">,</span><span class="n">svc</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                    
+    <span class="n">header</span><span class="p">[</span><span class="s1">&#39;simple&#39;</span><span class="p">]</span><span class="o">=</span><span class="kc">True</span>
+    <span class="n">alignl</span><span class="o">=</span><span class="n">header0</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;alignl&#39;</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">alignl</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;reflect&#39;</span><span class="p">,</span><span class="s1">&#39;reffr&#39;</span><span class="p">,</span><span class="s1">&#39;reffi&#39;</span><span class="p">,</span><span class="s1">&#39;cdelt2&#39;</span><span class="p">,</span><span class="s1">&#39;cdelt3&#39;</span><span class="p">,</span><span class="s1">&#39;crota2&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;crpix3&#39;</span><span class="p">,</span><span class="s1">&#39;shift3&#39;</span><span class="p">,</span><span class="s1">&#39;crpix2&#39;</span><span class="p">,</span><span class="s1">&#39;shift2&#39;</span><span class="p">,</span><span class="s1">&#39;margin2&#39;</span><span class="p">,</span><span class="s1">&#39;margin3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;alignl&#39;</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="n">alignl</span><span class="p">,</span><span class="s1">&#39;Alignment level&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">header</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="n">header0</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">header0</span><span class="o">.</span><span class="n">comments</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;history&#39;</span><span class="p">]</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">header0</span><span class="p">[</span><span class="s1">&#39;history&#39;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">alignl</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;reflect&#39;</span><span class="p">,</span><span class="s1">&#39;reffr&#39;</span><span class="p">,</span><span class="s1">&#39;reffi&#39;</span><span class="p">,</span><span class="s1">&#39;cdelt2&#39;</span><span class="p">,</span><span class="s1">&#39;cdelt3&#39;</span><span class="p">,</span><span class="s1">&#39;crota1&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;crota2&#39;</span><span class="p">,</span><span class="s1">&#39;crpix3&#39;</span><span class="p">,</span><span class="s1">&#39;crval3&#39;</span><span class="p">,</span><span class="s1">&#39;shift3&#39;</span><span class="p">,</span><span class="s1">&#39;crpix2&#39;</span><span class="p">,</span><span class="s1">&#39;crval2&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;shift2&#39;</span><span class="p">,</span><span class="s1">&#39;margin2&#39;</span><span class="p">,</span><span class="s1">&#39;margin3&#39;</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;alignl&#39;</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="n">alignl</span><span class="p">,</span><span class="s1">&#39;Alignment level&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">header</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="n">header0</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">header0</span><span class="o">.</span><span class="n">comments</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;history&#39;</span><span class="p">]</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">header0</span><span class="p">[</span><span class="s1">&#39;history&#39;</span><span class="p">])</span>
+        
+    <span class="k">return</span> <span class="n">header</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, SNU Solar Group.
+      Last updated on 23 Feb 2017.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

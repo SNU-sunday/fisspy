@@ -1,0 +1,267 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>ffmpeg &mdash; FISSPy 0.7 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../../_static/astropy_logo.ico"/>
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="FISSPy 0.7 documentation" href="../../index.html"/>
+        <link rel="up" title="FISSPy" href="../../code/fisspy.html"/>
+        <link rel="next" title="cm" href="fisspy.cm.html"/>
+        <link rel="prev" title="FISSPy" href="../../code/fisspy.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> FISSPy
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../code/index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../code/fisspy.html">FISSPy</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../../code/fisspy.html#module-fisspy">fisspy Package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="../../code/fisspy.html#id1">FISSPy</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="../../code/fisspy.html#functions">Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../code/fisspy.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../code/analysis.html">FISSPy Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../code/image.html">FISSPy Image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../code/io.html">FISSPy Io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../code/map.html">FISSPy Map</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">FISSPy</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../code/index.html">API Reference</a> &raquo;</li>
+      
+          <li><a href="../../code/fisspy.html">FISSPy</a> &raquo;</li>
+      
+    <li>ffmpeg</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../../_sources/generated/api/fisspy.ffmpeg.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="ffmpeg">
+<h1>ffmpeg<a class="headerlink" href="#ffmpeg" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="fisspy.ffmpeg">
+<code class="descclassname">fisspy.</code><code class="descname">ffmpeg</code><span class="sig-paren">(</span><em>imgstr</em>, <em>fpsi</em>, <em>output='video.mp4'</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/fisspy/makevideo.html#ffmpeg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fisspy.ffmpeg" title="Permalink to this definition">¶</a></dt>
+<dd><p>FFMPEG</p>
+<p>Using the ffmpeg make a video file from images.
+The output video is saved at the same location of images.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>imgstr</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><em>list</em></a>) &#8211; List of image filename.</li>
+<li><strong>fpsi</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; Integer value of Frame Per Second.</li>
+<li><strong>output</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; <dl class="docutils">
+<dt>Output video name with extension.</dt>
+<dd><ul class="first last">
+<li>Default is video.mp4</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>video</strong> &#8211; Video file.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">file</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">fisspy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fisspy</span><span class="o">.</span><span class="n">ffmpeg</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="s1">&#39;fiss.mp4&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="fisspy.cm.html" class="btn btn-neutral float-right" title="cm" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../../code/fisspy.html" class="btn btn-neutral" title="FISSPy" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, SNU Solar Group.
+      Last updated on 22 Feb 2017.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
