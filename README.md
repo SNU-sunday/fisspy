@@ -1,7 +1,6 @@
 # FISSpy
 
-[![Build Status](https://ci.appveyor.com/api/projects/status/xow461iejsjvp9vl?svg=true)](https://ci.appveyor.com/project/kailia0209/fisspy)
-
+[![Build Status](https://ci.appveyor.com/api/projects/status/xow461iejsjvp9vl?svg=true)](https://ci.appveyor.com/project/kailia0209/fisspy)[![Documentation Status](https://readthedocs.org/projects/fisspy/badge/?version=latest)](http://fisspy.readthedocs.io/en/latest/?badge=latest)
 The Python Package for data analysis of the [NST/FISS instrument](http://fiss.snu.ac.kr/)
 
 Installation
