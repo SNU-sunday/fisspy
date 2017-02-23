@@ -19,7 +19,7 @@ from .base import rotation,rot_trans,rescale,rot
 from shutil import copy2
 import matplotlib.pyplot as plt
 import fisspy
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore
 from skimage.viewer.widgets.core import Slider, Button
 from sunpy.net import vso
 
