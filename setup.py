@@ -83,7 +83,7 @@ setup(name=PACKAGENAME,
                         'sunpy>=0.7.6'
                         'interpolation'
                         'statsmodels>=0.6.0'
-                        'pyqt=4.11'],
+                        'pyqt>=5.6'],
       extras_require=extras_require,
       provides=[PACKAGENAME],
       author=AUTHOR,
