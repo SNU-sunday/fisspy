@@ -1,7 +1,7 @@
 """FISSPy sample data files"""
 from __future__ import absolute_import
 
-from ._sample import sampledir, files, donwload_sample_data
+from ._sample import sampledir, files, download_sample_data
 import sys
 from os.path import isfile, join
 
