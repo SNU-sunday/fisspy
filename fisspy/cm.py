@@ -2,6 +2,7 @@ from __future__ import absolute_import, print_function, division
 
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
+import sys
 
 __author__ = "Juhyeong Kang "
 __email__ = "jhkang@astro.snu.ac.kr"
@@ -143,24 +144,7 @@ def cac(r=False):
         return LinearSegmentedColormap('mytables',cardic)
     return LinearSegmentedColormap('mytables',cadic)
 
-class cm():
-    """
-    Color Map for FISS instrument.
-    
-    The Returns variables are ha, ca, ha_r, ca_r \n
-    _r means the reverse color of each color maps.
-    
-    Notes
-    -----
-    This function is based on the IDL code LOADCT_CH.PRO written by J. Chae 
-        
-    Example
-    -------
-    >>> import fisspy
-    >>> plt.imshow(im,cmap=fisspy.cm.ha)
-    """
-    ha=hac()
-    ha_r=hac(r=True)
-    ca=cac()
-    ca_r=cac(r=True)
-    
+setattr(sys.modules[__name__],'ca',cac())
+setattr(sys.modules[__name__],'ca_r',cac(r=True))
+setattr(sys.modules[__name__],'ha',hac())
+setattr(sys.modules[__name__],'ha_r',hac(r=True))
