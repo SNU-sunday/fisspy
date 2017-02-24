@@ -18,17 +18,13 @@ Requirement Package:
 * [Interpolation](https://github.com/EconForge/interpolation.py)
 
 Recommand to install the python package manager [Anaconda](https://www.continuum.io/why-anaconda).
-If you install Anaconda then interpolation package can be easily downloaded.
 
-    conda install -c albop interpolation
 
-Next, Install the fisspy
+FISSPy package can be installed by grabing the latest version of FISSPy on the GitHub website.
 
     $ git clone https://github.com/SNU-sunday/fisspy.git
     $ cd fisspy
     $ python setup.py install
-
-then update your PYTHONPATH enviroment variable.
 
 Example
 -------
