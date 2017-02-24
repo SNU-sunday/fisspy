@@ -8,4 +8,5 @@ from os.path import isfile, join
 if isfile(join(sampledir, files[1])):
     setattr(sys.modules[__name__],'FISS_IMAGE',join(sampledir,files[1]))
 else:
-   download_sample_data() 
+    download_sample_data() 
+    setattr(sys.modules[__name__],'FISS_IMAGE',join(sampledir,files[1]))
