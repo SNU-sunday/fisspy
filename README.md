@@ -31,10 +31,8 @@ Next, Install the fisspy
 then update your PYTHONPATH enviroment variable.
 
 Example
-----------
-#### Raster & doppler map
-
-#### wavelet
+-------
+See the [Documents](http://fisspy.readthedocs.io/en/latest/)
 
 # Github Manual
 If you don't know how to use github, See this [simple manual](https://guides.github.com/activities/hello-world/).
