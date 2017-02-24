@@ -12,6 +12,8 @@ dependencies:
 - python=2.7*
 - scipy
 - scikit-image
+- suds-jurko
+- wcsaxes
 - pip:
     - sphinx-gallery
     - glymur
