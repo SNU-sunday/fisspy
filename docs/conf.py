@@ -58,12 +58,12 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'FISSPy'
-copyright = '2017, SNU Solar Group'
-author = 'SNU Solar Group'
+project = u'FISSPy'
+copyright = u'2017, SNU Solar Group'
+author = u'SNU Solar Group'
 
-version = '0.7'
-release = '0.7'
+version = u'0.7'
+release = u'0.7'
 
 language = None
 
@@ -83,7 +83,9 @@ todo_include_todos = True
 #
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
-
+html_favicon = "../logo/sun.ico"
+html_title = '{0} v{1}'.format(project,release)
+htmlhelp_basename = project + 'doc'
 
 # -- Options for HTMLHelp output ------------------------------------------
 
