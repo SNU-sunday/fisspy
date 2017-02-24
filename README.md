@@ -24,7 +24,9 @@ If you install Anaconda then interpolation package can be easily downloaded.
 
 Next, Install the fisspy
 
-    git clone https://github.com/SNU-sunday/FISS-PYTHON
+    $ git clone https://github.com/SNU-sunday/fisspy.git
+    $ cd fisspy
+    $ python setup.py install
 
 then update your PYTHONPATH enviroment variable.
 
