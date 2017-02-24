@@ -3,3 +3,4 @@ conda:
 
 python:
     setup_py_install: true
+    pip_install: true
