@@ -22,9 +22,9 @@ Recommand to install the python package manager [Anaconda](https://www.continuum
 
 FISSPy package can be installed by grabing the latest version of FISSPy on the GitHub website.
 
-    $ git clone https://github.com/SNU-sunday/fisspy.git
-    $ cd fisspy
-    $ python setup.py install
+    git clone https://github.com/SNU-sunday/fisspy.git
+    cd fisspy
+    python setup.py install
 
 Example
 -------
