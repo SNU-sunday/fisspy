@@ -15,5 +15,5 @@ __author__="SNU Solar Group"
 __version__="0.7"
 
 
-from fisspy.cm import cm
+import fisspy.cm
 from fisspy.makevideo import ffmpeg

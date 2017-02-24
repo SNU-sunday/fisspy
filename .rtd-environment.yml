@@ -1,0 +1,20 @@
+name: fisspy
+channels:
+    - astropy
+dependencies:
+- astropy
+- cython
+- matplotlib
+- astropy-helpers
+- numpy
+- patsy
+- pillow
+- python=2.7*
+- scipy
+- scikit-image
+- suds-jurko
+- wcsaxes
+- numba
+- pip:
+    - sphinx-gallery
+    - glymur

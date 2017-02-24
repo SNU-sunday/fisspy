@@ -19,7 +19,7 @@ from .base import rotation,rot_trans,rescale,rot
 from shutil import copy2
 import matplotlib.pyplot as plt
 import fisspy
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore
 from skimage.viewer.widgets.core import Slider, Button
 from sunpy.net import vso
 
@@ -730,7 +730,7 @@ def manual(fiss_file,sdo_file,smooth=False,**kwargs):
         
     def alignb():
         print('Align the fiss data, it takes some time.')
-        res=fiss_align_inform(fiss_file,**kwargs,pre_match_wcs=True)
+        res=fiss_align_inform(fiss_file,pre_match_wcs=True,**kwargs)
         del res
         
     root = fig.canvas.manager.window

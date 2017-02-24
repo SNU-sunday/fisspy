@@ -13,6 +13,7 @@ You can find the information of FISS instrument `here <http://fiss.snu.ac.kr/>`_
 .. toctree::
    :maxdepth: 2
 
+   install/index.rst
    code/index.rst
 
 
