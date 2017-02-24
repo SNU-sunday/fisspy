@@ -8,17 +8,6 @@ import ah_bootstrap
 from setuptools import setup, find_packages
 
 
-# -- Read the Docs Setup  -----------------------------------------------------
-
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-
-if on_rtd:
-    os.environ['HOME'] = '/home/docs/'
-    os.environ['SUNPY_CONFIGDIR'] = '/home/docs/'
-
-os.environ["MPLCONFIGDIR"]="."
-
-
 # Get some values from the setup.cfg
 try:
     from ConfigParser import ConfigParser
