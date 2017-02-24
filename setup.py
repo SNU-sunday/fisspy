@@ -56,10 +56,10 @@ setup(name=PACKAGENAME,
                         'astropy>=1.3',
                         'scipy',
                         'pandas>=0.12.0',
-                        'matplotlib>=2.0'
-                        'sunpy>=0.7.6'
-                        'interpolation'
-                        'statsmodels>=0.6.0'
+                        'matplotlib>=2.0',
+                        'sunpy>=0.7.6',
+                        'interpolation',
+                        'statsmodels>=0.6.0',
                         'pyqt>=5.6'],
       extras_require=extras_require,
       provides=[PACKAGENAME],
