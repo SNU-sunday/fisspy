@@ -730,7 +730,7 @@ def manual(fiss_file,sdo_file,smooth=False,**kwargs):
         
     def alignb():
         print('Align the fiss data, it takes some time.')
-        res=fiss_align_inform(fiss_file,**kwargs,pre_match_wcs=True)
+        res=fiss_align_inform(fiss_file,pre_match_wcs=True,**kwargs)
         del res
         
     root = fig.canvas.manager.window
