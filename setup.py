@@ -4,7 +4,6 @@ import glob
 import os
 import sys
 
-import ah_bootstrap
 from setuptools import setup, find_packages
 
 
@@ -27,7 +26,7 @@ URL = metadata.get('url', 'http://fiss.snu.ac.kr')
 LONG_DESCRIPTION = "FISSPy is the python packages to analysis the NST/FISS data file."
 
 # VERSION should be PEP386 compatible (http://www.python.org/dev/peps/pep-0386)
-VERSION = '0.7'
+VERSION = '0.7.2'
 
 # Indicates if this version is a release version
 RELEASE = 'dev' not in VERSION
