@@ -7,9 +7,11 @@ dependencies:
 - matplotlib
 - astropy-helpers
 - numpy
+- patsy
 - pillow
 - python=2.7*
 - scipy
+- sunpy
 - pip:
     - sphinx-gallery
     - glymur
