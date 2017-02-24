@@ -76,7 +76,7 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
         import fisspy
         import fisspy.data.sample
         data=read.frame(fisspy.data.sample.FISS_IMAGE,xmax=True)
-        plt.imshow(data[:,75],cmap=fisspy.cm.ca,origin='lower')
+        plt.imshow(data[:,75],cmap=fisspy.cm.ca,origin='lower',interpolation='bilinear')
         plt.title(r"NST/FISS 8542 $\AA$ Spectrogram")
         plt.show()
     """
@@ -173,7 +173,7 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
         ncoeff=ncoeff1
     
     spec=np.dot(data[:,:,0:ncoeff],pdata[0:ncoeff,:])
-    spec*=10.**data[:,:,ncoeff][:,:,np.newaxis]
+    spec*=10.**data[:,:,ncoeff][:,:,None]
     return spec
 
 def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True,
@@ -233,7 +233,7 @@ def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True,
         import fisspy
         import fisspy.data.sample
         raster=read.raster(fisspy.data.sample.FISS_IMAGE,0.3)
-        plt.imshow(raster,cmap=fisspy.cm.ha,origin='lower')
+        plt.imshow(raster,cmap=fisspy.cm.ca,origin='lower',interpolation='bilinear')
         plt.title(r"NST/FISS 8542+0.3 $\AA$ Spectrogram")
         plt.show()
     """
@@ -264,7 +264,7 @@ def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True,
     if hw < abs(dldw)/2.:
         hw=abs(dldw)/2.
     
-    s=np.abs(wl-wv[:,np.newaxis])<=hw
+    s=np.abs(wl-wv[:,None])<=hw
     sp=frame(file,x1,x2,pca=pca,smooth=smooth,**kwargs)
     leng=s.sum(1)
     if num == 1:
@@ -317,7 +317,7 @@ def getheader(file,pca=True):
         for i in header0['comment']:
             sori = i.split('=')
             if len(sori) == 1:
-                skv = sori[0].split(maxsplit=1)
+                skv = sori[0].split(None,1)
                 if len(skv) == 1:
                     pass
                 else:
@@ -330,9 +330,9 @@ def getheader(file,pca=True):
                 except:
                     item=svc[0].split("'")
                     if len(item) != 1:
-                        item=item[1].split(maxsplit=0)[0]
+                        item=item[1].split(None,0)[0]
                     else:
-                        item=item[0].split(maxsplit=0)[0]
+                        item=item[0].split(None,0)[0]
                 try:
                     if item-int(svc[0]) == 0:
                         item=int(item)

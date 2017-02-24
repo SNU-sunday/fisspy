@@ -1,4 +1,6 @@
 FISSPy Map
 ==================
 
-.. automodapi:: fisspy.map
+.. module:: fisspy.map
+
+.. automodapi:: fisspy.map.map_factory
