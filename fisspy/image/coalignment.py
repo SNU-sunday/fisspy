@@ -19,7 +19,13 @@ from .base import rotation,rot_trans,rescale,rot
 from shutil import copy2
 import matplotlib.pyplot as plt
 import fisspy
-from PyQt5 import QtGui, QtCore
+try:
+    from PyQt5 import QtCore
+    from PyQt5.QtWidgets import *
+    from fisspy.vc import qtvc
+except:
+    from PyQt4 import QtCore
+    from PyQt4.QtGui import *
 from skimage.viewer.widgets.core import Slider, Button
 from sunpy.net import vso
 
@@ -639,6 +645,7 @@ def manual(fiss_file,sdo_file,smooth=False,**kwargs):
     filename=kwargs.get('filename',time[:10]+'_'+wavelen[:4])
     dirname=kwargs.get('dirname',os.getcwd()+os.sep)
     alpha=kwargs.pop('alpha',0.5)
+    interp=kwargs.pop('interpolation','bilinear')
     
     sdo=fits.getdata(sdo_file)
     sdoh=fits.getheader(sdo_file)
@@ -670,12 +677,13 @@ def manual(fiss_file,sdo_file,smooth=False,**kwargs):
     fig, ax=plt.subplots(1,1,figsize=(10,8))
     
     
-    im1 = ax.imshow(fiss,cmap=fisspy.cm.ha,origin='lower',extent=extent1)
+    im1 = ax.imshow(fiss,cmap=fisspy.cm.ha,origin='lower',extent=extent1,
+                    interpolation=interp)
     ax.set_xlabel('X (arcsec)')
     ax.set_ylabel('Y (arcsec)')
     ax.set_title(time)
     im2 = ax.imshow(sdo1,origin='lower',cmap=plt.cm.Greys,
-                    alpha=alpha,extent=extent)
+                    alpha=alpha,extent=extent,interpolation=interp)
     im2.set_clim(0.6,1)
     
     def update_angle():
@@ -734,8 +742,8 @@ def manual(fiss_file,sdo_file,smooth=False,**kwargs):
         del res
         
     root = fig.canvas.manager.window
-    panel = QtGui.QWidget()
-    vbox = QtGui.QVBoxLayout(panel)
+    panel = QWidget()
+    vbox = QVBoxLayout(panel)
     major_angle=Slider('Angle',0,359,0,value_type='int')
     minor_angle=Slider('Sub-Angle',0,1.,0,value_type='float')
     xsld=Slider('X',-150,150,0,value_type='int')
@@ -756,20 +764,20 @@ def manual(fiss_file,sdo_file,smooth=False,**kwargs):
     vbox.addWidget(ysld)
     vbox.addWidget(ysubsld)
     
-    hbox = QtGui.QHBoxLayout(panel)
+    hbox = QHBoxLayout(panel)
     printbt=Button('print',printb)
     savebt=Button('save',saveb)
     alignbt=Button('run align',alignb)
     hbox.addWidget(printbt)
     hbox.addWidget(savebt)
     
-    vbox2 = QtGui.QVBoxLayout(panel)
+    vbox2 = QVBoxLayout(panel)
     vbox2.addWidget(alignbt)
     
     vbox.addLayout(hbox)
     vbox.addLayout(vbox2)
     panel.setLayout(vbox)
-    dock = QtGui.QDockWidget("Align Control Panel", root)
+    dock = QDockWidget("Align Control Panel", root)
     root.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
     dock.setWidget(panel)
         
