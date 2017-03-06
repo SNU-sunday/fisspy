@@ -1,6 +1,6 @@
 # FISSpy
 
-[![Downloads](https://img.shields.io/pypi/dm/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Latest Version](https://img.shields.io/pypi/v/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Build Status](https://ci.appveyor.com/api/projects/status/xow461iejsjvp9vl?svg=true)](https://ci.appveyor.com/project/kailia0209/fisspy) [![Documentation Status](https://readthedocs.org/projects/fisspy/badge/?version=latest)](http://fisspy.readthedocs.io/en/latest/?badge=latest)
+[![Downloads](https://img.shields.io/pypi/dm/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Latest Version](https://img.shields.io/pypi/v/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Build Status](https://ci.appveyor.com/api/projects/status/xow461iejsjvp9vl?svg=true)](https://ci.appveyor.com/project/kailia0209/fisspy) [![Documentation Status](https://readthedocs.org/projects/fisspy/badge/?version=stable)](http://fisspy.readthedocs.io/en/stable/?badge=stable)
 
 The Python Package for data analysis of the [NST/FISS instrument](http://fiss.snu.ac.kr/)
 
