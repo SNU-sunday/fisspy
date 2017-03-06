@@ -8,7 +8,7 @@ __email__ = "jhkang@astro.snu.ac.kr"
 
 from inspect import isclass
 from PyQt5 import QtGui, QtPrintSupport, QtWidgets
-from sys import modules
+from sys import modules, version_info
 
 def class_name (module):
     """Extract class name of a given module."""
@@ -31,11 +31,17 @@ def VCQtGui(qt):
           VCQtPrintSupport: qt.QtPrintSupport,
           }
     
-    for cls_list, module in info.iteritems():
-        for cls_name in cls_list:
-            cls=getattr(module,cls_name)
-            setattr(qt.QtGui,cls_name,cls)
-    
+    if version_info[0] == 2:
+        for cls_list, module in info.iteritems():
+            for cls_name in cls_list:
+                cls=getattr(module,cls_name)
+                setattr(qt.QtGui,cls_name,cls)
+                
+    elif version_info[0] >= 3:
+        for cls_list, module in info.items():
+            for cls_name in cls_list:
+                cls=getattr(module,cls_name)
+                setattr(qt.QtGui,cls_name,cls)
 
 VCQtGui(modules['PyQt5'])
 
