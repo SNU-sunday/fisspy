@@ -80,7 +80,9 @@ def fissmap(data0,header0,pre_align=False,**kwargs):
         header['crota2']=0
         
     fmap=sunpy.map.Map(data,header)
-    fmap.plot_settings['title']=fmap.name.replace('Angstrom','$\AA$')
+    fmap.plot_settings['title']=fmap.name.replace('Angstrom','')
+    fmap.plot_settings['title']=fmap.plot_settings['title'].replace('6562.8',r'H$\alpha$')
+    fmap.plot_settings['title']=fmap.plot_settings['title'].replace('8542','Ca II')
     interp=kwargs.pop('interpolation','bilinear')
     fmap.plot_settings['interpolation']=interp
     clim=kwargs.pop('clim',False)

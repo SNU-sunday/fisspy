@@ -26,7 +26,7 @@ URL = metadata.get('url', 'http://fiss.snu.ac.kr')
 LONG_DESCRIPTION = "FISSPy is the python packages to analyze the NST/FISS data file."
 
 # VERSION should be PEP386 compatible (http://www.python.org/dev/peps/pep-0386)
-VERSION = '0.7.3'
+VERSION = '0.7.4'
 
 # Indicates if this version is a release version
 RELEASE = 'dev' not in VERSION
@@ -50,7 +50,8 @@ setup(name=PACKAGENAME,
                         'matplotlib>=2.0',
                         'sunpy>=0.7.6',
                         'interpolation',
-                        'statsmodels>=0.6.0'],
+                        'statsmodels>=0.6.0',
+			'suds-jurko'],
       extras_require=extras_require,
       provides=[PACKAGENAME],
       author=AUTHOR,
