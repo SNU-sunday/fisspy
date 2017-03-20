@@ -6,10 +6,9 @@ FISSPy is a Python package for analysis NST/FISS data.
 FISSPy is python 2.7.x and 3.5.x compatible. 
 The supporting python version depends on the required packages.
 
-.. note:: It doesn't support the newest python 3.6.x,
-          since the required pacakges `sunpy <http:://sunpy.org>`_ and 
-          `interpolation <https://github.com/econforge/interpolation.py>`_ 
-          don't support the python 3.6.x.\n
+.. note:: The FISSPy package highly depends on the `sunpy <http:://sunpy.org>`_
+          and the `interpolation <https://github.com/econforge/interpolation.py>`_ packages.
+          
           
 If you are new to Python or FISSPy then follow this guid to setup the scientific python and FISSPy. 
 If you already familiar with the scientific Python, and hope to contribute or to improve to FISSPy 
@@ -32,18 +31,8 @@ be uploaded on the Anaconda package server soon.
 To install the Anaconda package manager, visit 
 `Anaconda install website <https://www.continuum.io/downloads>`_. You just download the installer
 which is fit to your operating system and follow the instruction of installer. Note in the anaconda
-website there are two option the Python, 2.7 or 3.x versions. Since some of packages do not support
-Python 3.6 or Python 3.5, we recommend that users install the Python **2.7** or **3.5**, not 3.6. However 
-if all of the required packages will be supported on the latest Python 3.x version of Anaconda, we
-also support FISSPy on the latest Python 3.x.
-
-.. warning::
-    FISSPy do not support on Python 3.6 version yet.\n
-    Please download the Python 2.7 or 3.5 versions.
-
-.. note::
-    If `sunpy <http:://sunpy.org>`_ and `interpolation <https://github.com/econforge/interpolation.py>`_
-    can be supported on Python 3.6 version, above warning and this note boxes will be removed.
+website there are two option the Python, 2.7 or 3.x versions. Since the Python **2.7** is supported 
+until 2020, we recommend that users install the latest Python **3.x** rather than **2.7**.
 
 .. note::
     The Python 2.7 is scheduled to be deprecated in 2020.
@@ -63,7 +52,18 @@ To install FISSPy::
 This `pip` command accesses to `PyPI (Python Package Index) <https://pypi.python.org/pypi>`_
 website, and installs the FISSPy on your computuer automatically, also the required packages.
 
+.. note::
+    If the requried packages are not installed, then you should install the requried packages manually.
+
 **Done! Congraturation!!**
+
+Required Packages list
+######################
+
+* `sunpy <http:://sunpy.org>`_
+* `interpolation <https://github.com/econforge/interpolation.py>`_
+* suds-jurko
+
 
 Upgrading FISSPy to a New Version
 #################################
