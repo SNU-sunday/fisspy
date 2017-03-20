@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 
 import numpy as np
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap,ListedColormap
 import sys
 
 __author__ = "Juhyeong Kang "
@@ -144,7 +144,16 @@ def cac(r=False):
         return LinearSegmentedColormap('mytables',cardic)
     return LinearSegmentedColormap('mytables',cadic)
 
+
+def allwhite():
+    return ListedColormap(['w','w','w'])
+
+def allblack():
+    return ListedColormap(['k','k','k'])
+
 setattr(sys.modules[__name__],'ca',cac())
 setattr(sys.modules[__name__],'ca_r',cac(r=True))
 setattr(sys.modules[__name__],'ha',hac())
 setattr(sys.modules[__name__],'ha_r',hac(r=True))
+setattr(sys.modules[__name__],'allwhite',allwhite())
+setattr(sys.modules[__name__],'allblack',allblack())
