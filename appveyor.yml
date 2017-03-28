@@ -30,6 +30,7 @@ install:
     - "powershell ci-helpers/appveyor/install-miniconda.ps1"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "activate test"
+    - cmd: conda install scipy==0.18.1
 
 # Not a .NET project, we build SunPy in the install step instead
 build: false
