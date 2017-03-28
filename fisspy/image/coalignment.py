@@ -524,7 +524,7 @@ def update_fiss_header(file,alignfile,**kwargs):
     
     if not sil:
         print("The align information is updated to the header, "
-              "and new fts file is locate %s the file name is '*_cm.fts'"%dirname)
+              "and new fts file is locate %s the file name is 'mFISS*.fts'"%dirname)
     
 
 def match_wcs(fiss_file,smooth=False,**kwargs):
@@ -623,16 +623,18 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
     manual(fiss_file,sdo_file,**kwargs)
     return
 
-def manual(fiss_file,sdo_file,smooth=False,**kwargs):
+def manual(fiss_file,sdo_file,smooth=True,**kwargs):
     """
     Align the FISS data with the SDO maually.
     """
     ref_frame=kwargs.get('ref_frame',len(fiss_file)//2)
     fiss_file0=fiss_file[ref_frame]
-    wvref=kwargs.get('wvref',-4)
+    wvref=kwargs.get('wvref',4)
     reflect=kwargs.get('reflect',True)
-    
+    level0=kwargs.pop('level',73.9)
+    perc=kwargs.pop('percent',True)
     fiss0=raster(fiss_file0,wvref,0.05,smooth=smooth,**kwargs)
+    
     if reflect:
         fiss0=fiss0.T
         
@@ -661,6 +663,8 @@ def manual(fiss_file,sdo_file,smooth=False,**kwargs):
     reshape=(np.array(fiss0.shape)*ratio).astype(int)
     
     fiss=rescale(fiss0,reshape)
+    if perc:
+        level=level0*fiss.max()/100
     
     ny0,nx0=fiss0.shape
     ny,nx=fiss.shape
@@ -676,24 +680,22 @@ def manual(fiss_file,sdo_file,smooth=False,**kwargs):
              (y0-yc)*scdelt,(y0-yc+ny)*scdelt]
     fig, ax=plt.subplots(1,1,figsize=(10,8))
     
-    
-    im1 = ax.imshow(fiss,cmap=fisspy.cm.ha,origin='lower',extent=extent1,
-                    interpolation=interp)
+    global im1
+    im1 = ax.contour(fiss,colors='r',origin='lower',extent=extent1,
+                    interpolation=interp,levels=[level])
     ax.set_xlabel('X (arcsec)')
     ax.set_ylabel('Y (arcsec)')
     ax.set_title(time)
-    im2 = ax.imshow(sdo1,origin='lower',cmap=plt.cm.Greys,
-                    alpha=alpha,extent=extent,interpolation=interp)
+    im2 = ax.imshow(sdo1,origin='lower',cmap=plt.cm.Greys_r,
+                    extent=extent,interpolation=interp)
     im2.set_clim(0.6,1)
     
-    def update_angle():
+    def update():
+        global im1
         angle = np.deg2rad(major_angle.val+minor_angle.val)
+        level=levsld.val*fiss.max()/100
         tmp=rot(fiss0,angle)
         img=rescale(tmp,reshape)
-        im1.set_data(img)
-        fig.canvas.draw_idle()
-    
-    def update_xy():
         x=x0+xsld.val
         y=y0+ysld.val
         x1=x0+xsld.val+xsubsld.val
@@ -707,10 +709,12 @@ def manual(fiss_file,sdo_file,smooth=False,**kwargs):
         sdo2=sdor[y-150+reshape[0]//2:y+150+reshape[0]//2,
                   x-150+reshape[1]//2:x+150+reshape[1]//2]
         im2.set_data(sdo2)
-        im1.set_extent(extent1)
+        im1.collections[0].remove()
+        im1=ax.contour(img,colors='r',origin='lower',
+                       extent=extent1,interpolation=interp,levels=[level])
         im2.set_extent(extent)
         fig.canvas.draw_idle()
-        
+    
     def printb():
         px=x0+xsld.val+xsubsld.val-xc-0.5
         py=y0+ysld.val+ysubsld.val-yc-0.5
@@ -744,19 +748,22 @@ def manual(fiss_file,sdo_file,smooth=False,**kwargs):
     root = fig.canvas.manager.window
     panel = QWidget()
     vbox = QVBoxLayout(panel)
+    levsld=Slider('Contour Level',0,100,level0,value_type='float')
     major_angle=Slider('Angle',0,359,0,value_type='int')
     minor_angle=Slider('Sub-Angle',0,1.,0,value_type='float')
     xsld=Slider('X',-150,150,0,value_type='int')
     ysld=Slider('Y',-150,150,0,value_type='int')
     xsubsld=Slider('Sub-X',-1.,1.,0,value_type='float')
     ysubsld=Slider('Sub-Y',-1.,1.,0,value_type='float')
-    major_angle.slider.valueChanged.connect(update_angle)
-    minor_angle.slider.valueChanged.connect(update_angle)
-    xsld.slider.valueChanged.connect(update_xy)
-    xsubsld.slider.valueChanged.connect(update_xy)
-    ysld.slider.valueChanged.connect(update_xy)
-    ysubsld.slider.valueChanged.connect(update_xy)
+    levsld.slider.valueChanged.connect(update)
+    major_angle.slider.valueChanged.connect(update)
+    minor_angle.slider.valueChanged.connect(update)
+    xsld.slider.valueChanged.connect(update)
+    xsubsld.slider.valueChanged.connect(update)
+    ysld.slider.valueChanged.connect(update)
+    ysubsld.slider.valueChanged.connect(update)
     
+    vbox.addWidget(levsld)
     vbox.addWidget(major_angle)
     vbox.addWidget(minor_angle)
     vbox.addWidget(xsld)
