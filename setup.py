@@ -20,7 +20,7 @@ PACKAGENAME = metadata.get('package_name', 'packagename')
 DESCRIPTION = metadata.get('description', 'FISSPy: Python for GST/FISS instruement')
 AUTHOR = metadata.get('author', '')
 AUTHOR_EMAIL = metadata.get('author_email', '')
-LICENSE = metadata.get('license', 'BSD')
+LICENSE = metadata.get('license', 'BSD-2')
 URL = metadata.get('url', 'http://fiss.snu.ac.kr')
 
 LONG_DESCRIPTION = "FISSPy is the python packages to analyze the GST/FISS data file."
@@ -48,6 +48,8 @@ setup(name=PACKAGENAME,
                         'pandas>=0.12.0',
                         'matplotlib>=2.0',
                         'sunpy>=0.7.6',
+			'scipy',
+			'interpolation',
                         'statsmodels>=0.6.0',
 			'suds-jurko'],
       extras_require=extras_require,
