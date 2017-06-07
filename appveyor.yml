@@ -19,6 +19,8 @@ environment:
         NUMPY_VERSION: "stable"
       - PYTHON_VERSION: "3.5"
         NUMPY_VERSION: "stable"
+      - PYTHON_VERSION: "3.6"
+        NUMPY_VERSION: "stable"
 matrix:
     fast_finish: true
 
@@ -30,7 +32,6 @@ install:
     - "powershell ci-helpers/appveyor/install-miniconda.ps1"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "activate test"
-    - cmd: conda install scipy==0.18.1
 
 # Not a .NET project, we build SunPy in the install step instead
 build: false

@@ -145,7 +145,7 @@ def map_header(header0):
     
     header['instrume']='FISS'
     header['detector']='FISS'
-    header['telescop']='NST'
+    header['telescop']='GST'
     header['wavelnth']=float(header['wavelen'])
     header['waveunit']='Angstrom'
     header['date-obs']=header['date']

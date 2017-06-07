@@ -2,7 +2,7 @@
 Installation
 ============
 
-FISSPy is a Python package for analysis NST/FISS data. 
+FISSPy is a Python package for analysis GST/FISS data. 
 FISSPy is python 2.7.x and 3.5.x compatible. 
 The supporting python version depends on the required packages.
 

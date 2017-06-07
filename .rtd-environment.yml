@@ -15,6 +15,7 @@ dependencies:
 - suds-jurko
 - wcsaxes
 - numba
+- interpolation
 - pip:
     - sphinx-gallery
     - glymur
