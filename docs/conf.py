@@ -62,8 +62,8 @@ project = u'FISSPy'
 copyright = u'2017, SNU Solar Group'
 author = u'SNU Solar Group'
 
-version = u'0.7'
-release = u'0.7'
+version = u'0.8.1'
+release = u'0.8.1'
 
 language = None
 
