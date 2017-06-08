@@ -7,7 +7,7 @@ An free and open-source Python package for `GST/FISS <http://fiss.snu.ac.kr>`_ i
 Links
 -----
 Homepage : http://fiss.snu.ac.kr \n
-Documentation : http://docs.fisspy.
+Documentation : http://fisspy.readthedocs.io/en/stable/
 """
 
 from __future__ import absolute_import
@@ -15,6 +15,6 @@ __author__="SNU Solar Group"
 __version__="0.8.1"
 
 
-import fisspy.cm
+from fisspy import cm
 from fisspy.makevideo import ffmpeg
 from .image.interactive import IFDV

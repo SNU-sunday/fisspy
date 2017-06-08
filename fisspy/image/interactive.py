@@ -164,34 +164,34 @@ def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
     
     Plot the FISS data Interactively.
     
-    The 1st panel is a raster image of CamA installed in GST/FISS.
-    The 2nd one is a raster image of CamB installed in GST/FISS.
+    The 1st panel is a raster image of CamA installed in GST/FISS.\n
+    The 2nd one is a raster image of CamB installed in GST/FISS.\n
     The 3rd one is an intensity profile of the specific chosen position in the
-    1st panel.
+    1st panel.\n
     The 4rd one is an intensity profile of the specific chosen position in the
-    2st panel.
+    2st panel.\n
     
     ---------------------------------
     * Pressing '1' key on the raster panels mark the position and plot 
-    the intensity profile.
+    the intensity profile.\n
     * Pressing '1' key on the intensity profile panels park the wavelength
-    and re-draw the raster images at that wavelength.
+    and re-draw the raster images at that wavelength.\n
     * Pressing '2' key print the information about the frame number, time,
-    position, wavelength of raster images, algined value of Cam B.
-    * Pressing '3' key play the movie. Also you can interact with this movie.
+    position, wavelength of raster images, algined value of Cam B.\n
+    * Pressing '3' key play the movie. Also you can interact with this movie.\n
     
     
     Parameters
     ----------
-    hlist : list (optional)
+    hlist : list
         The list of camera A data
         If not given, fdir must be given.
-    clist : list (optional)
+    clist : list
         The list of camera B data
         If not given, fdir must be given.
-    fdir : string (optional)
+    fdir : string
         The directory for fiss file stored.
-    smooth : bool (optional)
+    smooth : bool
         Apply the Savitzky-Golay Filter
     """
     
