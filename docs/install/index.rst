@@ -60,6 +60,11 @@ Also you can intsall FISSPy by using pip command(not recommended)::
 These two way install the FISSPy on your computuer automatically, also the required packages.
 
 .. note::
+    We recommend to remove the print function in the interpolation package. An example of the location of this:
+
+    ex ) Anaconda3/Lib/site-packages/interpolation/splines/multilinear.py
+
+.. note::
     If the requried packages are not installed, then you should install the requried packages manually.
 
 **Done! Congraturation!!**
