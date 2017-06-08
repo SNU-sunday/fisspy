@@ -12,7 +12,7 @@ __author__="Juhyeong Kang"
 __email__="jhkang@astro.snu.ac.kr"
 __date__="Nov 08 2016"
 
-def ffmpeg(imgstr,fpsi,output='video.mp4'):
+def ffmpeg(imglist,fpsi,output='video.mp4'):
     """
     FFMPEG
     
@@ -21,7 +21,7 @@ def ffmpeg(imgstr,fpsi,output='video.mp4'):
     
     Parameters
     ----------
-    imgstr : list
+    imglist : list
         List of image filename.
     fpsi   : int
         Integer value of Frame Per Second.
@@ -51,12 +51,12 @@ def ffmpeg(imgstr,fpsi,output='video.mp4'):
     else:
         codec=''
     
-    n=len(imgstr)
+    n=len(imglist)
     if n == 0:
         raise ValueError('Image list has no element!')
     
     fps=str(fpsi)
-    img=imread(imgstr[0])
+    img=imread(imglist[0])
     size=img.shape
     xsize=size[0]
     ysize=size[1]
@@ -68,14 +68,14 @@ def ffmpeg(imgstr,fpsi,output='video.mp4'):
     newname=np.char.add('_',newname.astype(str))
     newname=np.char.add(newname,'.png')
 
-    dir=os.path.dirname(imgstr[0])
+    dir=os.path.dirname(imglist[0])
     if bool(dir):
         os.chdir(dir)
     else:
         os.chdir(os.getcwd())
 
     f=open('img_list.tmp','w')
-    for i in imgstr:
+    for i in imglist:
         f.write("file '"+os.path.basename(i)+"'\n")
     f.close()
     
@@ -84,3 +84,4 @@ def ffmpeg(imgstr,fpsi,output='video.mp4'):
          ' -c:v '+codec+' -pix_fmt yuv420p -q:v 1 -y '+output)
 
     os.system(cmd)
+    os.remove('img_list.tmp')

@@ -17,16 +17,16 @@ conf.read(['setup.cfg'])
 metadata = dict(conf.items('metadata'))
 
 PACKAGENAME = metadata.get('package_name', 'packagename')
-DESCRIPTION = metadata.get('description', 'FISSPy: Python for NST/FISS instruement')
+DESCRIPTION = metadata.get('description', 'FISSPy: Python for GST/FISS instruement')
 AUTHOR = metadata.get('author', '')
 AUTHOR_EMAIL = metadata.get('author_email', '')
-LICENSE = metadata.get('license', 'BSD')
+LICENSE = metadata.get('license', 'BSD-2')
 URL = metadata.get('url', 'http://fiss.snu.ac.kr')
 
-LONG_DESCRIPTION = "FISSPy is the python packages to analyze the NST/FISS data file."
+LONG_DESCRIPTION = "FISSPy is the python packages to analyze the GST/FISS data file."
 
 # VERSION should be PEP386 compatible (http://www.python.org/dev/peps/pep-0386)
-VERSION = '0.7.5'
+VERSION = '0.8.1'
 
 # Indicates if this version is a release version
 RELEASE = 'dev' not in VERSION
@@ -45,11 +45,11 @@ setup(name=PACKAGENAME,
       packages=find_packages(exclude=['docs']),
       install_requires=['numpy>1.7.1',
                         'astropy>=1.3',
-                        'scipy==0.18.1',
                         'pandas>=0.12.0',
                         'matplotlib>=2.0',
                         'sunpy>=0.7.6',
-                        'interpolation',
+			'scipy>=0.18.0',
+			'interpolation>=0.1.6',
                         'statsmodels>=0.6.0',
 			'suds-jurko'],
       extras_require=extras_require,

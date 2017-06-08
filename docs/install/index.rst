@@ -2,7 +2,7 @@
 Installation
 ============
 
-FISSPy is a Python package for analysis NST/FISS data. 
+FISSPy is a Python package for analysis GST/FISS data. 
 FISSPy is python 2.7.x and 3.5.x compatible. 
 The supporting python version depends on the required packages.
 
@@ -45,12 +45,24 @@ Installing FISSPy
 If you did not download Anaconda package manager, we recommend that see the :ref:`Anaconda installation 
 <mail-install>` section first.
 
-To install FISSPy::
+To install FISSPy, you first configure the conda cahnnel::
 
+    conda config --add channels conda-forge
+
+then install FISSPy::    
+    
+    conda install -c kailia0209 fisspy
+    
+Also you can intsall FISSPy by using pip command(not recommended)::
+    
     pip install fisspy
 
-This `pip` command accesses to `PyPI (Python Package Index) <https://pypi.python.org/pypi>`_
-website, and installs the FISSPy on your computuer automatically, also the required packages.
+These two way install the FISSPy on your computuer automatically, also the required packages.
+
+.. note::
+    We recommend to remove the print function in the interpolation package. An example of the location of this:
+
+    ex ) Anaconda3/Lib/site-packages/interpolation/splines/multilinear.py
 
 .. note::
     If the requried packages are not installed, then you should install the requried packages manually.
@@ -60,15 +72,23 @@ website, and installs the FISSPy on your computuer automatically, also the requi
 Required Packages list
 ######################
 
-* `sunpy <http:://sunpy.org>`_
+* `astropy <http://www.astropy.org/>`_
 * `interpolation <https://github.com/econforge/interpolation.py>`_
+* `numpy <http://www.numpy.org/>`_
+* `pandas <http://pandas.pydata.org/>`_
+* `scipy <https://www.scipy.org/>`_
+* `statsmodels <http://www.statsmodels.org/stable/index.html>`_
 * suds-jurko
-
+* `sunpy <http:://sunpy.org>`_
 
 Upgrading FISSPy to a New Version
 #################################
 
 If there is a new version of released FISSPy you can upgrade to the latest version like this::
+
+    conda update fisspy
+    
+or::    
 
     pip install fisspy -U
 

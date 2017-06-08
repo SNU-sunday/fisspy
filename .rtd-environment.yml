@@ -1,6 +1,8 @@
 name: fisspy
 channels:
     - astropy
+    - conda-forge
+    - albop
 dependencies:
 - astropy
 - cython
@@ -15,6 +17,7 @@ dependencies:
 - suds-jurko
 - wcsaxes
 - numba
+- interpolation
 - pip:
     - sphinx-gallery
     - glymur

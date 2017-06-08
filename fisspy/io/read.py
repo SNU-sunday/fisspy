@@ -77,7 +77,7 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
         import fisspy.data.sample
         data=read.frame(fisspy.data.sample.FISS_IMAGE,xmax=True)
         plt.imshow(data[:,75],cmap=fisspy.cm.ca,origin='lower',interpolation='bilinear')
-        plt.title(r"NST/FISS 8542 $\AA$ Spectrogram")
+        plt.title(r"GST/FISS 8542 $\AA$ Spectrogram")
         plt.show()
     """
     if not file:
@@ -234,7 +234,7 @@ def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True,
         import fisspy.data.sample
         raster=read.raster(fisspy.data.sample.FISS_IMAGE,0.3)
         plt.imshow(raster,cmap=fisspy.cm.ca,origin='lower',interpolation='bilinear')
-        plt.title(r"NST/FISS 8542+0.3 $\AA$ Spectrogram")
+        plt.title(r"GST/FISS 8542+0.3 $\AA$ Spectrogram")
         plt.show()
     """
     header=getheader(file,pca)

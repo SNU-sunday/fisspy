@@ -7,7 +7,7 @@ FISSPy Documentation
 ====================
 
 Welcome to the Documantation site of the FISSPy.
-FISSPy is a free and open-source NST/FISS data analysis code pacakge for Python.
+FISSPy is a free and open-source GST/FISS data analysis code pacakge for Python.
 You can find the information of FISS instrument `here <http://fiss.snu.ac.kr/>`_.
 
 .. toctree::
