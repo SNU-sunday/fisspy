@@ -12,7 +12,7 @@ Documentation : http://fisspy.readthedocs.io/en/stable/
 
 from __future__ import absolute_import
 __author__="SNU Solar Group"
-__version__="0.8.1"
+__version__="0.8.2"
 
 
 from fisspy import cm

@@ -13,7 +13,6 @@ from fisspy.image.coalignment import alignoffset
 from fisspy.image.base import shift
 import fisspy
 from matplotlib.widgets import Cursor
-from time import sleep
 
 try:
     from PyQt5 import QtCore
@@ -90,10 +89,24 @@ def play():
         tsld.val=i
         plt.pause(0.01)
 
+def pauseb():
+    global pau
+    pau ^= True
+    if not pau:
+        fig.canvas.start_event_loop(-1)
+        print('=====')
+        print('pause')
+        print('=====')
+    else:
+        fig.canvas.stop_event_loop()
+        print('======')
+        print('resume')
+        print('======')
+        
         
 def mark(event):
-    if event.key == '1':
-        global x, y, scath, scatc, hwvr, cwvr, hwline, cwline
+    if event.key == 'q':
+        global x, y, scath, scatc, hwvr, cwvr, hwline, cwline, pau
         axp=event.inaxes._position.get_points()[0,0]
         ayp=event.inaxes._position.get_points()[0,1]
         if axp < 0.5:
@@ -141,8 +154,8 @@ def mark(event):
             cmisld.val=crmin
             cmasld.val=crmax
 
-        fig.canvas.draw_idle()
-    elif event.key == '2':
+        
+    elif event.key == 'w':
         print('=============================================')
         print('Frame number = %i'%tsld.val)
         print('Time = %s'%hh['date'])
@@ -152,10 +165,23 @@ def mark(event):
         print('Y = %i pix'%y)
         print('Align value of Cam B, x = %.2f, y = %.2f'%(cshx[0],cshy[0]))
         print('=============================================')
-    elif event.key == '3':
+    elif event.key == 'e':
         for i in range(len(hflist)):
             tsld.val=i
             plt.pause(0.01)
+    elif event.key == ' ' and not pau:
+        pau ^=True
+        fig.canvas.start_event_loop(-1)
+        print('=====')
+        print('pause')
+        print('=====')
+    elif event.key == ' ' and pau:
+        pau ^=True
+        fig.canvas.stop_event_loop() 
+        print('======')
+        print('resume')
+        print('======')
+    fig.canvas.draw_idle()
         
 #%% IFDV
 def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
@@ -164,34 +190,34 @@ def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
     
     Plot the FISS data Interactively.
     
-    The 1st panel is a raster image of CamA installed in GST/FISS.\n
-    The 2nd one is a raster image of CamB installed in GST/FISS.\n
+    The 1st panel is a raster image of CamA installed in GST/FISS.
+    The 2nd one is a raster image of CamB installed in GST/FISS.
     The 3rd one is an intensity profile of the specific chosen position in the
-    1st panel.\n
+    1st panel.
     The 4rd one is an intensity profile of the specific chosen position in the
-    2st panel.\n
+    2st panel.
     
     ---------------------------------
-    * Pressing '1' key on the raster panels mark the position and plot 
-    the intensity profile.\n
-    * Pressing '1' key on the intensity profile panels park the wavelength
-    and re-draw the raster images at that wavelength.\n
-    * Pressing '2' key print the information about the frame number, time,
-    position, wavelength of raster images, algined value of Cam B.\n
-    * Pressing '3' key play the movie. Also you can interact with this movie.\n
+    * Pressing 'q' key on the raster panels mark the position and plot 
+    the intensity profile.
+    * Pressing 'q' key on the intensity profile panels park the wavelength
+    and re-draw the raster images at that wavelength.
+    * Pressing 'w' key print the information about the frame number, time,
+    position, wavelength of raster images, algined value of Cam B.
+    * Pressing 'e' key play the movie. Also you can interact with this movie.
     
     
     Parameters
     ----------
-    hlist : list
+    hlist : list (optional)
         The list of camera A data
         If not given, fdir must be given.
-    clist : list
+    clist : list (optional)
         The list of camera B data
         If not given, fdir must be given.
-    fdir : string
+    fdir : string (optional)
         The directory for fiss file stored.
-    smooth : bool
+    smooth : bool (optional)
         Apply the Savitzky-Golay Filter
     """
     
@@ -208,7 +234,8 @@ def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
     fnum=0
     global hframe, cframe, cshy, cshx, imh, imc, p1, p2, ax11, ax12, hwv, cwv
     global ax21, ax22, hh, ch, fig, hmisld, hmasld, cmisld, cmasld
-    global tsld, hflist, cflist, sm, hwvr, cwvr
+    global tsld, hflist, cflist, sm, hwvr, cwvr, pau, x, y
+    pau=False
     hflist=hlist
     cflist=clist
     sm=smooth
@@ -255,8 +282,10 @@ def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
     
     hwv=wvcalib(hh)
     cwv=wvcalib(ch)
-    hi=hframe[hh['naxis3']//2,hh['naxis2']//2]
-    ci=cframe[ch['naxis3']//2,ch['naxis2']//2]
+    x=hh['naxis2']//2
+    y=hh['naxis3']//2
+    hi=hframe[y,x]
+    ci=cframe[y,x]
     p1=ax21.plot(hwv,hi,color='k')
     p2=ax22.plot(cwv,ci,color='k')
     
@@ -289,7 +318,8 @@ def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
     hmasld=Slider('CamA Color Range Max',500,10000,hrmax,value_type='int')
     cmisld=Slider('CamB Color Range Min',500,10000,crmin,value_type='int')
     cmasld=Slider('CamB Color Range Max',500,10000,crmax,value_type='int')
-    playb=Button('Play (3)',play)
+    playb=Button('Play (e)',play)
+    psb=Button('Pause (space bar)',pauseb)
     
     tsld.slider.valueChanged.connect(time)
     hmisld.slider.valueChanged.connect(colorhrange)
@@ -299,6 +329,7 @@ def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
     
     hbox0.addWidget(tsld)
     hbox0.addWidget(playb)
+    hbox0.addWidget(psb)
     hbox.addWidget(hmisld)
     hbox.addWidget(hmasld)
     hbox2.addWidget(cmisld)
@@ -309,6 +340,7 @@ def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
     vbox.addLayout(hbox2)
     panel.setLayout(vbox)
 
-    dock = QDockWidget("Time and Color Range Control (1=mark, 2=print, 3=play, g=grid, s=save, h=home, p=move, o=zoom)",root)
+    dock = QDockWidget("Time and Color Range Control (q=mark, w=print, e=play, space-bar=pause/resume g=grid, s=save, h=home, p=move, o=zoom)",root)
     root.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock)
     dock.setWidget(panel)
+    plt.show()
