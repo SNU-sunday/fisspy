@@ -13,7 +13,7 @@ import os
 
 __all__ = ['frame', 'pca_read', 'raster', 'getheader']
 
-def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
+def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=True,
           smooth=False,**kwargs):
     """Read the FISS fts file.
 
