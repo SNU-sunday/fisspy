@@ -58,7 +58,7 @@ def colorcrange():
     fig.canvas.draw_idle()
 
 def time():
-    global hframe, cframe, hh, ch, htitle, ctitle
+    global hframe, cframe, hh, ch, htitle, ctitle, imh, imc, ax11, ax12, scath, scatc
     hframe=frame(hflist[tsld.val],xmax=True,smooth=sm)
     hh=getheader(hflist[tsld.val])
     cframe=frame(cflist[tsld.val],xmax=True,smooth=sm)
@@ -66,8 +66,24 @@ def time():
     hraster=raster(hframe,hh,wv=hwvr)
     craster=raster(cframe,ch,wv=cwvr)
     craster1=shift(craster,(-cshy,-cshx))
-    imh.set_data(hraster)
-    imc.set_data(craster1)
+    x11=ax11.get_xlim()
+    y11=ax11.get_ylim()
+    x12=ax12.get_xlim()
+    y12=ax12.get_ylim()
+    ax11.remove()
+    ax12.remove()
+    ax11=fig.add_subplot(141)
+    ax12=fig.add_subplot(142)
+    imh=ax11.imshow(hraster,origin='lower',cmap=fisspy.cm.ha)
+    imc=ax12.imshow(craster1,origin='lower',cmap=fisspy.cm.ca)
+    ax11.set_xlim(x11)
+    ax11.set_ylim(y11)
+    ax12.set_xlim(x12)
+    ax12.set_ylim(y12)
+    ax11.set_xlabel('X position [pixel]')
+    ax12.set_xlabel('X position [pixel]')
+    ax11.set_ylabel('Y position [pixel]')
+    ax12.set_ylabel('Y position [pixel]')
     htitle='GST/FISS '+hh['wavelen']+r' $\AA$ '+hh['date']
     ctitle='GST/FISS '+ch['wavelen']+r' $\AA$ '+ch['date']
     hi=hframe[y,x]
@@ -81,6 +97,13 @@ def time():
     ax21.set_title(htitle)
     ax22.set_title(ctitle)
     
+    try:
+        scath.remove()
+        scatc.remove()
+    except:
+        pass
+    scath=ax11.scatter(x,y,marker='+',color='b')
+    scatc=ax12.scatter(x,y,marker='+',color='b')
     fig.canvas.draw_idle()
     
     
@@ -93,15 +116,15 @@ def pauseb():
     global pau
     pau ^= True
     if not pau:
-        fig.canvas.start_event_loop(-1)
         print('=====')
         print('pause')
         print('=====')
+        fig.canvas.start_event_loop(-1)
     else:
-        fig.canvas.stop_event_loop()
         print('======')
         print('resume')
         print('======')
+        fig.canvas.stop_event_loop()
         
         
 def mark(event):
@@ -135,6 +158,7 @@ def mark(event):
             hraster=raster(hframe,hh,hwvr)
             hwline=ax21.vlines(hwvr,0,1e4,linestyles='--',color='r')
             imh.set_data(hraster)
+
             hrmin=hraster.min()
             hrmax=hraster.max()
             hmasld.val=hrmax
@@ -170,17 +194,22 @@ def mark(event):
             tsld.val=i
             plt.pause(0.01)
     elif event.key == ' ' and not pau:
-        pau ^=True
-        fig.canvas.start_event_loop(-1)
         print('=====')
         print('pause')
         print('=====')
-    elif event.key == ' ' and pau:
         pau ^=True
-        fig.canvas.stop_event_loop() 
+        fig.canvas.start_event_loop(-1)
+    elif event.key == ' ' and pau:
         print('======')
         print('resume')
         print('======')
+        pau ^=True
+        fig.canvas.stop_event_loop() 
+    elif event.key == 'h':
+        ax11.set_xlim(0,hh['naxis3'])
+        ax11.set_ylim(0,hh['naxis2'])
+        ax12.set_xlim(0,ch['naxis3'])
+        ax12.set_ylim(0,ch['naxis2'])
     fig.canvas.draw_idle()
         
 #%% IFDV
@@ -282,8 +311,8 @@ def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
     
     hwv=wvcalib(hh)
     cwv=wvcalib(ch)
-    x=hh['naxis2']//2
-    y=hh['naxis3']//2
+    x=50
+    y=50
     hi=hframe[y,x]
     ci=cframe[y,x]
     p1=ax21.plot(hwv,hi,color='k')
