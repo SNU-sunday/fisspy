@@ -76,6 +76,8 @@ def time():
     ax12=fig.add_subplot(142)
     imh=ax11.imshow(hraster,origin='lower',cmap=fisspy.cm.ha)
     imc=ax12.imshow(craster1,origin='lower',cmap=fisspy.cm.ca)
+    imh.set_clim(hmisld.val,hmasld.val)
+    imc.set_clim(cmisld.val,cmasld.val)
     ax11.set_xlim(x11)
     ax11.set_ylim(y11)
     ax12.set_xlim(x12)
