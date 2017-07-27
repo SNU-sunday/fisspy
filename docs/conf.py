@@ -42,7 +42,10 @@ rst_epilog += """
 """ 
 automodapi_toctreedirnm = 'generated/api'
 
-extensions.remove('astropy_helpers.sphinx.ext.numpydoc')
+try:
+	extensions.remove('astropy_helpers.sphinx.ext.numpydoc')
+except:
+  	extensions.remove('astropy_helpers.extern.numpydoc')
 extensions.append('sphinx.ext.napoleon')
 
 # Add any paths that contain templates here, relative to this directory.
@@ -62,8 +65,8 @@ project = u'FISSPy'
 copyright = u'2017, SNU Solar Group'
 author = u'SNU Solar Group'
 
-version = u'0.8.2'
-release = u'0.8.2'
+version = u'0.8.4'
+release = u'0.8.4'
 
 language = None
 
