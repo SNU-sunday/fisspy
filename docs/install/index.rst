@@ -86,7 +86,7 @@ Upgrading FISSPy to a New Version
 
 If there is a new version of released FISSPy you can upgrade to the latest version like this::
 
-    conda update fisspy
+    conda update -c kailia0209 fisspy
     
 or::    
 
