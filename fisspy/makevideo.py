@@ -61,7 +61,7 @@ def ffmpeg(imglist,fpsi,output='video.mp4'):
     xsize=size[0]
     ysize=size[1]
     
-    if np.mod(xsize*ysize,2) != 0:
+    if bool(np.mod(xsize,2)+np.mod(ysize,2)):
         raise ValueError("The size of the image shuld be even numbers.")
     
     newname=np.arange(n)

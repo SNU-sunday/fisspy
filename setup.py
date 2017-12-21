@@ -23,10 +23,10 @@ AUTHOR_EMAIL = metadata.get('author_email', '')
 LICENSE = metadata.get('license', 'BSD-2')
 URL = metadata.get('url', 'http://fiss.snu.ac.kr')
 
-LONG_DESCRIPTION = "FISSPy is the python packages to analyze the GST/FISS data file."
+LONG_DESCRIPTION = "FISSPy is the python package to analyze the GST/FISS data file."
 
 # VERSION should be PEP386 compatible (http://www.python.org/dev/peps/pep-0386)
-VERSION = '0.8.4'
+VERSION = '0.8.41'
 
 # Indicates if this version is a release version
 RELEASE = 'dev' not in VERSION

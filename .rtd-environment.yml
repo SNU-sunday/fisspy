@@ -11,7 +11,7 @@ dependencies:
 - numpy
 - patsy
 - pillow
-- python=2.7*
+- python=3.6*
 - scipy
 - scikit-image
 - suds-jurko

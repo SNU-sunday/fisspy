@@ -5,7 +5,7 @@ from fisspy.image.base import rot
 import fisspy
 import astropy.units as u
 import sunpy.map
-from sunpy.physics.differential_rotation import rot_hpc
+from .solar_rotation import rot_hpc
 
 __author__="Juhyeong Kang"
 __email__="jhkang@astro.snu.ac.kr"

@@ -1,8 +1,8 @@
 # FISSpy
 
-[![Downloads](https://img.shields.io/pypi/dm/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Latest Version](https://img.shields.io/pypi/v/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Build Status](https://ci.appveyor.com/api/projects/status/xow461iejsjvp9vl?svg=true)](https://ci.appveyor.com/project/kailia0209/fisspy) [![Documentation Status](https://readthedocs.org/projects/fisspy/badge/?version=stable)](http://fisspy.readthedocs.io/en/stable/?badge=stable) [![Anaconda-Server Badge](https://anaconda.org/kailia0209/fisspy/badges/version.svg)](https://anaconda.org/kailia0209/fisspy) [![Anaconda-Server Badge](https://anaconda.org/kailia0209/fisspy/badges/license.svg)](https://anaconda.org/kailia0209/fisspy) [![Anaconda-Server Badge](https://anaconda.org/kailia0209/fisspy/badges/downloads.svg)](https://anaconda.org/kailia0209/fisspy)
+[![Latest Version](https://img.shields.io/pypi/v/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Build Status](https://ci.appveyor.com/api/projects/status/xow461iejsjvp9vl?svg=true)](https://ci.appveyor.com/project/kailia0209/fisspy) [![Anaconda-Server Badge](https://anaconda.org/kailia0209/fisspy/badges/version.svg)](https://anaconda.org/kailia0209/fisspy) [![Anaconda-Server Badge](https://anaconda.org/kailia0209/fisspy/badges/downloads.svg)](https://anaconda.org/kailia0209/fisspy)
 
-The Python Package for data analysis of the [NST/FISS instrument](http://fiss.snu.ac.kr/)
+The Python Package for data analysis of the [GST/FISS instrument](http://fiss.snu.ac.kr/)
 
 Installation
 ------------
