@@ -10,7 +10,7 @@ from scipy.fftpack import ifft2,fft2
 import numpy as np
 from fisspy.io.read import getheader,raster
 from astropy.time import Time
-from sunpy.physics.differential_rotation import rot_hpc
+from fisspy.map.solar_rotation import rot_hpc
 import astropy.units as u
 from astropy.io import fits
 from time import clock
