@@ -12,8 +12,10 @@ __email__ = "jhkang@astro.snu.ac.kr"
 import numpy as np
 from interpolation.splines import LinearSpline
 from astropy.constants import c
+from fisspy.io.read import frame
 
-__all__ = ['wavecalib', 'lambdameter','LOS_velocity']
+__all__ = ['wavecalib', 'lambdameter', 'LOS_velocity',
+           'sp_av', 'sp_med']
 
 def wavecalib(band,profile,method=True):
     """
@@ -271,19 +273,27 @@ def LOS_velocity(wv,data,hw=0.01,band=False):
     >>> mask = np.abs(wv) < 1
     >>> losv = LOS_velocity(wv[mask],data[:,:,mask],hw=0.03,band='6562')
     """
-    if not band:
+    if not band :
         raise ValueError("Please insert the parameter band (str)")
         
     wc, intc =  lambdameter(wv,data,hw,wvinput=True)
     
-    if band=='6562':
+    if band == '6562' :
         return wc*c.to('km/s').value/6562.817
-    elif band=='8542':
+    elif band == '8542' :
         return wc*c.to('km/s').value/8542.09
-    elif band=='5890':
+    elif band == '5890' :
         return wc*c.to('km/s').value/5890.9399
-    elif band=='5434':
+    elif band == '5434' :
         return wc*c.to('km/s').value/5434.3398
     else:
         raise ValueError("Value of band must be one among"
                          "'6562', '8542', '5890', '5434'")
+        
+def sp_av(file) :
+    a = frame(file, xmax = True)
+    return a.mean(axis = 1)
+
+def sp_med(file) :
+    a = frame(file, xmax = True)
+    return np.median(a, axis = 1)
