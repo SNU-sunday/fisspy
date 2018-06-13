@@ -29,7 +29,7 @@ except:
 from skimage.viewer.widgets.core import Slider, Button
 from sunpy.net import vso
 
-__all__ = ['alignoffset', 'fiss_align_inform','match_wcs','manual']
+__all__ = ['alignoffset', 'fiss_align_inform','match_wcs','manual','fiss_align']
 
 def alignoffset(image0,template0):
     """
@@ -789,3 +789,16 @@ def manual(fiss_file,sdo_file,smooth=True,**kwargs):
     dock.setWidget(panel)
         
     plt.show()
+
+
+def fiss_align(data,header,missing=0):
+    
+    
+    
+    xmargin=header['margin2']
+    ymargin=header['margin3']
+    img=rot(data, header['crota2'], header['crpix2'],
+            header['crpix3'], header['shift2'], header['shift3'],
+             header['margin2'], header['margin3'])
+    
+    return img
