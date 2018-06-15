@@ -143,8 +143,6 @@ def fiss_align_inform(file,smooth=False,**kwargs):
         The list of fts file.
     dirname : (optional) str
         The directory name for saving the npz data.
-        The the last string elements must be the directory seperation
-        ex) dirname='D:\\the\\greatest\\scientist\\kang\\'
         If False, the dirname is the present working directory.
     filename : (optional) str
         The file name for saving the npz data.
@@ -199,15 +197,14 @@ def fiss_align_inform(file,smooth=False,**kwargs):
     Notes
     -----
     This code is based on the IDL code FISS_ALIGN_DATA.PRO written by J. Chae 2015
-    
-    The dirname must be have the directory seperation.
+
     
     Example
     -------
     >>> from glob import glob
     >>> from fisspy.image import coalignment
     >>> file=glob('*_A1_c.fts')
-    >>> dirname='D:\\im\\so\\hot\\'
+    >>> dirname='D:\\im\\so\\hot'
     >>> coalignment.fiss_align_inform(file,dirname=dirname,sil=False)
     
     """
@@ -222,7 +219,7 @@ def fiss_align_inform(file,smooth=False,**kwargs):
     ref_frame=kwargs.pop('ref_frame',n//2)
     wvref=kwargs.pop('wvref',-4)
     save=kwargs.pop('save',True)
-    dirname=kwargs.pop('dirname',os.getcwd()+os.sep)
+    dirname=kwargs.pop('dirname',os.getcwd())
     
     
     hlist=[getheader(i) for i in file]
@@ -330,7 +327,7 @@ def fiss_align_inform(file,smooth=False,**kwargs):
         print('end loop')
     result=dict(xc=xc,yc=yc,angle=angle,dt=dtmin,dx=dx,dy=dy)
     if save:
-        filename2=dirname+filename
+        filename2=os.path.join(dirname, filename)
         if not pre_match_wcs:
             if not sil:
                 print('You select the no pre_match_wcs')
@@ -504,7 +501,7 @@ def update_fiss_header(file,alignfile,**kwargs):
     odirname=os.path.dirname(file[0])
     if not odirname:
         odirname=os.getcwd()
-    dirname=odirname+os.sep+'match'
+    dirname = os.path.join(odirname, 'match')
     
     try:
         os.mkdir(dirname)
@@ -513,12 +510,12 @@ def update_fiss_header(file,alignfile,**kwargs):
     
     for i,oname in enumerate(file):
         name='m'+os.path.basename(oname)
-        fits.writeto(dirname+os.sep+name,data[i],fissh[i])
+        fits.writeto(os.path.join(dirname, name),data[i],fissh[i])
     try:
         pfilelist=[i['pfile'] for i in fissh]
         pfileset=set(pfilelist)
         for i in pfileset:
-            copy2(odirname+os.sep+i,dirname+os.sep+i)
+            copy2(os.path.join(odirname, i),os.path.join(dirname,i))
     except:
         pass
     
@@ -540,8 +537,7 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
         If False, then download the HMI data on the VSO site.
     dirname : (optional) str
         The directory name for saving the npz data.
-        The the last string elements must be the directory seperation.
-        ex) dirname='D:\\the\\greatest\\scientist\\kang\\'
+
         If False, the dirname is the present working directory.
     filename : (optional) str
         The file name for saving the npz data.
@@ -552,7 +548,6 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
         Default is True.
     sdo_path : (optional) str
         The directory name for saving the HMI data.
-        The the last string elements must be the directory seperation.
     method : (optioinal) bool
         If True, then manually match the wcs.
         If False, you have a no choice to this yet. kkk.
@@ -576,17 +571,14 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
     wcsy : float
         The y-axis value of image center in WCS arcesec unit.
     
-    Notes
-    -----
-    The dirname and sdo_path must be have the directory seperation.
     
     Example
     -------
     >>> from glob import glob
     >>> from fisspy.image import coalignment
     >>> file=glob('*_A1_c.fts')
-    >>> dirname='D:\\im\\so\\hot\\'
-    >>> sdo_path='D:\\im\\sdo\\path\\'
+    >>> dirname='D:\\im\\so\\hot'
+    >>> sdo_path='D:\\im\\sdo\\path'
     >>> coalignment.match_wcs(file,dirname=dirname,sil=False,
                               sdo_path=sdo_path)
     
@@ -596,7 +588,7 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
     fiss_file0=fiss_file[ref_frame]
     sdo_file=kwargs.pop('sdo_file',False)
     sil=kwargs.get('sil',False)
-    sdo_path=kwargs.pop('sdo_path',os.getcwd()+os.sep)
+    sdo_path=kwargs.pop('sdo_path',os.getcwd())
     
     if not sdo_file:
         h=getheader(fiss_file0)
@@ -616,7 +608,8 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
         res=vc.query(hmi)
         if not sil:
             print('Download the SDO/HMI file')
-        sdo_file=(vc.get(res,path=sdo_path+'{file}',methods=('URL-FILE','URL')).wait())
+        sdo_file=(vc.get(res,path=os.path.join(sdo_path, '{file}'),
+                         methods=('URL-FILE','URL')).wait())
         sdo_file=sdo_file[0]
         if not sil:
             print('SDO/HMI file name is %s'%sdo_file)
@@ -645,7 +638,7 @@ def manual(fiss_file,sdo_file,smooth=True,**kwargs):
     wavelen=fissh['wavelen']
     
     filename=kwargs.get('filename',time[:10]+'_'+wavelen[:4])
-    dirname=kwargs.get('dirname',os.getcwd()+os.sep)
+    dirname=kwargs.get('dirname',os.getcwd())
     alpha=kwargs.pop('alpha',0.5)
     interp=kwargs.pop('interpolation','bilinear')
     
@@ -728,7 +721,7 @@ def manual(fiss_file,sdo_file,smooth=True,**kwargs):
         print('========================================')
         
     def saveb():
-        filename2=dirname+filename+'_match_wcs.npz'
+        filename2=os.path.join(dirname, filename+'_match_wcs.npz')
         
         px=x0+xsld.val+xsubsld.val-xc-0.5
         py=y0+ysld.val+ysubsld.val-yc-0.5

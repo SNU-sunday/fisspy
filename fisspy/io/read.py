@@ -11,9 +11,9 @@ from scipy.signal import savgol_filter
 import numpy as np
 import os
 
-__all__ = ['frame', 'pca_read', 'raster', 'getheader']
+__all__ = ['frame', 'pca_read', 'raster', 'getheader', 'frame2raster']
 
-def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=True,
+def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
           smooth=False,**kwargs):
     """Read the FISS fts file.
 
@@ -92,7 +92,7 @@ def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=True,
     except:
         pca=False
     
-    if xmax:
+    if xmax and not x2:
         x2=header['naxis3']
     elif not x2:
         x2=x1+1
@@ -156,24 +156,24 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     if not file:
         raise ValueError('Empty filename')
     if not x2:
-        x2=x1+1
+        x2 = x1+1
         
-    dir=os.path.dirname(file)
-    pfile=header['pfile']
+    dir = os.path.dirname(file)
+    pfile = header['pfile']
     
     if dir:
-        pfile=dir+os.sep+pfile
+        pfile = os.path.join(dir, pfile)
         
-    pdata=fits.getdata(pfile)
-    data=fits.getdata(file)[x1:x2]
-    ncoeff1=data.shape[2]-1
+    pdata = fits.getdata(pfile)
+    data = fits.getdata(file)[x1:x2]
+    ncoeff1 = data.shape[2]-1
     if not ncoeff:
-        ncoeff=ncoeff1
+        ncoeff = ncoeff1
     elif ncoeff > ncoeff1:
-        ncoeff=ncoeff1
+        ncoeff = ncoeff1
     
-    spec=np.dot(data[:,:,0:ncoeff],pdata[0:ncoeff,:])
-    spec*=10.**data[:,:,ncoeff][:,:,None]
+    spec = np.dot(data[:,:,0:ncoeff],pdata[0:ncoeff,:])
+    spec *= 10.**data[:,:,ncoeff][:,:,None]
     return spec
 
 def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True,
@@ -237,12 +237,12 @@ def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True,
         plt.title(r"GST/FISS 8542+0.3 $\AA$ Spectrogram")
         plt.show()
     """
-    header=getheader(file,pca)
-    nw=header['NAXIS1']
-    ny=header['NAXIS2']
-    nx=header['NAXIS3']
-    wc=header['CRPIX1']
-    dldw=header['CDELT1']
+    header = getheader(file,pca)
+    nw = header['NAXIS1']
+    ny = header['NAXIS2']
+    nx = header['NAXIS3']
+    wc = header['CRPIX1']
+    dldw = header['CDELT1']
     
     if not file:
         raise ValueError('Empty filename')
@@ -250,25 +250,25 @@ def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True,
         raise ValueError('x2 must be larger than x1+1')
     
     try:
-        num=wv.shape[0]    
+        num = wv.shape[0]    
     except:
-        num=1
-        wv=np.array([wv])
+        num = 1
+        wv = np.array([wv])
     
     if not x2:
-        x2=int(nx)
+        x2 = int(nx)
     if not y2:
-        y2=int(ny)
+        y2 = int(ny)
     
-    wl=(np.arange(nw)-wc)*dldw
+    wl = (np.arange(nw)-wc)*dldw
     if hw < abs(dldw)/2.:
-        hw=abs(dldw)/2.
+        hw = abs(dldw)/2.
     
-    s=np.abs(wl-wv[:,None])<=hw
-    sp=frame(file,x1,x2,pca=pca,smooth=smooth,**kwargs)
-    leng=s.sum(1)
+    s = np.abs(wl-wv[:,None])<=hw
+    sp = frame(file,x1,x2,pca=pca,smooth=smooth,**kwargs)
+    leng = s.sum(1)
     if num == 1:
-        img=sp[y1:y2,:,s[0,:]].sum(2)/leng[0]
+        img = sp[y1:y2,:,s[0,:]].sum(2)/leng[0]
         return img.reshape((y2-y1,x2-x1))
     else:
         img=np.array([sp[y1:y2,:,s[i,:]].sum(2)/leng[i] for i in range(num)])
@@ -305,13 +305,13 @@ def getheader(file,pca=True):
     >>> h['date']
     '2014-06-03T16:49:42'
     """
-    header0=fits.getheader(file)
+    header0 = fits.getheader(file)
     
-    pfile=header0.pop('pfile',False)
+    pfile = header0.pop('pfile',False)
     if not pfile:
         return header0
         
-    header=fits.Header()
+    header = fits.Header()
     if pca:
         header['pfile']=pfile
         for i in header0['comment']:
@@ -326,40 +326,40 @@ def getheader(file,pca=True):
                 key = sori[0]
                 svc = sori[1].split('/')
                 try:
-                    item=float(svc[0])
+                    item = float(svc[0])
                 except:
-                    item=svc[0].split("'")
+                    item = svc[0].split("'")
                     if len(item) != 1:
-                        item=item[1].split(None,0)[0]
+                        item = item[1].split(None,0)[0]
                     else:
-                        item=item[0].split(None,0)[0]
+                        item = item[0].split(None,0)[0]
                 try:
                     if item-int(svc[0]) == 0:
-                        item=int(item)
+                        item = int(item)
                 except:
                     pass
                 if len(svc) == 1:
-                    header[key]=item
+                    header[key] = item
                 else:
-                    header[key]=(item,svc[1])
+                    header[key] = (item,svc[1])
                     
-    header['simple']=True
+    header['simple'] = True
     alignl=header0.pop('alignl',-1)
     
     if alignl == 0:
         keys=['reflect','reffr','reffi','cdelt2','cdelt3','crota2',
               'crpix3','shift3','crpix2','shift2','margin2','margin3']
-        header['alignl']=(alignl,'Alignment level')
+        header['alignl'] = (alignl,'Alignment level')
         for i in keys:
-            header[i]=(header0[i],header0.comments[i])
-        header['history']=str(header0['history'])
+            header[i] = (header0[i],header0.comments[i])
+        header['history'] = str(header0['history'])
     if alignl == 1:
         keys=['reflect','reffr','reffi','cdelt2','cdelt3','crota1',
               'crota2','crpix3','crval3','shift3','crpix2','crval2',
               'shift2','margin2','margin3']
-        header['alignl']=(alignl,'Alignment level')
+        header['alignl'] = (alignl,'Alignment level')
         for i in keys:
-            header[i]=(header0[i],header0.comments[i])
-        header['history']=str(header0['history'])
+            header[i] = (header0[i],header0.comments[i])
+        header['history'] = str(header0['history'])
         
     return header
