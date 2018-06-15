@@ -785,13 +785,32 @@ def manual(fiss_file,sdo_file,smooth=True,**kwargs):
 
 
 def fiss_align(data,header,missing=0):
+    """
+    Align the FISS data. This alignment do not match the wcs information.
     
+    Parameters
+    ----------
+    data : array
+        2-dimensional array Data.
+    header : astropy.io.fits.Header
+        FTS file header. \n
+        It must contain the align information returned by fiss_aling_inform code.
+    missing : float
+        A missing value of the interpolation.
+        
+    Example
+    -------
+    >>> from fisspy.image.coalignment import fiss_align
+    >>> from fisspy.io.read import getheader, raster
+    >>> data = raster(file, 0.1)
+    >>> h = getheader(file)
+    >>> adata = fiss_align(data, h)
     
+    """
     
-    xmargin=header['margin2']
-    ymargin=header['margin3']
-    img=rot(data, header['crota2'], header['crpix2'],
-            header['crpix3'], header['shift2'], header['shift3'],
-             header['margin2'], header['margin3'])
+    img=rot(data, header['crota2'], header['crpix3'],
+            header['crpix2'], header['shift3'], header['shift2'],
+             header['margin3'], header['margin2'],
+             missing= missing)
     
     return img
