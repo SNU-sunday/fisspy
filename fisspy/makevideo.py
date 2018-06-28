@@ -7,7 +7,6 @@ from __future__ import absolute_import
 import numpy as np
 from matplotlib.pyplot import imread
 import os
-
 __author__="Juhyeong Kang"
 __email__="jhkang@astro.snu.ac.kr"
 __date__="Nov 08 2016"
@@ -41,7 +40,7 @@ def ffmpeg(imglist,fpsi,output='video.mp4'):
     """
     FFMPEG_BIN = "ffmpeg"
     
-    exten=output.split('.')[1]
+    exten=output.split('.')[-1]
     if exten == 'mp4':
         codec='libx264'
     elif exten == 'avi':
@@ -49,7 +48,7 @@ def ffmpeg(imglist,fpsi,output='video.mp4'):
     elif exten == 'mov':
         codec='mpeg4'
     else:
-        codec=''
+        ValueError('The given output extension is not supported !')
     
     n=len(imglist)
     if n == 0:
@@ -83,5 +82,6 @@ def ffmpeg(imglist,fpsi,output='video.mp4'):
          ' -r '+fps+' -f concat -i img_list.tmp'+
          ' -c:v '+codec+' -pix_fmt yuv420p -q:v 1 -y '+output)
 
-    os.system(cmd)
+    res = os.system(cmd)
     os.remove('img_list.tmp')
+    return res

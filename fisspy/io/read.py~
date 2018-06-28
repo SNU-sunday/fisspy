@@ -1,6 +1,5 @@
 """
 Read the FISS fts file and its header.
-
 """
 from __future__ import absolute_import, division
 
@@ -12,7 +11,7 @@ from scipy.signal import savgol_filter
 import numpy as np
 import os
 
-__all__ = ['frame', 'pca_read', 'raster', 'getheader']
+__all__ = ['frame', 'pca_read', 'raster', 'getheader', 'frame2raster']
 
 def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
           smooth=False,**kwargs):
@@ -364,4 +363,3 @@ def getheader(file,pca=True):
         header['history'] = str(header0['history'])
         
     return header
-

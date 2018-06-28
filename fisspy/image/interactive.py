@@ -215,7 +215,7 @@ def mark(event):
     fig.canvas.draw_idle()
         
 #%% IFDV
-def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
+def IFDV(lista=False, listb=False, fdir=False, smooth=False):
     """
     Interactive FISS Data Viewer
     
@@ -375,3 +375,8 @@ def IFDV(hlist=False,clist=False,fdir=False,smooth=False):
     root.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock)
     dock.setWidget(panel)
     plt.show()
+
+def IFRDDV (lista):
+    """
+    """
+    

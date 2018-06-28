@@ -6,19 +6,21 @@ from __future__ import absolute_import, print_function, division
 __author__ = "Juhyeong Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
-from scipy.fftpack import ifft2,fft2
+from scipy.fftpack import ifft2, fft2
 import numpy as np
-from fisspy.io.read import getheader,raster
+from fisspy.io.read import getheader, raster
 from astropy.time import Time
 from fisspy.map.solar_rotation import rot_hpc
 import astropy.units as u
 from astropy.io import fits
 from time import clock
 import os
-from .base import rotation,rot_trans,rescale,rot
+from .base import rotation, rot_trans, rescale, rot
 from shutil import copy2
 import matplotlib.pyplot as plt
 import fisspy
+from fisspy.image.base import shift
+from math import ceil
 try:
     from PyQt5 import QtCore
     from PyQt5.QtWidgets import *
@@ -31,7 +33,7 @@ from sunpy.net import vso
 
 __all__ = ['alignoffset', 'fiss_align_inform','match_wcs','manual','fiss_align']
 
-def alignoffset(image0,template0):
+def alignoffset(image0, template0, cor= None):
     """
     Align the two images
     
@@ -97,31 +99,31 @@ def alignoffset(image0,template0):
     #give the cross-correlation weight on the image center
     #to avoid the fast change the image by the granular motion or strong flow
     
-    cor=ifft2(ifft2(template*gauss)*fft2(image*gauss)).real
+    corr=ifft2(ifft2(template*gauss)*fft2(image*gauss)).real
 
     # calculate the cross-correlation values by using convolution theorem and 
     # DFT-IDFT relation
     
-    s=np.where((cor.T==cor.max(axis=(-1,-2))).T)
+    s=np.where((corr.T==corr.max(axis=(-1,-2))).T)
     x0=s[-1]-nx*(s[-1]>nx/2)
     y0=s[-2]-ny*(s[-2]>ny/2)
     
     if ndim==2:
         cc=np.empty((3,3))
-        cc[0,1]=cor[s[0]-1,s[1]]
-        cc[1,0]=cor[s[0],s[1]-1]
-        cc[1,1]=cor[s[0],s[1]]
-        cc[1,2]=cor[s[0],s[1]+1-nx]
-        cc[2,1]=cor[s[0]+1-ny,s[1]]
+        cc[0,1]=corr[s[0]-1,s[1]]
+        cc[1,0]=corr[s[0],s[1]-1]
+        cc[1,1]=corr[s[0],s[1]]
+        cc[1,2]=corr[s[0],s[1]+1-nx]
+        cc[2,1]=corr[s[0]+1-ny,s[1]]
         x1=0.5*(cc[1,0]-cc[1,2])/(cc[1,2]+cc[1,0]-2.*cc[1,1])
         y1=0.5*(cc[0,1]-cc[2,1])/(cc[2,1]+cc[0,1]-2.*cc[1,1])
     else:
         cc=np.empty((si[0],3,3))
-        cc[:,0,1]=cor[s[0],s[1]-1,s[2]]
-        cc[:,1,0]=cor[s[0],s[1],s[2]-1]
-        cc[:,1,1]=cor[s[0],s[1],s[2]]
-        cc[:,1,2]=cor[s[0],s[1],s[2]+1-nx]
-        cc[:,2,1]=cor[s[0],s[1]+1-ny,s[2]]
+        cc[:,0,1]=corr[s[0],s[1]-1,s[2]]
+        cc[:,1,0]=corr[s[0],s[1],s[2]-1]
+        cc[:,1,1]=corr[s[0],s[1],s[2]]
+        cc[:,1,2]=corr[s[0],s[1],s[2]+1-nx]
+        cc[:,2,1]=corr[s[0],s[1]+1-ny,s[2]]
         x1=0.5*(cc[:,1,0]-cc[:,1,2])/(cc[:,1,2]+cc[:,1,0]-2.*cc[:,1,1])
         y1=0.5*(cc[:,0,1]-cc[:,2,1])/(cc[:,2,1]+cc[:,0,1]-2.*cc[:,1,1])
 
@@ -129,7 +131,19 @@ def alignoffset(image0,template0):
     x=x0+x1
     y=y0+y1
     
-    return y, x
+    if cor:
+        img = shift(image, [-y, -x])
+        xx = np.arange(nx) + x
+        yy = np.arange(ny) + y
+        kx = np.logical_and(xx >= 0, xx <= nx - 1)
+        ky = np.logical_and(yy >= 0, yy <= ny - 1)
+        roi = np.logical_and(kx, ky[:,None])
+        cor=(img*template)[roi].mean()/np.sqrt((img[roi]**2).mean(0) *
+                      (template[roi]**2).mean(0))
+        return y, x, cor
+    else:
+        return y, x
+        
 
 
 def fiss_align_inform(file,smooth=False,**kwargs):
