@@ -25,6 +25,7 @@ class FISS_data_viewer(object):
         self.listA = listA
         self.listB = listB
         self.headerAs = read.getheader(self.listA[0])
+        self.headerBs = read.getheader(self.listB[0])
         self.date = self.headerAs['date'][:10]
         self.start = read.getheader(self.listA[0])['date']
         self.end = read.getheader(self.listA[-1])['date']
@@ -36,6 +37,8 @@ class FISS_data_viewer(object):
         self.minA = [None]
         self.minB = [None]
         self.telpos = self.headerAs['tel_xpos'] * 1e3 + self.headerAs['tel_ypos']
+        self.expT = self.headerAs['exptime']
+        self.expTB = self.headerBs['exptime']
         
     def IFDV (self):
         interactive.IFDV(lista= self.listA, listb= self.listB)
@@ -83,7 +86,23 @@ class FISS_data_viewer(object):
             self.maxA = [None]
             self.maxB = [None]
             
+        expT = ha['exptime']
+        expTB = hb['exptime']
         
+        if expT != self.expT:
+            self.expT = expT
+            self.minA = [False]
+            self.minB = [None]
+            self.maxA = [None]
+            self.maxB = [None]
+        
+        if expTB != self.expTB:
+            self.expTB = expTB
+            self.minA = [False]
+            self.minB = [None]
+            self.maxA = [None]
+            self.maxB = [None]
+            
         if self.wvA == '6562':
             self.filter_set = 1
             self.cmA = fisspy.cm.ha
