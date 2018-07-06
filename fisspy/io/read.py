@@ -12,7 +12,7 @@ from scipy.signal import savgol_filter
 import numpy as np
 import os
 
-__all__ = ['frame', 'pca_read', 'raster', 'getheader']
+__all__ = ['frame', 'pca_read', 'raster', 'getheader', 'frame2raster']
 
 def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
           smooth=False,**kwargs):
@@ -364,4 +364,32 @@ def getheader(file,pca=True):
         header['history'] = str(header0['history'])
         
     return header
+
+def frame2raster(frame, header, wv):
+    """
+    Make a raster image by using the frame data.
+    
+    Parameters
+    ----------
+    frame : ~numpy.ndarray
+        Data which is read from the fisspy.io.read.frame
+    header : astropy.io.fits.Header
+        FISS data header
+    wv : float or ~numpy.ndarray
+        Referenced wavelengths to draw raster image. It must be the one single float,
+        or 1D array
+        
+    Returns
+    -------
+    Raster : ~numpy.ndarray
+        Raster image at gieven wavelength.
+    """
+    nw = header['naxis1']
+    wc = header['crpix1']
+    dldw = header['cdelt1']
+    hw = 0.05
+    wl = (np.arange(nw) - wc)*dldw
+    s = np.abs(wl - wv) <= hw
+    img = frame[:, :, s].sum(2) / s.sum()
+    return img
 

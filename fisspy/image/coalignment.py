@@ -10,7 +10,9 @@ from scipy.fftpack import ifft2, fft2
 import numpy as np
 from fisspy.io.read import getheader, raster
 from astropy.time import Time
-from fisspy.map.solar_rotation import rot_hpc
+from sunpy.coordinates import SkyCoord, frames
+from sunpy.coordinates.ephemeris import get_earth
+from sunpy.physics.differential_rotation import solar_rotate_coordinate
 import astropy.units as u
 from astropy.io import fits
 from time import clock
@@ -29,7 +31,7 @@ except:
     from PyQt4 import QtCore
     from PyQt4.QtGui import *
 from skimage.viewer.widgets.core import Slider, Button
-from sunpy.net import vso
+from sunpy.net import Fido, attrs as a
 
 __all__ = ['alignoffset', 'fiss_align_inform','match_wcs','manual','fiss_align']
 
@@ -475,7 +477,13 @@ def update_fiss_header(file,alignfile,**kwargs):
         reffr=inform['reffr']
         for i,h in enumerate(fissh):
             if sol_rot:
-                wcsx, wcsy=rot_hpc(xref,yref,time[reffr],time[i])
+                refc = SkyCoord(xref, yref, obstime = time[reffr],
+                                observer= get_earth(time[reffr]),
+                                frame= frames.Helioprojective)
+                res = solar_rotate_coordinate(refc, time[i],
+                                              frame_time= 'synodic')
+                wcsx = res.Tx.value
+                wcsy = res.Ty.value
                 h['crval3']=(wcsx.value,
                             'Location of ref pixel x (arcsec)')
                 h['crval2']=(wcsy.value,
@@ -615,16 +623,15 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
         t2=Time(t2,format='jd')
         t1.format='isot'
         t2.format='isot'
-        hmi=(vso.attrs.Instrument('HMI') &
-             vso.attrs.Time(t1.value,t2.value) &
-             vso.attrs.Physobs('intensity'))
-        vc=vso.VSOClient()
-        res=vc.query(hmi)
+        hmi=(a.Time(t1.value,t2.value),
+             a.Instrument('HMI'),
+             a.vso.Physobs('intensity'))
+        res=Fido.search(hmi)
         if not sil:
             print('Download the SDO/HMI file')
-        sdo_file=(vc.get(res,path=os.path.join(sdo_path, '{file}'),
-                         methods=('URL-FILE','URL')).wait())
+        sdo_file=Fido.fetch(res,path=os.path.join(sdo_path, '{file}'))
         sdo_file=sdo_file[0]
+        
         if not sil:
             print('SDO/HMI file name is %s'%sdo_file)
     manual(fiss_file,sdo_file,**kwargs)

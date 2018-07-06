@@ -16,7 +16,17 @@ class FISS_data_viewer(object):
     """
     """
     
-    def __init__ (self, listA, listB):
+    def __init__ (self, listA= None, listB= None, fdir= None,
+                  interpolation= None, scale= 'log'):
+        
+        if not listA and not listB and not fdir:
+            ValueError('FISS file lists or fdir must be given.')
+        elif fdir:
+            listA = glob(join(fdir,'*A1*.fts'))
+            listB = glob(join(fdir,'*A1*.fts'))
+            listA.sort()
+            listB.sort()
+            
         if len(listA) != len(listB):
             ValueError('The given two list A and B must have' + 
                        'the same number of elements.')
@@ -39,6 +49,14 @@ class FISS_data_viewer(object):
         self.telpos = self.headerAs['tel_xpos'] * 1e3 + self.headerAs['tel_ypos']
         self.expT = self.headerAs['exptime']
         self.expTB = self.headerBs['exptime']
+        if not interpolation:
+            self.interp = 'bicubic'
+        if not scale:
+            self.scale = 'log'
+        else:
+            self.scale = scale
+        if scale != 'linear' or scale != 'log':
+            ValueError('Available scale is only linear and log')
         
     def IFDV (self):
         interactive.IFDV(lista= self.listA, listb= self.listB)
@@ -129,18 +147,30 @@ class FISS_data_viewer(object):
                               smooth= self.smooth)
         rasterB = read.raster(self.listB[fnum], self.wvsetB,
                               smooth= self.smooth)
-        
+        if self.scale == 'log':
+            rasterA = np.log(rasterA)
+            rasterB = np.log(rasterB)
         if not self.maxA[0] :
             maxA = rasterA.max(axis=(1,2))
             maxB = rasterB.max(axis=(1,2))
-            wh0A = rasterA <= 10
-            rasterA[wh0A] = 1e4
-            minA = rasterA.min(axis=(1,2))
-            rasterA[wh0A] = 0
-            wh0B = rasterB <= 10
-            rasterB[wh0B] = 1e4
-            minB = rasterB.min(axis=(1,2))
-            rasterB[wh0B] = 0
+            if self.scale == 'linear':
+                wh0A = rasterA <= 10
+                rasterA[wh0A] = 1e4
+                minA = rasterA.min(axis=(1,2))
+                rasterA[wh0A] = 0
+                wh0B = rasterB <= 10
+                rasterB[wh0B] = 1e4
+                minB = rasterB.min(axis=(1,2))
+                rasterB[wh0B] = 0
+            elif self.scale == 'log':
+                wh0A = rasterA <= 3
+                rasterA[wh0A] = 1e4
+                minA = rasterA.min(axis=(1,2))
+                rasterA[wh0A] = 0
+                wh0B = rasterB <= 3
+                rasterB[wh0B] = 1e4
+                minB = rasterB.min(axis=(1,2))
+                rasterB[wh0B] = 0
             self.minA = minA
             self.minB = minB
             self.maxA = maxA
@@ -202,10 +232,10 @@ class FISS_data_viewer(object):
             axlB[i].text(0.39, 0.25, r'%.1f $\AA$'%wvsetb[i],
                 fontsize= 12, weight= 'bold')
             imA[i] = axA[i].imshow(rasterA[i],
-               origin= 'lower', cmap = self.cmA)
+               origin= 'lower', cmap = self.cmA, interpolation= self.interp)
             imA[i].set_clim(minA[i], maxA[i])
             imB[i] = axB[i].imshow(rasterB[i],
-               origin= 'lower', cmap = self.cmB)
+               origin= 'lower', cmap = self.cmB, interpolation= self.interp)
             imB[i].set_clim(minB[i], maxB[i])
             axA[i].set_axis_off()
             axB[i].set_axis_off()
@@ -271,12 +301,66 @@ class FISS_data_viewer(object):
                               self.smooth)
         rasterB = read.raster(self.listB[fnum], self.wvsetB,
                               self.smooth)
+        ha = read.getheader(self.listA[fnum])
+        hb = read.getheader(self.listB[fnum])
+        
+        if self.scale == 'log':
+            rasterA = np.log(rasterA)
+            rasterB = np.log(rasterB)
+        
+        expT = ha['exptime']
+        expTB = hb['exptime']
+        
+        if expT != self.expT:
+            self.expT = expT
+            self.minA = [False]
+            self.minB = [None]
+            self.maxA = [None]
+            self.maxB = [None]
+        
+        if expTB != self.expTB:
+            self.expTB = expTB
+            self.minA = [False]
+            self.minB = [None]
+            self.maxA = [None]
+            self.maxB = [None]
         
         for i in range(self.nwvset):
             self.imA[i].set_data(rasterA[i])
             self.imB[i].set_data(rasterB[i])
+            
+        if not self.maxA[0] :
+            maxA = rasterA.max(axis=(1,2))
+            maxB = rasterB.max(axis=(1,2))
+            if self.scale == 'linear':
+                wh0A = rasterA <= 10
+                rasterA[wh0A] = 1e4
+                minA = rasterA.min(axis=(1,2))
+                rasterA[wh0A] = 0
+                wh0B = rasterB <= 10
+                rasterB[wh0B] = 1e4
+                minB = rasterB.min(axis=(1,2))
+                rasterB[wh0B] = 0
+            elif self.scale == 'log':
+                wh0A = rasterA <= 3
+                rasterA[wh0A] = 1e4
+                minA = rasterA.min(axis=(1,2))
+                rasterA[wh0A] = 0
+                wh0B = rasterB <= 3
+                rasterB[wh0B] = 1e4
+                minB = rasterB.min(axis=(1,2))
+                rasterB[wh0B] = 0
+            self.minA = minA
+            self.minB = minB
+            self.maxA = maxA
+            self.maxB = maxB
+            
+            for i in range(self.nwvset):
+                self.imA[i].set_clim(minA[i], maxA[i])
+                self.imB[i].set_clim(minB[i], maxB[i])
         
-        cdate = read.getheader(self.listA[fnum])['date']
+        
+        cdate = ha['date']
         dtfull = self.trange.dt.seconds
         dt = TimeRange(self.start, cdate).dt.seconds
         be = dt / dtfull
