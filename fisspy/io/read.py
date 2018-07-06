@@ -11,6 +11,7 @@ from astropy.io import fits
 from scipy.signal import savgol_filter
 import numpy as np
 import os
+from fisspy.analysis.doppler import simple_wvcalib
 
 __all__ = ['frame', 'pca_read', 'raster', 'getheader', 'frame2raster']
 
@@ -384,11 +385,8 @@ def frame2raster(frame, header, wv):
     Raster : ~numpy.ndarray
         Raster image at gieven wavelength.
     """
-    nw = header['naxis1']
-    wc = header['crpix1']
-    dldw = header['cdelt1']
     hw = 0.05
-    wl = (np.arange(nw) - wc)*dldw
+    wl = simple_wvcalib(header)
     s = np.abs(wl - wv) <= hw
     img = frame[:, :, s].sum(2) / s.sum()
     return img

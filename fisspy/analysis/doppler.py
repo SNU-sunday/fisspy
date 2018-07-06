@@ -14,7 +14,7 @@ from interpolation.splines import LinearSpline
 from astropy.constants import c
 from fisspy.io.read import frame
 
-__all__ = ['wavecalib', 'lambdameter', 'LOS_velocity',
+__all__ = ['wavecalib', 'simple_wvcalib', 'lambdameter', 'LOS_velocity',
            'sp_av', 'sp_med']
 
 def wavecalib(band,profile,method=True):
@@ -111,6 +111,12 @@ def wavecalib(band,profile,method=True):
     wavelength=(w-wc)*dldw
     
     return wavelength
+
+def simple_wvcalib(header):
+    nw = header['naxis1']
+    wc = header['crpix1']
+    dldw = header['cdelt1']
+    return (np.arange(nw) - wc)*dldw
 
 
 def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True):

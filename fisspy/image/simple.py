@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from fisspy.io import read
 import fisspy
+from fisspy.analysis.doppler import simple_wvcalib
 from sunpy.time import TimeRange
 from glob import glob
 from os.path import join, basename
