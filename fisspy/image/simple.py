@@ -60,7 +60,10 @@ class FISS_data_viewer(object):
             ValueError('Available scale is only linear and log')
         
     def IFDV (self):
-        interactive.IFDV(lista= self.listA, listb= self.listB)
+        from skimage.viewer.widgets.core import Slider, Button
+        from .coalignment import alignoffset
+        from .base import shift
+        interactive.IFDV(self)
         
     
     def image_set (self, fnum, wvseta= None, 
