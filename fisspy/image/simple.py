@@ -50,6 +50,7 @@ class FISS_data_viewer(object):
         self.telpos = self.headerAs['tel_xpos'] * 1e3 + self.headerAs['tel_ypos']
         self.expT = self.headerAs['exptime']
         self.expTB = self.headerBs['exptime']
+        self.fnum = 0
         if not interpolation:
             self.interp = 'bicubic'
         if not scale:
@@ -59,11 +60,192 @@ class FISS_data_viewer(object):
         if scale != 'linear' or scale != 'log':
             ValueError('Available scale is only linear and log')
         
-    def IFDV (self):
-        from skimage.viewer.widgets.core import Slider, Button
+    def IFDV (self, smooth=False):
+        from skimage.viewer.widgets.core import Slider, Button, Text
+        from matplotlib.widgets import Cursor
         from .coalignment import alignoffset
         from .base import shift
-        interactive.IFDV(self)
+        try:
+            from PyQt5 import QtCore
+            from PyQt5.QtWidgets import QWidget, QVBoxLayout
+            from PyQt5.QtWidgets import QHBoxLayout, QDockWidget, QLineEdit
+            from fisspy.vc import qtvc
+        except:
+            from PyQt4 import QtCore
+            from PyQt4.QtGui import QWidget, QVBoxLayout
+            from PyQt4.QtGui import QHBoxLayout, QDockWidget, QLineEdit
+            
+        self.smooth = smooth
+        self.wvrA = 0
+        self.wvrB = 0
+        self.headerA = read.getheader(self.listA[self.fnum])
+        self.headerB = read.getheader(self.listB[self.fnum])
+        self.frameA =  read.frame(self.listA[self.fnum], xmax=True,
+                                  smooth= self.smooth)
+        self.frameB =  read.frame(self.listB[self.fnum], xmax= True,
+                                  smooth= self.smooth)
+        self.nx = self.frameA.shape[1]
+        self.shy, self.shx = alignoffset(self.frameB[:,:-1,50],
+                              self.frameA[:250,:-1,-50])
+        rA = read.frame2raster(self.frameA, self.headerA, self.wvrA)
+        rB = read.frame2raster(self.frameB, self.headerB, self.wvrB)
+        rB1 = shift(rB, (-shy, -shx))
+        self.xp = 20
+        self.yp = 20
+        
+        if self.wvA == '6562':
+            self.filter_set = 1
+            self.cmA = fisspy.cm.ha
+            self.cmB = fisspy.cm.ca
+            
+        elif self.wvA == '5889':
+            self.filter_set = 2
+            self.cmA = fisspy.cm.na
+            self.cmB = fisspy.cm.fe
+            
+        fig = plt.figure(figsize=(17,9))
+        ax = [None]*4
+        ax[0]=fig.add_subplot(141)
+        ax[1]=fig.add_subplot(142)
+        ax[2]=fig.add_subplot(222)
+        ax[3]=fig.add_subplot(224)
+        
+        rasterA = ax[0].imshow(rA, origin='lower', cmap= self.cmA)
+        rasterB = ax[1].imshow(rA, origin='lower', cmap= self.cmA)
+        
+        self.ax = ax
+        if not self.maxA[0]:
+            maxA = rA.max()
+            maxB = rB.max()
+            wh0A = rA <= 10
+            rA[wh0A] = 1e4
+            minA = rA.min()
+            rA[wh0A] = 0
+            wh0B = rB <= 10
+            rB[wh0B] = 1e4
+            minB = rB.min()
+            rB[wh0B] = 0
+            self.minA = minA
+            self.minB = minB
+            self.maxA = maxA
+            self.maxB = maxB
+        
+        ax[0].set_xlabel('X position[pixel]')
+        ax[1].set_xlabel('X position[pixel]')
+        ax[0].set_ylabel('Y position[pixel]')
+        ax[1].set_ylabel('Y position[pixel]')
+        ax[1].set_ylim(-0.5,255.5)
+        ax[1].set_facecolor('black')
+        rasterA.set_clim(self.minA, self.maxA)
+        rasterB.set_clim(self.minB, self.maxB)
+        
+        self.rasterA = rasterA
+        self.rasterB = rasterB
+        
+        title(self)
+        ax[0].set_title(self.titleA)
+        ax[1].set_title(self.titleB)
+        wvA = simple_wvcalib(self.headerA)
+        wvB = simple_wvcalib(self.headerB)
+        
+        p1 = ax[2].plot(wvA, self.frameA[self.yp, self.xp], color='k')
+        p2 = ax[3].plot(wvB,
+               self.frameB[self.yp+int(round(self.shy[0])),
+                                       self.xp+int(round(self.shx[0]))], color='k')
+        self.p1 = p1
+        self.p2 = p2
+        
+        ax[2].set_title(self.titleA)
+        ax[3].set_title(self.titleB)
+        ax[2].set_xlabel(r'Wavelength [$\AA$]')
+        ax[3].set_xlabel(r'Wavelength [$\AA$]')
+        ax[2].set_ylabel(r'$I_{\lambda}$ [count]')
+        ax[3].set_ylabel(r'$I_{\lambda}$ [count]')
+        ax[2].set_xlim(wvA.min(), wvB.max())
+        ax[3].set_xlim(wvA.min(), wvB.max())
+        ax[2].set_ylim(self.frameA[self.yp, self.xp].min()-100,
+                      self.frameA[self.yp, self.xp].max()+100)
+        ax[3].set_ylim(self.frameB.min()-100, self.frameB.max()+100)
+        
+
+        Acur = Cursor(ax[0], color='r', useblit= True)
+        Bcur = Cursor(ax[1], color='r', useblit= True)
+        Apcur = Cursor(ax[2], color='r', useblit= True)
+        Bpcur = Cursor(ax[3], color='r', useblit= True)
+        
+        root = fig.canvas.manager.window
+        panel = QWidget()
+        vbox = QVBoxLayout(panel)
+        hboxf = QHBoxLayout(panel)
+        hboxA = QHBoxLayout(panel)
+        hboxB = QHBoxLayout(panel)
+        
+        
+        fnumtxt = Text('Current frame number.')
+        fnum = QLineEdit()
+        fnum.setText(self.fnum)
+        fnum.editingFinished.connect(chframe)
+        
+        hboxf.addWidget(fnumtxt)
+        hboxf.addWidget(fnum)
+        xp = QLineEdit()
+        yp = QLineEdit()
+        xp.setText(self.xp)
+        yp.setText(self.yp)
+        
+        xp.editingFinished.connect(position)
+        yp.editingFinished.connect(position)
+        fig.tight_layout()
+        
+        def title(self):
+            self.titleA = r'GST/FISS %s $\AA$ %s'%(self.headerA['wavelen'],
+                                               self.headerA['date'])
+            self.titleB = r'GST/FISS %s $\AA$ %s'%(self.headerB['wavelen'],
+                                               self.headerB['date'])
+        def position(self):
+            self.xp = int(xp.text())
+            self.yp = int(yp.text())
+            
+        def chframe(self):
+            # if the wvA or tel_xpos or nx is changed, 
+            # then re-align the CamA and CamB
+            
+            self.fnum = fnum.text()
+            self.frameA = read.frame(self.listA[self.fnum],
+                                     xmax=True, smooth= self.smooth)
+            self.frameB = read.frame(self.listB[self.fnum],
+                                     xmax=True, smooth= self.smooth)
+            self.headerA = read.getheader(self.listA[self.fnum])
+            self.headerB = read.getheader(self.listB[self.fnum])
+            wvA = simple_wvcalib(self.headerA)
+            wvB = simple_wvcalib(self.headerB)
+            rA = read.frame2raster(self.frameA, self.headerA, wv= self.wvrA)
+            rB = read.frame2raster(self.frameB, self.headerB, wv= self.wvrB)
+            
+            if self.nx != self.frameA.shape[1]:
+                self.nx = self.frameA.shape[1]
+                self.ax[0].set_xlim(-0.5, self.nx-0.5)
+                self.ax[1].set_xlim(-0.5, self.nx-0.5)
+            
+            title(self)
+            ax[0].set_title(self.titleA)
+            ax[1].set_title(self.titleB)
+            self.rasterA.set_data(rA)
+            self.rasterB.set_data(rB)
+            self.p1[0].set_data(wvA, self.frameA[self.yp, self.xp])
+            self.p2[0].set_data(wvB,
+                   self.frameB[self.yp+int(round(self.shy[0])),
+                               self.xp+int(round(self.shx[0]))])
+            
+            
+            
+        def mark(self, event):
+            
+        def climA:
+        def climB:
+        def xpos:
+        def ypos:
+            
         
     
     def image_set (self, fnum, wvseta= None, 
