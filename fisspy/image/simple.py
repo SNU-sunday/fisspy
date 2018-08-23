@@ -114,21 +114,7 @@ class FISS_data_viewer(object):
         rasterB = ax[1].imshow(rA, origin='lower', cmap= self.cmA)
         
         self.ax = ax
-        if not self.maxA[0]:
-            maxA = rA.max()
-            maxB = rB.max()
-            wh0A = rA <= 10
-            rA[wh0A] = 1e4
-            minA = rA.min()
-            rA[wh0A] = 0
-            wh0B = rB <= 10
-            rB[wh0B] = 1e4
-            minB = rB.min()
-            rB[wh0B] = 0
-            self.minA = minA
-            self.minB = minB
-            self.maxA = maxA
-            self.maxB = maxB
+        clim(self, rA, rB)
         
         ax[0].set_xlabel('X position[pixel]')
         ax[1].set_xlabel('X position[pixel]')
@@ -145,13 +131,15 @@ class FISS_data_viewer(object):
         title(self)
         ax[0].set_title(self.titleA)
         ax[1].set_title(self.titleB)
-        wvA = simple_wvcalib(self.headerA)
-        wvB = simple_wvcalib(self.headerB)
+        wvcA = simple_wvcalib(self.headerA)
+        wvcB = simple_wvcalib(self.headerB)
+        self.wvcA = wvcA
+        self.wvcB = wvcB
         
-        p1 = ax[2].plot(wvA, self.frameA[self.yp, self.xp], color='k')
-        p2 = ax[3].plot(wvB,
+        p1 = ax[2].plot(wvcA, self.frameA[self.yp, self.xp], color='k')
+        p2 = ax[3].plot(wvcB,
                self.frameB[self.yp+int(round(self.shy[0])),
-                                       self.xp+int(round(self.shx[0]))], color='k')
+                           self.xp+int(round(self.shx[0]))], color='k')
         self.p1 = p1
         self.p2 = p2
         
@@ -161,10 +149,10 @@ class FISS_data_viewer(object):
         ax[3].set_xlabel(r'Wavelength [$\AA$]')
         ax[2].set_ylabel(r'$I_{\lambda}$ [count]')
         ax[3].set_ylabel(r'$I_{\lambda}$ [count]')
-        ax[2].set_xlim(wvA.min(), wvB.max())
-        ax[3].set_xlim(wvA.min(), wvB.max())
+        ax[2].set_xlim(wvcA.min(), wvcA.max())
+        ax[3].set_xlim(wvcB.min(), wvcB.max())
         ax[2].set_ylim(self.frameA[self.yp, self.xp].min()-100,
-                      self.frameA[self.yp, self.xp].max()+100)
+                       self.frameA[self.yp, self.xp].max()+100)
         ax[3].set_ylim(self.frameB.min()-100, self.frameB.max()+100)
         
 
@@ -180,23 +168,49 @@ class FISS_data_viewer(object):
         hboxA = QHBoxLayout(panel)
         hboxB = QHBoxLayout(panel)
         
-        
         fnumtxt = Text('Current frame number.')
         fnum = QLineEdit()
         fnum.setText(self.fnum)
         fnum.editingFinished.connect(chframe)
+        xptxt = Text('X position')
+        xp = QLineEdit()
+        xp.setText(self.xp)
+        yptxt = Text('Y position')
+        yp = QLineEdit()
+        yp.setText(self.yp)
+        xp.editingFinished.connect(position)
+        yp.editingFinished.connect(position)
         
         hboxf.addWidget(fnumtxt)
         hboxf.addWidget(fnum)
-        xp = QLineEdit()
-        yp = QLineEdit()
-        xp.setText(self.xp)
-        yp.setText(self.yp)
+        hboxf.addWidget(xptxt)
+        hboxf.addWidget(xp)
+        hboxf.addWidget(yptxt)
+        hboxf.addWidget(yp)
         
-        xp.editingFinished.connect(position)
-        yp.editingFinished.connect(position)
+        Asldm = Slider('CamA Color Range Min', 500, 
+                       12000, self.minA, value_type = 'int')
+        AsldM = Slider('CamA Color Range Max', 500, 
+                       12000, self.minA, value_type = 'int')
+        Bsldm = Slider('CamB Color Range Min', 500, 
+                       12000, self.minB, value_type = 'int')
+        BsldM = Slider('CamB Color Range Max', 500, 
+                       12000, self.minB, value_type = 'int')
+        Asldm.slider.valueChanged.connect(climA)
+        AsldM.slider.valueChanged.connect(climA)
+        Bsldm.slider.valueChanged.connect(climB)
+        BsldM.slider.valueChanged.connect(climB)
+        hboxA.addWidget(Asldm)
+        hboxA.addWidget(AsldM)
+        hboxB.addWidget(Bsldm)
+        hboxB.addWidget(BsldM)
+        
+        vbox.addLayout(hboxf)
+        vbox.addLayout(hboxA)
+        vbox.addLayout(hboxB)
+        
         fig.tight_layout()
-        
+        self.figIFDV = fig
         def title(self):
             self.titleA = r'GST/FISS %s $\AA$ %s'%(self.headerA['wavelen'],
                                                self.headerA['date'])
@@ -205,6 +219,10 @@ class FISS_data_viewer(object):
         def position(self):
             self.xp = int(xp.text())
             self.yp = int(yp.text())
+            self.p1[0].set_data(self.wvcA, self.frameA[self.yp, self.xp])
+            self.p2[0].set_data(self.wvcB,
+                               self.frameB[self.yp+int(round(self.shy[0])),
+                                           self.xp+int(round(self.shx[0]))])
             
         def chframe(self):
             # if the wvA or tel_xpos or nx is changed, 
@@ -217,11 +235,49 @@ class FISS_data_viewer(object):
                                      xmax=True, smooth= self.smooth)
             self.headerA = read.getheader(self.listA[self.fnum])
             self.headerB = read.getheader(self.listB[self.fnum])
-            wvA = simple_wvcalib(self.headerA)
-            wvB = simple_wvcalib(self.headerB)
+            wvA = self.headerA['wavelen'][:4]
+            wvB = self.headerB['wavelen'][:4]
+            telpos = self.headerA['tel_xpos'] * 1e3 + self.headerA['tel_ypos']
+            expT = self.headerA['exptime']
+            expTB = self.headerA['exptime']
+            
+            if wvA != self.wvA:
+                self.wvA = wvA
+                self.wvB = wvB
+                self.wvA0 = self.headerA['crval1']
+                self.wvB0 = self.headerB['crval1']
+                self.minA = [False]
+                self.maxA = [None]
+                self.minB = [None]
+                self.maxB = [None]
+            if telpos != self.telpos:
+                self.telpos = telpos
+                self.minA = [False]
+                self.minB = [None]
+                self.maxA = [None]
+                self.maxB = [None]
+            if expT != self.expT:
+                self.expT = expT
+                self.minA = [False]
+                self.minB = [None]
+                self.maxA = [None]
+                self.maxB = [None]
+            if expTB != self.expTB:
+                self.expTB = expTB
+                self.minA = [False]
+                self.minB = [None]
+                self.maxA = [None]
+                self.maxB = [None]
+                
+                
+            wvcA = simple_wvcalib(self.headerA)
+            wvcB = simple_wvcalib(self.headerB)
             rA = read.frame2raster(self.frameA, self.headerA, wv= self.wvrA)
             rB = read.frame2raster(self.frameB, self.headerB, wv= self.wvrB)
             
+            if not self.minA[0]:
+                clim(self, rA, rB)
+                
             if self.nx != self.frameA.shape[1]:
                 self.nx = self.frameA.shape[1]
                 self.ax[0].set_xlim(-0.5, self.nx-0.5)
@@ -232,19 +288,49 @@ class FISS_data_viewer(object):
             ax[1].set_title(self.titleB)
             self.rasterA.set_data(rA)
             self.rasterB.set_data(rB)
-            self.p1[0].set_data(wvA, self.frameA[self.yp, self.xp])
-            self.p2[0].set_data(wvB,
+            self.p1[0].set_data(wvcA, self.frameA[self.yp, self.xp])
+            self.p2[0].set_data(wvcB,
                    self.frameB[self.yp+int(round(self.shy[0])),
                                self.xp+int(round(self.shx[0]))])
+    
+            self.rasterA.set_clim(self.minA, self.maxA)
+            self.rasterB.set_clim(self.minB, self.maxB)
             
             
+        def clim(self, rA, rB) :
+            if not self.minA[0]:
+                maxA = rA.max()
+                maxB = rB.max()
+                wh0A = rA <= 10
+                rA[wh0A] = 1e4
+                minA = rA.min()
+                rA[wh0A] = 0
+                wh0B = rB <= 10
+                rB[wh0B] = 1e4
+                minB = rB.min()
+                rB[wh0B] = 0
+                self.minA = minA
+                self.minB = minB
+                self.maxA = maxA
+                self.maxB = maxB
             
         def mark(self, event):
+            if event.key == 'm':
+                axp=event.inaxes._position.get_points()[0,0]
+                ayp=event.inaxes._position.get_points()[0,1]
+                
+        def climA(self):
+            climm = Asldm.val
+            climM = AsldM.val
+            self.rasterA.set_clim(climm, climM)
+            self.figIFDV.canvas.draw_idle()
             
-        def climA:
-        def climB:
-        def xpos:
-        def ypos:
+        def climB(self):
+            climm = Bsldm.val
+            climM = BsldM.val
+            self.rasterB.set_clim(climm, climM)
+            self.figIFDV.canvas.draw_idle()
+            
             
         
     
