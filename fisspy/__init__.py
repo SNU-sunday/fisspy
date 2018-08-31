@@ -17,4 +17,4 @@ __version__="0.8.5"
 
 from fisspy import cm
 from fisspy.makevideo import ffmpeg
-from .image.interactive import IFDV
+#from .image.interactive import IFDV

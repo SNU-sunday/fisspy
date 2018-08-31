@@ -10,7 +10,8 @@ from scipy.fftpack import ifft2, fft2
 import numpy as np
 from fisspy.io.read import getheader, raster
 from astropy.time import Time
-from sunpy.coordinates import SkyCoord, frames
+from sunpy.coordinates import frames
+from astropy.coordinates import SkyCoord
 from sunpy.coordinates.ephemeris import get_earth
 from sunpy.physics.differential_rotation import solar_rotate_coordinate
 import astropy.units as u
@@ -20,8 +21,7 @@ import os
 from .base import rotation, rot_trans, rescale, rot
 from shutil import copy2
 import matplotlib.pyplot as plt
-import fisspy
-from fisspy.image.base import shift
+from fisspy.image.base import shift3d, shift
 from math import ceil
 try:
     from PyQt5 import QtCore
@@ -133,15 +133,26 @@ def alignoffset(image0, template0, cor= None):
     x=x0+x1
     y=y0+y1
     
-    if cor:
+    if cor and ndim == 3:
+        img = shift3d(image, [-y, -x])
+        xx = np.arange(nx) + x[:,None,None]
+        yy = np.arange(ny)[:,None] + y[:,None,None]
+        kx = np.logical_and(xx >= 0, xx <= nx - 1)
+        ky = np.logical_and(yy >= 0, yy <= ny - 1)
+        roi = np.logical_and(kx, ky)
+        cor = (img * template * roi).sum((1,2)) / np.sqrt(
+                        (img **2 * roi).sum((1,2)) *
+                        (template **2 * roi).sum((1,2)))
+        return y, x, cor
+    elif cor and ndim == 2:
         img = shift(image, [-y, -x])
         xx = np.arange(nx) + x
         yy = np.arange(ny) + y
         kx = np.logical_and(xx >= 0, xx <= nx - 1)
         ky = np.logical_and(yy >= 0, yy <= ny - 1)
         roi = np.logical_and(kx, ky[:,None])
-        cor=(img*template)[roi].mean()/np.sqrt((img[roi]**2).mean(0) *
-                      (template[roi]**2).mean(0))
+        cor = (img*template)[roi].sum()/np.sqrt((img[roi]**2).sum() *
+                      (template[roi]**2).sum())
         return y, x, cor
     else:
         return y, x

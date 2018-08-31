@@ -6,7 +6,8 @@ import fisspy
 import astropy.units as u
 import sunpy.map
 #from .solar_rotation import rot_hpc
-from sunpy.coordinates import SkyCoord, frames
+from sunpy.coordinates import frames
+from astropy.coordinates import SkyCoord
 from sunpy.coordinates.ephemeris import get_earth
 from sunpy.physics.differential_rotation import solar_rotate_coordinate
 
