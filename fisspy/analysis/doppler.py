@@ -81,12 +81,12 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
     rspec = np.any(ref_spectrum)
     ndim = data0.ndim
     wvoffset = 0
-    
+    dwv = wv[1]-wv[0]
     if rspec and data0.ndim == 3:
         ref_spec_2d = conv(conv(ref_spectrum *
                                 np.ones((4,1)), dkern.T, 'same'),
                             dkern.T, 'same')
-        ref_spec = ref_spec_2d[:, 2:-2] 
+        ref_spec = ref_spec_2d[1, 2:-2] * np.ones((4,1))
         
         data2d = conv(conv(data0.mean(0), dkern.T, 'same'),
                       dkern.T, 'same')
@@ -160,8 +160,8 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
         l=whs[whl]
         r=whs[whr]
         posi=posi0[more]
-        wl0=wv[l]-(wv[l+1]-wv[l])/(sp1[posi,l+1]-sp1[posi,l])*sp1[posi,l]
-        wr0=wv[r]-(wv[r+1]-wv[r])/(sp1[posi,r+1]-sp1[posi,r])*sp1[posi,r]
+        wl0=wv[l]-dwv/(sp1[posi,l+1]-sp1[posi,l])*sp1[posi,l]
+        wr0=wv[r]-dwv/(sp1[posi,r+1]-sp1[posi,r])*sp1[posi,r]
         wc[more]=0.5*(wl0+wr0)
         hwc[more]=0.5*np.abs(wr0-wl0)
         
