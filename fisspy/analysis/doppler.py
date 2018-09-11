@@ -12,108 +12,16 @@ __email__ = "jhkang@astro.snu.ac.kr"
 import numpy as np
 from interpolation.splines import LinearSpline
 from astropy.constants import c
-from fisspy.io.read import frame
+from scipy.signal import fftconvolve as conv
+from fisspy.image.coalignment import alignoffset
 
-__all__ = ['wavecalib', 'lambdameter', 'LOS_velocity',
-           'sp_av', 'sp_med']
-
-def wavecalib(band,profile,method=True):
-    """
-    Calibrate the wavelength for FISS spectrum profile.
-    
-    Parameters
-    ----------
-    band : str
-        A string to identify the wavelength.
-        Allowable wavelength bands are '6562','8542','5890','5434'
-    profile : ~numpy.ndarray
-        A 1 dimensional numpy array of spectral profile.
-    Method : (optional) bool
-        * Default is True.
-        If true, the reference lines for calibration are the telluric lines.
-        Else if False, the reference lines are the solar absorption lines.
-    
-    Returns
-    -------
-    wavelength : ~numpy.ndarray
-        Calibrated wavelength.
-    
-    Notes
-    -----
-        This function is based on the FISS IDL code FISS_WV_CALIB.PRO
-        written by J. Chae, 2013.
-    
-    Example
-    -------
-    >>> from fisspy.analysis import doppler
-    >>> wv=doppler.wavecalib('6562',profile)
-    
-    """
-    band=band[0:4]
-    nw=profile.shape[0]
-    
-    if method:
-        if band == '6562':
-            line=np.array([6561.097,6564.206])
-            lamb0=6562.817
-            dldw=0.019182
-        elif band == '8542':
-            line=np.array([8540.817,8546.222])
-            lamb0=8542.090
-            dldw=-0.026252
-        elif band == '5890':
-            line=np.array([5889.951,5892.898])
-            lamb0=5889.9509
-            dldw=0.016847
-        elif band == '5434':
-            line=np.array([5434.524,5436.596])
-            lamb0=5434.5235
-            dldw=-0.016847
-        else:
-            raise ValueError("The wavelength band value is not allowable.\n"+
-                             "Please select the wavelenth "+
-                             "among '6562','8542','5890','5434'")
-    else:
-        if band == '6562':
-            line=np.array([6562.817,6559.580])
-            lamb0=6562.817
-            dldw=0.019182
-        elif band == '8542':
-            line=np.array([8542.089,8537.930])
-            lamb0=8542.090
-            dldw=-0.026252
-        else:
-            raise ValueError("The wavelength band value is not allowable.\n"
-                             "Please select the wavelenth "
-                             "among '6562','8542','5890','5434'")
-    
-    w=np.arange(nw)
-    wl=np.zeros(2)
-    wc=profile[20:nw-20].argmin()+20
-    lamb=(w-wc)*dldw+lamb0
-    
-    for i in range(2):
-        mask=np.abs(lamb-line[i]) <= 0.3
-        wtmp=w[mask]
-        ptmp=np.convolve(profile[mask],[-1,2,-1],'same')
-        mask2=ptmp[1:-1].argmin()+1
-        try:
-            wtmp=wtmp[mask2-3:mask2+4]
-            ptmp=ptmp[mask2-3:mask2+4]
-        except:
-            raise ValueError('Fail to wavelength calibration\n'
-            'please change the method %s to %s' %(repr(method), repr(not method)))
-        c=np.polyfit(wtmp-np.median(wtmp),ptmp,2)
-        wl[i]=np.median(wtmp)-c[1]/(2*c[0])    #local minimum of the profile
-    
-    dldw=(line[1]-line[0])/(wl[1]-wl[0])
-    wc=wl[0]-(line[0]-lamb0)/dldw
-    wavelength=(w-wc)*dldw
-    
-    return wavelength
+__all__ = ['lambdameter', 'LOS_velocity']
 
 
-def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True):
+
+
+def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
+                hw= 0.03, sp= 5000, wvinput= True):
     """
     Determine the Lambdameter chord center for a given half width or intensity.
     
@@ -122,7 +30,7 @@ def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True):
     wv : ~numpy.ndarray
         A Calibrated wavelength.
     data : ~numpy.ndarray
-        n (n>=2) dimensional spectral profile data, 
+        n (n=2 or n=3) dimensional spectral profile data, 
         the last dimension component must be the spectral component,
         and the size is equal to the size of wv.
     wvinput : bool
@@ -167,12 +75,44 @@ def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True):
     shape=data0.shape
     nw=shape[-1]
     reshape=shape[:-1]
+    dkern = np.array([[-1, -2, -1],
+                      [0, 0, 0],
+                      [1, 2, 1]])
+    rspec = np.any(ref_spectrum)
+    ndim = data0.ndim
+    wvoffset = 0
+    dwv = wv[1]-wv[0]
+    if rspec and data0.ndim == 3:
+        ref_spec_2d = conv(conv(ref_spectrum *
+                                np.ones((4,1)), dkern.T, 'same'),
+                            dkern.T, 'same')
+        ref_spec = ref_spec_2d[1, 2:-2] * np.ones((4,1))
+        
+        data2d = conv(conv(data0.mean(0), dkern.T, 'same'),
+                      dkern.T, 'same')
+        
+        data = data2d[:, 2:-2] * np.ones((4, 1, 1))
+        dataT = data.transpose((1, 0, 2))
+        yoff, xoff, cor = alignoffset(dataT, ref_spec, cor= True)
+        wvoffset = (xoff*(wv[1]-wv[0])) * (cor > 0.7)
+    elif not rspec and ndim == 3:
+        wvoffset = np.zeros(shape[1])
+    elif ndim == 1 or ndim >=4:
+        ValueError('The dimension of data0 must be 2 or 3.')
+    
     if wv.shape[0] != nw:
         raise ValueError('The number of elements of wv and '
         'the number of elements of last axis for data are not equal.')
     
+    if np.any(wvRange):
+        ss = np.logical_and(wv >= wvRange[0], wv <= wvRange[1])
+        nw = ss.sum()
+        data0 = data0[:,:,ss].copy()
+        wv = wv[ss].copy()
     na=int(data0.size/nw)
     data=data0.reshape((na,nw))
+
+    
     s=data.argmin(axis=-1)
     
     if wvinput and hw == 0.:
@@ -220,8 +160,8 @@ def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True):
         l=whs[whl]
         r=whs[whr]
         posi=posi0[more]
-        wl0=wv[l]-(wv[l+1]-wv[l])/(sp1[posi,l+1]-sp1[posi,l])*sp1[posi,l]
-        wr0=wv[r]-(wv[r+1]-wv[r])/(sp1[posi,r+1]-sp1[posi,r])*sp1[posi,r]
+        wl0=wv[l]-dwv/(sp1[posi,l+1]-sp1[posi,l])*sp1[posi,l]
+        wr0=wv[r]-dwv/(sp1[posi,r+1]-sp1[posi,r])*sp1[posi,r]
         wc[more]=0.5*(wl0+wr0)
         hwc[more]=0.5*np.abs(wr0-wl0)
         
@@ -235,7 +175,8 @@ def lambdameter(wv,data0,hw=0.03,sp=5000,wvinput=True):
             ref=0
         rep+=1
     
-    wc=wc.reshape(reshape)
+
+    wc = wc.reshape(reshape) - wvoffset
     if wvinput:
         intc=intc.reshape(reshape)
         return wc, intc
@@ -290,10 +231,3 @@ def LOS_velocity(wv,data,hw=0.01,band=False):
         raise ValueError("Value of band must be one among"
                          "'6562', '8542', '5890', '5434'")
         
-def sp_av(file) :
-    a = frame(file, xmax = True)
-    return a.mean(axis = 1)
-
-def sp_med(file) :
-    a = frame(file, xmax = True)
-    return np.median(a, axis = 1)

@@ -5,7 +5,11 @@ from fisspy.image.base import rot
 import fisspy
 import astropy.units as u
 import sunpy.map
-from .solar_rotation import rot_hpc
+#from .solar_rotation import rot_hpc
+from sunpy.coordinates import frames
+from astropy.coordinates import SkyCoord
+from sunpy.coordinates.ephemeris import get_earth
+from sunpy.physics.differential_rotation import solar_rotate_coordinate
 
 __author__="Juhyeong Kang"
 __email__="jhkang@astro.snu.ac.kr"
@@ -195,6 +199,38 @@ def align(data0,header0,missing=0):
     
     return img, mheader
     
+#def map_rot_correct(mmap,refx,refy,reftime):
+#    """
+#    Correct the solar rotation.
+#    
+#    Parameters
+#    ----------
+#    mmap : sunpy.map.GenericMap
+#        Single map class.
+#    refx : astropy.units.Quantity
+#        Horizontal wcs information of reference frame.
+#    refy : astropy.units.Quantity
+#        Vertical wcs information of reference frame.
+#    reftime : astropy.time.Time
+#        Time for the reference frame.
+#    
+#    Returns
+#    -------
+#    smap : sunpy.map.GenericMap
+#        Solar rotation corrected map class.
+#    
+#    """
+#    t=mmap.date
+#    if type(refx) == float:
+#        refx*=u.arcsec
+#    if type(refy) == float:
+#        refy*=u.arcsec
+#    x,y=rot_hpc(refx,refy,reftime,t)
+#    sx=x-refx
+#    sy=y-refy
+#    smap=mmap.shift(-sx,-sy)
+#    return smap
+
 def map_rot_correct(mmap,refx,refy,reftime):
     """
     Correct the solar rotation.
@@ -216,13 +252,17 @@ def map_rot_correct(mmap,refx,refy,reftime):
         Solar rotation corrected map class.
     
     """
-    t=mmap.date
-    if type(refx) == float:
-        refx*=u.arcsec
-    if type(refy) == float:
-        refy*=u.arcsec
-    x,y=rot_hpc(refx,refy,reftime,t)
-    sx=x-refx
-    sy=y-refy
-    smap=mmap.shift(-sx,-sy)
+    
+    refc = SkyCoord(refx, refy, obstime= reftime,
+                    observer= get_earth(reftime),
+                    frame= frames.Helioprojective)
+    
+    date = mmap.date
+    res = solar_rotate_coordinate(refc, date ,frame_time= 'synodic')
+    x = res.Tx.value
+    y = res.Ty.value
+    
+    sx = x - refx.value
+    sy = y - refy.value
+    smap = mmap.shift(-sx,-sy)
     return smap

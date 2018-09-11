@@ -1,6 +1,6 @@
 # FISSpy
 
-[![Latest Version](https://img.shields.io/pypi/v/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Build Status](https://ci.appveyor.com/api/projects/status/xow461iejsjvp9vl?svg=true)](https://ci.appveyor.com/project/kailia0209/fisspy) [![Anaconda-Server Badge](https://anaconda.org/kailia0209/fisspy/badges/version.svg)](https://anaconda.org/kailia0209/fisspy) [![Anaconda-Server Badge](https://anaconda.org/kailia0209/fisspy/badges/downloads.svg)](https://anaconda.org/kailia0209/fisspy)
+[![Latest Version](https://img.shields.io/pypi/v/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Anaconda-Server Badge](https://anaconda.org/kailia0209/fisspy/badges/version.svg)](https://anaconda.org/kailia0209/fisspy) [![Anaconda-Server Badge](https://anaconda.org/kailia0209/fisspy/badges/downloads.svg)](https://anaconda.org/kailia0209/fisspy)
 
 The Python Package for data analysis of the [GST/FISS instrument](http://fiss.snu.ac.kr/)
 
@@ -13,7 +13,7 @@ Requirement Package:
 * [NumPy](http://numpy.scipy.org/) v1.7.1+
 * [Matplotlib](http://matplotlib.sourceforge.net/) v2.0+
 * [SciPy](http://www.scipy.org/) v0.18.0+
-* [sunpy](http://sunpy.org/) v0.7.8+
+* [sunpy](http://sunpy.org/) v0.9.0+
 * [Astropy](http://astropy.org) v1.3+
 * [Interpolation](https://github.com/EconForge/interpolation.py) +v0.1.8
 

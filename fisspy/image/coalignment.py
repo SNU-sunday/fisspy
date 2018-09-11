@@ -6,19 +6,23 @@ from __future__ import absolute_import, print_function, division
 __author__ = "Juhyeong Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
-from scipy.fftpack import ifft2,fft2
+from scipy.fftpack import ifft2, fft2
 import numpy as np
-from fisspy.io.read import getheader,raster
+from fisspy.io.read import getheader, raster
 from astropy.time import Time
-from fisspy.map.solar_rotation import rot_hpc
+from sunpy.coordinates import frames
+from astropy.coordinates import SkyCoord
+from sunpy.coordinates.ephemeris import get_earth
+from sunpy.physics.differential_rotation import solar_rotate_coordinate
 import astropy.units as u
 from astropy.io import fits
 from time import clock
 import os
-from .base import rotation,rot_trans,rescale,rot
+from .base import rotation, rot_trans, rescale, rot
 from shutil import copy2
 import matplotlib.pyplot as plt
-import fisspy
+from fisspy.image.base import shift3d, shift
+from math import ceil
 try:
     from PyQt5 import QtCore
     from PyQt5.QtWidgets import *
@@ -27,11 +31,11 @@ except:
     from PyQt4 import QtCore
     from PyQt4.QtGui import *
 from skimage.viewer.widgets.core import Slider, Button
-from sunpy.net import vso
+from sunpy.net import Fido, attrs as a
 
 __all__ = ['alignoffset', 'fiss_align_inform','match_wcs','manual','fiss_align']
 
-def alignoffset(image0,template0):
+def alignoffset(image0, template0, cor= None):
     """
     Align the two images
     
@@ -97,31 +101,31 @@ def alignoffset(image0,template0):
     #give the cross-correlation weight on the image center
     #to avoid the fast change the image by the granular motion or strong flow
     
-    cor=ifft2(ifft2(template*gauss)*fft2(image*gauss)).real
+    corr=ifft2(ifft2(template*gauss)*fft2(image*gauss)).real
 
     # calculate the cross-correlation values by using convolution theorem and 
     # DFT-IDFT relation
     
-    s=np.where((cor.T==cor.max(axis=(-1,-2))).T)
+    s=np.where((corr.T==corr.max(axis=(-1,-2))).T)
     x0=s[-1]-nx*(s[-1]>nx/2)
     y0=s[-2]-ny*(s[-2]>ny/2)
     
     if ndim==2:
         cc=np.empty((3,3))
-        cc[0,1]=cor[s[0]-1,s[1]]
-        cc[1,0]=cor[s[0],s[1]-1]
-        cc[1,1]=cor[s[0],s[1]]
-        cc[1,2]=cor[s[0],s[1]+1-nx]
-        cc[2,1]=cor[s[0]+1-ny,s[1]]
+        cc[0,1]=corr[s[0]-1,s[1]]
+        cc[1,0]=corr[s[0],s[1]-1]
+        cc[1,1]=corr[s[0],s[1]]
+        cc[1,2]=corr[s[0],s[1]+1-nx]
+        cc[2,1]=corr[s[0]+1-ny,s[1]]
         x1=0.5*(cc[1,0]-cc[1,2])/(cc[1,2]+cc[1,0]-2.*cc[1,1])
         y1=0.5*(cc[0,1]-cc[2,1])/(cc[2,1]+cc[0,1]-2.*cc[1,1])
     else:
         cc=np.empty((si[0],3,3))
-        cc[:,0,1]=cor[s[0],s[1]-1,s[2]]
-        cc[:,1,0]=cor[s[0],s[1],s[2]-1]
-        cc[:,1,1]=cor[s[0],s[1],s[2]]
-        cc[:,1,2]=cor[s[0],s[1],s[2]+1-nx]
-        cc[:,2,1]=cor[s[0],s[1]+1-ny,s[2]]
+        cc[:,0,1]=corr[s[0],s[1]-1,s[2]]
+        cc[:,1,0]=corr[s[0],s[1],s[2]-1]
+        cc[:,1,1]=corr[s[0],s[1],s[2]]
+        cc[:,1,2]=corr[s[0],s[1],s[2]+1-nx]
+        cc[:,2,1]=corr[s[0],s[1]+1-ny,s[2]]
         x1=0.5*(cc[:,1,0]-cc[:,1,2])/(cc[:,1,2]+cc[:,1,0]-2.*cc[:,1,1])
         y1=0.5*(cc[:,0,1]-cc[:,2,1])/(cc[:,2,1]+cc[:,0,1]-2.*cc[:,1,1])
 
@@ -129,7 +133,30 @@ def alignoffset(image0,template0):
     x=x0+x1
     y=y0+y1
     
-    return y, x
+    if cor and ndim == 3:
+        img = shift3d(image, [-y, -x])
+        xx = np.arange(nx) + x[:,None,None]
+        yy = np.arange(ny)[:,None] + y[:,None,None]
+        kx = np.logical_and(xx >= 0, xx <= nx - 1)
+        ky = np.logical_and(yy >= 0, yy <= ny - 1)
+        roi = np.logical_and(kx, ky)
+        cor = (img * template * roi).sum((1,2)) / np.sqrt(
+                        (img **2 * roi).sum((1,2)) *
+                        (template **2 * roi).sum((1,2)))
+        return y, x, cor
+    elif cor and ndim == 2:
+        img = shift(image, [-y, -x])
+        xx = np.arange(nx) + x
+        yy = np.arange(ny) + y
+        kx = np.logical_and(xx >= 0, xx <= nx - 1)
+        ky = np.logical_and(yy >= 0, yy <= ny - 1)
+        roi = np.logical_and(kx, ky[:,None])
+        cor = (img*template)[roi].sum()/np.sqrt((img[roi]**2).sum() *
+                      (template[roi]**2).sum())
+        return y, x, cor
+    else:
+        return y, x
+        
 
 
 def fiss_align_inform(file,smooth=False,**kwargs):
@@ -143,8 +170,6 @@ def fiss_align_inform(file,smooth=False,**kwargs):
         The list of fts file.
     dirname : (optional) str
         The directory name for saving the npz data.
-        The the last string elements must be the directory seperation
-        ex) dirname='D:\\the\\greatest\\scientist\\kang\\'
         If False, the dirname is the present working directory.
     filename : (optional) str
         The file name for saving the npz data.
@@ -199,15 +224,14 @@ def fiss_align_inform(file,smooth=False,**kwargs):
     Notes
     -----
     This code is based on the IDL code FISS_ALIGN_DATA.PRO written by J. Chae 2015
-    
-    The dirname must be have the directory seperation.
+
     
     Example
     -------
     >>> from glob import glob
     >>> from fisspy.image import coalignment
     >>> file=glob('*_A1_c.fts')
-    >>> dirname='D:\\im\\so\\hot\\'
+    >>> dirname='D:\\im\\so\\hot'
     >>> coalignment.fiss_align_inform(file,dirname=dirname,sil=False)
     
     """
@@ -222,7 +246,7 @@ def fiss_align_inform(file,smooth=False,**kwargs):
     ref_frame=kwargs.pop('ref_frame',n//2)
     wvref=kwargs.pop('wvref',-4)
     save=kwargs.pop('save',True)
-    dirname=kwargs.pop('dirname',os.getcwd()+os.sep)
+    dirname=kwargs.pop('dirname',os.getcwd())
     
     
     hlist=[getheader(i) for i in file]
@@ -330,7 +354,7 @@ def fiss_align_inform(file,smooth=False,**kwargs):
         print('end loop')
     result=dict(xc=xc,yc=yc,angle=angle,dt=dtmin,dx=dx,dy=dy)
     if save:
-        filename2=dirname+filename
+        filename2=os.path.join(dirname, filename)
         if not pre_match_wcs:
             if not sil:
                 print('You select the no pre_match_wcs')
@@ -464,7 +488,13 @@ def update_fiss_header(file,alignfile,**kwargs):
         reffr=inform['reffr']
         for i,h in enumerate(fissh):
             if sol_rot:
-                wcsx, wcsy=rot_hpc(xref,yref,time[reffr],time[i])
+                refc = SkyCoord(xref, yref, obstime = time[reffr],
+                                observer= get_earth(time[reffr]),
+                                frame= frames.Helioprojective)
+                res = solar_rotate_coordinate(refc, time[i],
+                                              frame_time= 'synodic')
+                wcsx = res.Tx.value
+                wcsy = res.Ty.value
                 h['crval3']=(wcsx.value,
                             'Location of ref pixel x (arcsec)')
                 h['crval2']=(wcsy.value,
@@ -504,7 +534,7 @@ def update_fiss_header(file,alignfile,**kwargs):
     odirname=os.path.dirname(file[0])
     if not odirname:
         odirname=os.getcwd()
-    dirname=odirname+os.sep+'match'
+    dirname = os.path.join(odirname, 'match')
     
     try:
         os.mkdir(dirname)
@@ -513,12 +543,12 @@ def update_fiss_header(file,alignfile,**kwargs):
     
     for i,oname in enumerate(file):
         name='m'+os.path.basename(oname)
-        fits.writeto(dirname+os.sep+name,data[i],fissh[i])
+        fits.writeto(os.path.join(dirname, name),data[i],fissh[i])
     try:
         pfilelist=[i['pfile'] for i in fissh]
         pfileset=set(pfilelist)
         for i in pfileset:
-            copy2(odirname+os.sep+i,dirname+os.sep+i)
+            copy2(os.path.join(odirname, i),os.path.join(dirname,i))
     except:
         pass
     
@@ -540,8 +570,7 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
         If False, then download the HMI data on the VSO site.
     dirname : (optional) str
         The directory name for saving the npz data.
-        The the last string elements must be the directory seperation.
-        ex) dirname='D:\\the\\greatest\\scientist\\kang\\'
+
         If False, the dirname is the present working directory.
     filename : (optional) str
         The file name for saving the npz data.
@@ -552,7 +581,6 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
         Default is True.
     sdo_path : (optional) str
         The directory name for saving the HMI data.
-        The the last string elements must be the directory seperation.
     method : (optioinal) bool
         If True, then manually match the wcs.
         If False, you have a no choice to this yet. kkk.
@@ -576,17 +604,14 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
     wcsy : float
         The y-axis value of image center in WCS arcesec unit.
     
-    Notes
-    -----
-    The dirname and sdo_path must be have the directory seperation.
     
     Example
     -------
     >>> from glob import glob
     >>> from fisspy.image import coalignment
     >>> file=glob('*_A1_c.fts')
-    >>> dirname='D:\\im\\so\\hot\\'
-    >>> sdo_path='D:\\im\\sdo\\path\\'
+    >>> dirname='D:\\im\\so\\hot'
+    >>> sdo_path='D:\\im\\sdo\\path'
     >>> coalignment.match_wcs(file,dirname=dirname,sil=False,
                               sdo_path=sdo_path)
     
@@ -596,7 +621,7 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
     fiss_file0=fiss_file[ref_frame]
     sdo_file=kwargs.pop('sdo_file',False)
     sil=kwargs.get('sil',False)
-    sdo_path=kwargs.pop('sdo_path',os.getcwd()+os.sep)
+    sdo_path=kwargs.pop('sdo_path',os.getcwd())
     
     if not sdo_file:
         h=getheader(fiss_file0)
@@ -609,15 +634,15 @@ def match_wcs(fiss_file,smooth=False,**kwargs):
         t2=Time(t2,format='jd')
         t1.format='isot'
         t2.format='isot'
-        hmi=(vso.attrs.Instrument('HMI') &
-             vso.attrs.Time(t1.value,t2.value) &
-             vso.attrs.Physobs('intensity'))
-        vc=vso.VSOClient()
-        res=vc.query(hmi)
+        hmi=(a.Time(t1.value,t2.value),
+             a.Instrument('HMI'),
+             a.vso.Physobs('intensity'))
+        res=Fido.search(hmi)
         if not sil:
             print('Download the SDO/HMI file')
-        sdo_file=(vc.get(res,path=sdo_path+'{file}',methods=('URL-FILE','URL')).wait())
+        sdo_file=Fido.fetch(res,path=os.path.join(sdo_path, '{file}'))
         sdo_file=sdo_file[0]
+        
         if not sil:
             print('SDO/HMI file name is %s'%sdo_file)
     manual(fiss_file,sdo_file,**kwargs)
@@ -645,7 +670,7 @@ def manual(fiss_file,sdo_file,smooth=True,**kwargs):
     wavelen=fissh['wavelen']
     
     filename=kwargs.get('filename',time[:10]+'_'+wavelen[:4])
-    dirname=kwargs.get('dirname',os.getcwd()+os.sep)
+    dirname=kwargs.get('dirname',os.getcwd())
     alpha=kwargs.pop('alpha',0.5)
     interp=kwargs.pop('interpolation','bilinear')
     
@@ -728,7 +753,7 @@ def manual(fiss_file,sdo_file,smooth=True,**kwargs):
         print('========================================')
         
     def saveb():
-        filename2=dirname+filename+'_match_wcs.npz'
+        filename2=os.path.join(dirname, filename+'_match_wcs.npz')
         
         px=x0+xsld.val+xsubsld.val-xc-0.5
         py=y0+ysld.val+ysubsld.val-yc-0.5
@@ -792,13 +817,32 @@ def manual(fiss_file,sdo_file,smooth=True,**kwargs):
 
 
 def fiss_align(data,header,missing=0):
+    """
+    Align the FISS data. This alignment do not match the wcs information.
     
+    Parameters
+    ----------
+    data : array
+        2-dimensional array Data.
+    header : astropy.io.fits.Header
+        FTS file header. \n
+        It must contain the align information returned by fiss_aling_inform code.
+    missing : float
+        A missing value of the interpolation.
+        
+    Example
+    -------
+    >>> from fisspy.image.coalignment import fiss_align
+    >>> from fisspy.io.read import getheader, raster
+    >>> data = raster(file, 0.1)
+    >>> h = getheader(file)
+    >>> adata = fiss_align(data, h)
     
+    """
     
-    xmargin=header['margin2']
-    ymargin=header['margin3']
-    img=rot(data, header['crota2'], header['crpix2'],
-            header['crpix3'], header['shift2'], header['shift3'],
-             header['margin2'], header['margin3'])
+    img=rot(data, header['crota2'], header['crpix3'],
+            header['crpix2'], header['shift3'], header['shift2'],
+             header['margin3'], header['margin2'],
+             missing= missing)
     
     return img

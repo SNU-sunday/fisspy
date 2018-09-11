@@ -1,6 +1,5 @@
 """
 Read the FISS fts file and its header.
-
 """
 from __future__ import absolute_import, division
 
@@ -9,15 +8,13 @@ __email__ = "jhkang@astro.snu.ac.kr"
 
 from astropy.io import fits
 from scipy.signal import savgol_filter
-from scipy.signal import fftconvolve as conv
 import numpy as np
 import os
 
-__all__ = ['frame', 'pca_read', 'raster', 'getheader', 'frame2raster',
-           'sp_av', 'sp_med', 'wavecalib', 'simple_wvcalib']
+__all__ = ['frame', 'pca_read', 'raster', 'getheader', 'frame2raster']
 
-def frame(file, x1=0, x2=False, pca=True, ncoeff=False, xmax=False,
-          smooth=False, **kwargs):
+def frame(file,x1=0,x2=False,pca=True,ncoeff=False,xmax=False,
+          smooth=False,**kwargs):
     """Read the FISS fts file.
 
     Parameters
@@ -179,8 +176,8 @@ def pca_read(file,header,x1,x2=False,ncoeff=False):
     spec *= 10.**data[:,:,ncoeff][:,:,None]
     return spec
 
-def raster(file, wv, hw=0.05, x1=0, x2=False, y1=0, y2=False,
-           pca=True, smooth=False, absScale = False, **kwargs):
+def raster(file,wv,hw=0.05,x1=0,x2=False,y1=0,y2=False,pca=True,
+           smooth=False,**kwargs):
     """
     Make raster images for a given file at wv of wavelength within width hw
     
@@ -206,9 +203,6 @@ def raster(file, wv, hw=0.05, x1=0, x2=False, y1=0, y2=False,
         If True, the frame is read from the PCA file.
         Default is True, but the function automatically check
         the existance of the pca file.
-    absScale : (optional) bool
-        If True, the wavelength should be given in absolute scale.
-        If Flase, the wavelength should be given in relative scale. 
     smooth : (optional) bool
         If True, apply the Savitzky-Golay filter to increase the signal to
         noise without greatly distorting the signal of the given fts file.
@@ -236,16 +230,18 @@ def raster(file, wv, hw=0.05, x1=0, x2=False, y1=0, y2=False,
             
         import matplotlib.pyplot as plt
         from fisspy.io import read
-        from fisspy import cm
+        import fisspy
         import fisspy.data.sample
         raster=read.raster(fisspy.data.sample.FISS_IMAGE,0.3)
-        plt.imshow(raster, cmap=cm.ca, origin='lower', interpolation='bilinear')
+        plt.imshow(raster,cmap=fisspy.cm.ca,origin='lower',interpolation='bilinear')
         plt.title(r"GST/FISS 8542+0.3 $\AA$ Spectrogram")
         plt.show()
     """
     header = getheader(file,pca)
+    nw = header['NAXIS1']
     ny = header['NAXIS2']
     nx = header['NAXIS3']
+    wc = header['CRPIX1']
     dldw = header['CDELT1']
     
     if not file:
@@ -264,7 +260,7 @@ def raster(file, wv, hw=0.05, x1=0, x2=False, y1=0, y2=False,
     if not y2:
         y2 = int(ny)
     
-    wl = simple_wvcalib(header, absScale= absScale)
+    wl = (np.arange(nw)-wc)*dldw
     if hw < abs(dldw)/2.:
         hw = abs(dldw)/2.
     
@@ -367,141 +363,3 @@ def getheader(file,pca=True):
         header['history'] = str(header0['history'])
         
     return header
-
-def frame2raster(frame, header, wv, absScale = False):
-    """
-    Make a raster image by using the frame data.
-    
-    Parameters
-    ----------
-    frame : ~numpy.ndarray
-        Data which is read from the fisspy.io.read.frame
-    header : astropy.io.fits.Header
-        FISS data header
-    wv : float or ~numpy.ndarray
-        Referenced wavelengths to draw raster image. It must be the one single float,
-        or 1D array
-    absScale : (optional) bool
-        If True, the wavelength should be given in absolute scale.
-        If Flase, the wavelength should be given in relative scale. 
-    Returns
-    -------
-    Raster : ~numpy.ndarray
-        Raster image at gieven wavelength.
-    """
-    hw = 0.05
-    wl = simple_wvcalib(header, absScale= absScale)
-    s = np.abs(wl - wv) <= hw
-    img = frame[:, :, s].sum(2) / s.sum()
-    return img
-
-def sp_av(file) :
-    a = frame(file, xmax = True)
-    return a.mean(axis = 1)
-
-def sp_med(file) :
-    a = frame(file, xmax = True)
-    return np.median(a, axis = 1)
-
-def wavecalib(band,profile,method=True):
-    """
-    Calibrate the wavelength for FISS spectrum profile.
-    
-    Parameters
-    ----------
-    band : str
-        A string to identify the wavelength.
-        Allowable wavelength bands are '6562','8542','5890','5434'
-    profile : ~numpy.ndarray
-        A 1 dimensional numpy array of spectral profile.
-    Method : (optional) bool
-        * Default is True.
-        If true, the reference lines for calibration are the telluric lines.
-        Else if False, the reference lines are the solar absorption lines.
-    
-    Returns
-    -------
-    wavelength : ~numpy.ndarray
-        Calibrated wavelength.
-    
-    Notes
-    -----
-        This function is based on the FISS IDL code FISS_WV_CALIB.PRO
-        written by J. Chae, 2013.
-    
-    Example
-    -------
-    >>> from fisspy.analysis import doppler
-    >>> wv=doppler.wavecalib('6562',profile)
-    
-    """
-    band=band[0:4]
-    nw=profile.shape[0]
-    
-    if method:
-        if band == '6562':
-            line=np.array([6561.097,6564.206])
-            lamb0=6562.817
-            dldw=0.019182
-        elif band == '8542':
-            line=np.array([8540.817,8546.222])
-            lamb0=8542.090
-            dldw=-0.026252
-        elif band == '5890':
-            line=np.array([5889.951,5892.898])
-            lamb0=5889.9509
-            dldw=0.016847
-        elif band == '5434':
-            line=np.array([5434.524,5436.596])
-            lamb0=5434.5235
-            dldw=-0.016847
-        else:
-            raise ValueError("The wavelength band value is not allowable.\n"+
-                             "Please select the wavelenth "+
-                             "among '6562','8542','5890','5434'")
-    else:
-        if band == '6562':
-            line=np.array([6562.817,6559.580])
-            lamb0=6562.817
-            dldw=0.019182
-        elif band == '8542':
-            line=np.array([8542.089,8537.930])
-            lamb0=8542.090
-            dldw=-0.026252
-        else:
-            raise ValueError("The wavelength band value is not allowable.\n"
-                             "Please select the wavelenth "
-                             "among '6562','8542','5890','5434'")
-    
-    w=np.arange(nw)
-    wl=np.zeros(2)
-    wc=profile[20:nw-20].argmin()+20
-    lamb=(w-wc)*dldw+lamb0
-    
-    for i in range(2):
-        mask=np.abs(lamb-line[i]) <= 0.3
-        wtmp=w[mask]
-        ptmp=conv(profile[mask],[-1,2,-1],'same')
-        mask2=ptmp[1:-1].argmin()+1
-        try:
-            wtmp=wtmp[mask2-3:mask2+4]
-            ptmp=ptmp[mask2-3:mask2+4]
-        except:
-            raise ValueError('Fail to wavelength calibration\n'
-            'please change the method %s to %s' %(repr(method), repr(not method)))
-        c=np.polyfit(wtmp-np.median(wtmp),ptmp,2)
-        wl[i]=np.median(wtmp)-c[1]/(2*c[0])    #local minimum of the profile
-    
-    dldw=(line[1]-line[0])/(wl[1]-wl[0])
-    wc=wl[0]-(line[0]-lamb0)/dldw
-    wavelength=(w-wc)*dldw
-    
-    return wavelength
-
-def simple_wvcalib(header, absScale = False):
-    if absScale:
-        return (np.arange(header['naxis1']) -
-                header['crpix1'])*header['cdelt1'] + header['crval1']
-    else:
-        return (np.arange(header['naxis1']) -
-                header['crpix1'])*header['cdelt1']
