@@ -30,42 +30,97 @@ class FISS(object):
     
     def __init__(self, file, noiseSuppresion= False,
                  simpleWvCalib= True, absScale= False, **kwargs):
+        if file.find('Flat') != -1:
+            self.ftype = 'Raw Flat'
+        elif file.find('FLAT') != -1:
+            self.ftype = 'Master Flat'
+        elif file.find('SLIT') != -1:
+            self.ftype = 'Slit Pattern'
+        elif file.find('Cal') != -1:
+            self.ftype = 'Calibration File'
+        elif file.find('BiasDark') != -1:
+            self.ftype = 'BiasDark'
+        elif file.find('1.fts') != -1:
+            self.ftype = 'Processed Data'
+        elif file.find('c.fts') != -1:
+            self.ftype = 'Compressed Data'
+        elif file.find('p.fts') != -1:
+            self.ftype = 'PCA Components'
+        elif file.find('mask') != -1:
+            self.ftype = 'FISS Data Mask'
+        elif file.find('t.fts') != -1:
+            self.ftype = 'FISS Data Time'
+        elif file.find('FD') != -1 and (file.find('A.fts') != -1 or
+                       file.find('B.fts') !=- 1):
+            self.ftype = 'FISS Data'
+        elif (file.find('FD') == -1 and file.find('FLAT') == -1 and
+              file.find('SLIT') == -1 and (file.find('A.fts') != -1 or
+                                            file.find('B.fts') != -1)):
+            self.ftype = 'Raw Data'
         self.filename = file
         self.dirname = dirname(file)
         self.basename = basename(file)
         self.header = self._getHeader()
         self.pfile = self.header.pop('pfile',False)
-        self.ny = self.header['naxis2']
-        self.nx = self.header['naxis3']
-        self.nwv = self.header['naxis1']
-        self.date = self.header['date']
-        self.band = self.header['wavelen'][:4]
-        self.frame = self._readFrame()
-        self.refProfile = self.frame.mean((0,1))
-        self.wv = self._waveCalibration(simpleWvCalib= simpleWvCalib,
-                                        absScale= absScale, **kwargs)
-        self.centralWavelength = self.header['crval1']
-        self.noiseSuppression = False
+        self.ndim = self.header['naxis']
         
-        if noiseSuppresion:
-            self._noiseSuppresion()
-        
-        if self.band == '6562':
-            self.camera = 'A'
-            self.set = '1'
-            self.cm = cm.ha
-        elif self.band == '8542':
-            self.camera = 'B'
-            self.set = '1'
-            self.cm = cm.ca
-        elif self.band == '5889':
-            self.camera = 'A'
-            self.set = '2'
-            self.cm = cm.na
-        elif self.band == '5434':
-            self.camera = 'B'
-            self.set = '2'
-            self.cm = cm.fe
+        if self.ftype == 'processed Data' or self.ftype == 'Compressed Data':
+            self.ny = self.header['naxis2']
+            self.nx = self.header['naxis3']
+            self.nwv = self.header['naxis1']
+            self.date = self.header['date']
+            self.band = self.header['wavelen'][:4]
+            self.frame = self._readFrame()
+            self.refProfile = self.frame.mean((0,1))
+            self.wv = self._waveCalibration(simpleWvCalib= simpleWvCalib,
+                                            absScale= absScale, **kwargs)
+            self.centralWavelength = self.header['crval1']
+            self.noiseSuppression = False
+            
+            if noiseSuppresion:
+                self._noiseSuppresion()
+            
+            if self.band == '6562':
+                self.camera = 'A'
+                self.set = '1'
+                self.cm = cm.ha
+            elif self.band == '8542':
+                self.camera = 'B'
+                self.set = '1'
+                self.cm = cm.ca
+            elif self.band == '5889':
+                self.camera = 'A'
+                self.set = '2'
+                self.cm = cm.na
+            elif self.band == '5434':
+                self.camera = 'B'
+                self.set = '2'
+                self.cm = cm.fe
+        elif self.ftype == 'FISS Data':
+            self.cam = file[-5]
+            self.band = str(self.header['wvrest0'])[:4]
+            self.time = fits.getdata(join(self.dirname,
+                                          file.replace(self.cam, 't')))
+            self.refTime = self.header['reftime']
+            if self.band == '6562':
+                self.camera = 'A'
+                self.set = '1'
+                self.cm = [cm.ha, cm.ha, plt.cm.jet, cm.ha, plt.cm.jet]
+            elif self.band == '8542':
+                self.camera = 'B'
+                self.set = '1'
+                self.cm = [cm.ca, cm.ca, plt.cm.jet, cm.ca, plt.cm.jet]
+            elif self.band == '5889':
+                self.camera = 'A'
+                self.set = '2'
+                self.cm = [cm.na, cm.na, plt.cm.jet, cm.na, plt.cm.jet]
+            elif self.band == '5434':
+                self.camera = 'B'
+                self.set = '2'
+                self.cm = [cm.fe, cm.fe, plt.cm.jet, cm.fe, plt.cm.jet]
+        else:
+            self.cm = plt.cm.gray
+            self.frame = fits.getdata(file)
         
         
     def _getHeader(self):
@@ -307,7 +362,7 @@ class FISS(object):
                      weight='bold')
         fig.show()
         
-    def showRefProfile(self, **kwargs):
+    def plotRefProfile(self, **kwargs):
         """
         """
         figsize = kwargs.get('figsize', [8,6])
@@ -337,3 +392,62 @@ class FISS(object):
             return LOSvelocity, intensity
         else:
             return lineShift, intensity
+        
+    def showRawData(self, frameNumber= False, axis= 0, **kwargs):
+        """
+        """
+        figsize = kwargs.get('figsize', [8,6])
+        plt.figure(figsize= figsize)
+        if self.ndim == 2:
+            plt.imshow(self.frame, self.cm, origin='lower')
+            plt.title(self.ftype)
+        elif self.ndim ==3:
+            if axis == 0:
+                plt.imshow(self.frame[frameNumber],
+                           self.cm, origin='lower')
+            elif axis == 1:
+                plt.imshow(self.frame[:,frameNumber],
+                           self.cm, origin='lower')
+            elif axis == 2:
+                plt.imshow(self.frame[:,:,frameNumber],
+                           self.cm, origin='lower')
+        plt.xlabel('X [pix]')
+        plt.ylabel('Y [pix]')
+        plt.tight_layout()
+        plt.show()
+        
+    def plotTimeseries(self, position, wavelegthFrame, **kwargs):
+        """
+        """
+        figsize = kwargs.get('figsize', [8,6])
+        plt.figure(figsize= figsize)
+        plt.plot(self.time, self.frame[:,position[1],
+                                       position[0],wavelegthFrame])
+        plt.title('X = %i, Y = %i / Wavelegth = %s'%(position[0],
+                                                     position[1],
+                                                     self.header['ID%s'%wavelegthFrame]))
+        plt.xlabel('Time [min]')
+        plt.ylabel(r'Velocity [km s$^{-1}$')
+        plt.minorticks_on()
+        plt.tick_params(which='major', direction='in', width= 1.5, size=5)
+        plt.tick_params(which='minor', direction='in', size=3)
+        plt.xlim(self.time[0], self.time[-1])
+        plt.tight_layout()
+        plt.show()
+        
+    def showFD(self, Timeframe, **kwargs):
+        """
+        """
+        
+        figsize = kwargs.get('figsize', [self.frame.shape[2]*5+2,
+                                         self.frame.shape[1]+2])
+        fig, ax = plt.subplots(1, 5, figsize= figsize)
+        
+        for i in range(5):
+            ax[i].imshow(self.frame[Timeframe,:,:,i], self.cm[i])
+            ax[i].set_title(self.header['ID%i'%i])
+            ax[i].set_xlabel('X [pix]')
+            ax[i].set_ylabel('Y [pix]')
+            
+        fig.tight_layout(w_pad=0)
+        fig.show()
