@@ -102,6 +102,7 @@ class FISS(object):
             self.time = fits.getdata(join(self.dirname,
                                           file.replace(self.cam, 't')))
             self.refTime = self.header['reftime']
+            self.frame = fits.getdata(file)
             if self.band == '6562':
                 self.camera = 'A'
                 self.set = '1'
@@ -400,7 +401,6 @@ class FISS(object):
         plt.figure(figsize= figsize)
         if self.ndim == 2:
             plt.imshow(self.frame, self.cm, origin='lower')
-            plt.title(self.ftype)
         elif self.ndim ==3:
             if axis == 0:
                 plt.imshow(self.frame[frameNumber],
@@ -411,6 +411,7 @@ class FISS(object):
             elif axis == 2:
                 plt.imshow(self.frame[:,:,frameNumber],
                            self.cm, origin='lower')
+        plt.title(self.ftype)
         plt.xlabel('X [pix]')
         plt.ylabel('Y [pix]')
         plt.tight_layout()
@@ -427,7 +428,7 @@ class FISS(object):
                                                      position[1],
                                                      self.header['ID%s'%wavelegthFrame]))
         plt.xlabel('Time [min]')
-        plt.ylabel(r'Velocity [km s$^{-1}$')
+        plt.ylabel(r'Velocity [km s$^{-1}$]')
         plt.minorticks_on()
         plt.tick_params(which='major', direction='in', width= 1.5, size=5)
         plt.tick_params(which='minor', direction='in', size=3)
@@ -439,15 +440,18 @@ class FISS(object):
         """
         """
         
-        figsize = kwargs.get('figsize', [self.frame.shape[2]*5+2,
-                                         self.frame.shape[1]+2])
+        figsize = kwargs.get('figsize', [self.frame.shape[2]/100*5+2,
+                                         self.frame.shape[1]/100+2])
         fig, ax = plt.subplots(1, 5, figsize= figsize)
-        
+        im = [None]*5
         for i in range(5):
-            ax[i].imshow(self.frame[Timeframe,:,:,i], self.cm[i])
+            im[i] = ax[i].imshow(self.frame[Timeframe,:,:,i], self.cm[i],
+                                  origin='lower')
             ax[i].set_title(self.header['ID%i'%i])
             ax[i].set_xlabel('X [pix]')
             ax[i].set_ylabel('Y [pix]')
-            
+        
+        im[2].set_clim(-4,4)
+        im[4].set_clim(-1.5,1.5)
         fig.tight_layout(w_pad=0)
         fig.show()
