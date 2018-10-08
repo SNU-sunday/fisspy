@@ -26,7 +26,7 @@ URL = metadata.get('url', 'http://fiss.snu.ac.kr')
 LONG_DESCRIPTION = "FISSPy is the python package to analyze the GST/FISS data file."
 
 # VERSION should be PEP386 compatible (http://www.python.org/dev/peps/pep-0386)
-VERSION = '0.8.42'
+VERSION = '0.9.0'
 
 # Indicates if this version is a release version
 RELEASE = 'dev' not in VERSION
@@ -47,7 +47,7 @@ setup(name=PACKAGENAME,
                         'astropy>=1.3',
                         'pandas>=0.12.0',
                         'matplotlib>=2.0',
-                        'sunpy>=0.7.6',
+                        'sunpy>=0.9.0',
 			'scipy>=0.18.0',
 			'interpolation>=0.1.6',
                         'statsmodels>=0.6.0',

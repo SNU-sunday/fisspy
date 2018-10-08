@@ -82,11 +82,12 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
     dwv = wv[1]-wv[0]
     if rspec and data0.ndim == 3:
         refSpec = conv(ref_spectrum , dkern[0],'same')
-        refSpec = refSpec[2:-2] * np.ones((4,1))
         refSpec[:2] = refSpec[-2:] = 0
+        refSpec = refSpec * np.ones((4,1))
         data2d = conv(data0.mean(0), dkern, 'same')
-        data = data2d[:, 2:-2] * np.ones((4, 1, 1))
-        data[:,:,:2] = data[:,:,-2:] = 0
+        data2d[:,:2] = data2d[:,-2:] = 0
+        data = data2d * np.ones((4, 1, 1))
+#        data[:,:,:2] = data[:,:,-2:] = 0
         dataT = data.transpose((1, 0, 2))
         yoff, xoff, cor = alignoffset(dataT, refSpec, cor= True)
         wvoffset = (xoff*(wv[1]-wv[0])) * (cor > 0.7)

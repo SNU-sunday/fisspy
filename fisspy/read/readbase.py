@@ -29,7 +29,7 @@ class FISS(object):
     """
     
     def __init__(self, file, noiseSuppresion= False,
-                 simpleWvCalib= True, absScale= False, **kwargs):
+                 simpleWvCalib= True, absScale= True, **kwargs):
         if file.find('Flat') != -1:
             self.ftype = 'Raw Flat'
         elif file.find('FLAT') != -1:
@@ -57,6 +57,7 @@ class FISS(object):
               file.find('SLIT') == -1 and (file.find('A.fts') != -1 or
                                             file.find('B.fts') != -1)):
             self.ftype = 'Raw Data'
+            
         self.filename = file
         self.dirname = dirname(file)
         self.basename = basename(file)
@@ -64,7 +65,7 @@ class FISS(object):
         self.pfile = self.header.pop('pfile',False)
         self.ndim = self.header['naxis']
         
-        if self.ftype == 'processed Data' or self.ftype == 'Compressed Data':
+        if self.ftype == 'Processed Data' or self.ftype == 'Compressed Data':
             self.ny = self.header['naxis2']
             self.nx = self.header['naxis3']
             self.nwv = self.header['naxis1']
@@ -74,7 +75,8 @@ class FISS(object):
             self.refProfile = self.frame.mean((0,1))
             self.wv = self._waveCalibration(simpleWvCalib= simpleWvCalib,
                                             absScale= absScale, **kwargs)
-            self.centralWavelength = self.header['crval1']
+            self.wvRef = self.centralWavelength = self.header['crval1']
+            
             self.noiseSuppression = False
             
             if noiseSuppresion:
@@ -235,13 +237,13 @@ class FISS(object):
         spec *= 10.**data[:,:,ncoeff][:,:,None]
         return spec
     
-    def _waveCalibration(self, simpleWvCalib= True, absScale= False,
+    def _waveCalibration(self, simpleWvCalib= True, absScale= True,
                          **kwargs):
         """
         """
         method = kwargs.pop('method', True)
         if simpleWvCalib:
-            if not absScale:
+            if absScale:
                 return (np.arange(self.nwv) -
                         self.header['crpix1']) * self.header['cdelt1'] + self.header['crval1']
             else:
@@ -367,18 +369,55 @@ class FISS(object):
         """
         """
         figsize = kwargs.get('figsize', [8,6])
-        plt.figure(figsize= figsize)
-        plt.plot(self.wv, self.refProfile)
-        plt.xlabel(r'Wavelength [$\AA$]')
-        plt.ylabel(r'Intensity [Count]')
-        plt.title('GST/FISS %s Band %s'%(self.band, self.date))
-        plt.minorticks_on()
-        plt.tick_params(which='major', direction='in', width= 1.5, size=5)
-        plt.tick_params(which='minor', direction='in', size=3)
-        plt.xlim(self.wv.min(), self.wv.max())
+        color = kwargs.get('color', 'k')
+        samefig = kwargs.pop('samefig', False)
+        if not samefig:
+            plt.figure(figsize= figsize)
+            plt.title('GST/FISS %s Band %s'%(self.band, self.date))
+            plt.xlabel(r'Wavelength [$\AA$]')
+            plt.ylabel(r'Intensity [Count]')
+            plt.minorticks_on()
+            plt.tick_params(which='major', direction='in', width= 1.5, size=5)
+            plt.tick_params(which='minor', direction='in', size=3)
+            plt.xlim(self.wv.min(), self.wv.max())
+        plt.plot(self.wv, self.refProfile, color=color)
         plt.tight_layout()
         plt.show()
         
+        
+    def plotProfile(self, x, y, **kwargs):
+        """
+        """
+        figsize = kwargs.get('figsize', [8,6])
+        color = kwargs.get('color', 'k')
+        samefig = kwargs.pop('samefig', False)
+        if not samefig:
+            plt.figure(figsize= figsize)
+            plt.title('GST/FISS %s Band %s'%(self.band, self.date))
+            plt.xlabel(r'Wavelength [$\AA$]')
+            plt.ylabel(r'Intensity [Count]')
+            plt.minorticks_on()
+            plt.tick_params(which='major', direction='in', width= 1.5, size=5)
+            plt.tick_params(which='minor', direction='in', size=3)
+            plt.xlim(self.wv.min(), self.wv.max())
+            
+        plt.plot(self.wv, self.frame[y,x], color = color)
+        plt.tight_layout()
+        plt.show()
+        
+    def showSpectrograph(self, x, **kwargs):
+        """
+        """
+        figsize = kwargs.get('figsize', [8,6])
+        plt.figure(figsize= figsize)
+        plt.title('GST/FISS %s Band %s'%(self.band, self.date))
+        plt.xlabel(r'Wavelength [$\AA$]')
+        plt.ylabel(r'Slit [pix]')
+        plt.tick_params(which='major',width= 1.5, size= 5)
+        plt.tight_layout()
+        plt.show()
+        
+    
     def lambdaMeter(self, hw= 0.03, sp= 5e3, wvRange= False,
                     wvinput= True, shift2velocity= False):
         """
