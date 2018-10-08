@@ -13,7 +13,7 @@ import numpy as np
 from interpolation.splines import LinearSpline
 from astropy.constants import c
 from scipy.signal import fftconvolve as conv
-from fisspy.image.coalignment import alignoffset
+from fisspy.image.base import alignoffset
 
 __all__ = ['lambdameter', 'LOS_velocity']
 
@@ -75,25 +75,21 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
     shape=data0.shape
     nw=shape[-1]
     reshape=shape[:-1]
-    dkern = np.array([[-1, -2, -1],
-                      [0, 0, 0],
-                      [1, 2, 1]])
+    dkern = np.array([[-1, 1, 0, 1, -1]])
     rspec = np.any(ref_spectrum)
     ndim = data0.ndim
     wvoffset = 0
     dwv = wv[1]-wv[0]
     if rspec and data0.ndim == 3:
-        ref_spec_2d = conv(conv(ref_spectrum *
-                                np.ones((4,1)), dkern.T, 'same'),
-                            dkern.T, 'same')
-        ref_spec = ref_spec_2d[1, 2:-2] * np.ones((4,1))
-        
-        data2d = conv(conv(data0.mean(0), dkern.T, 'same'),
-                      dkern.T, 'same')
-        
-        data = data2d[:, 2:-2] * np.ones((4, 1, 1))
+        refSpec = conv(ref_spectrum , dkern[0],'same')
+        refSpec[:2] = refSpec[-2:] = 0
+        refSpec = refSpec * np.ones((4,1))
+        data2d = conv(data0.mean(0), dkern, 'same')
+        data2d[:,:2] = data2d[:,-2:] = 0
+        data = data2d * np.ones((4, 1, 1))
+#        data[:,:,:2] = data[:,:,-2:] = 0
         dataT = data.transpose((1, 0, 2))
-        yoff, xoff, cor = alignoffset(dataT, ref_spec, cor= True)
+        yoff, xoff, cor = alignoffset(dataT, refSpec, cor= True)
         wvoffset = (xoff*(wv[1]-wv[0])) * (cor > 0.7)
     elif not rspec and ndim == 3:
         wvoffset = np.zeros(shape[1])

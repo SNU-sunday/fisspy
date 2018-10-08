@@ -2,8 +2,8 @@ from __future__ import absolute_import, division
 
 import numpy as np
 from fisspy.image.base import rot
-import fisspy
-import astropy.units as u
+from fisspy import cm
+#import astropy.units as u
 import sunpy.map
 #from .solar_rotation import rot_hpc
 from sunpy.coordinates import frames
@@ -97,9 +97,9 @@ def fissmap(data0,header0,pre_align=False,**kwargs):
         fmap.plot_settings['cmap']=cmap
     else:
         if header['wavelen']=='6562.8':
-            fmap.plot_settings['cmap']=fisspy.cm.ha
+            fmap.plot_settings['cmap'] = cm.ha
         elif header['wavelen']=='8542':
-            fmap.plot_settings['cmap']=fisspy.cm.ca
+            fmap.plot_settings['cmap'] = cm.ca
     title=kwargs.pop('title',False)
     if title:
         fmap.plot_settings['title']=title
