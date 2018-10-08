@@ -404,20 +404,8 @@ class FISS(object):
         plt.plot(self.wv, self.frame[y,x], color = color)
         plt.tight_layout()
         plt.show()
+            
         
-    def showSpectrograph(self, x, **kwargs):
-        """
-        """
-        figsize = kwargs.get('figsize', [8,6])
-        plt.figure(figsize= figsize)
-        plt.title('GST/FISS %s Band %s'%(self.band, self.date))
-        plt.xlabel(r'Wavelength [$\AA$]')
-        plt.ylabel(r'Slit [pix]')
-        plt.tick_params(which='major',width= 1.5, size= 5)
-        plt.tight_layout()
-        plt.show()
-        
-    
     def lambdaMeter(self, hw= 0.03, sp= 5e3, wvRange= False,
                     wvinput= True, shift2velocity= False):
         """
@@ -494,3 +482,20 @@ class FISS(object):
         im[4].set_clim(-1.5,1.5)
         fig.tight_layout(w_pad=0)
         fig.show()
+        
+    def showSpectrogram(self, x, **kwargs):
+        """
+        """
+        
+        figsize = kwargs.get('figsize', [8,6])
+        plt.figure(figsize= figsize)
+        plt.title('GST/FISS %s Band %s'%(self.band, self.date))
+        if self.camera == 'A':
+            plt.imshow(self.frame[:,x], origin='lower', cmap=self.cm)
+        else:
+            plt.imshow(self.frame[:,x,::-1], origin='lower', cmap=self.cm)
+        plt.xlabel(r'X [pix]')
+        plt.ylabel(r'Slit [pix]')
+        plt.tick_params(which='major',width= 1.5, size= 5)
+        plt.tight_layout()
+        plt.show()
