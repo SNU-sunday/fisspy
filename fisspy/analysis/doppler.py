@@ -213,7 +213,7 @@ def LOS_velocity(wv,data,hw=0.01,band=False):
     if not band :
         raise ValueError("Please insert the parameter band (str)")
         
-    wc, intc =  lambdameter(wv,data,hw,wvinput=True)
+    wc, intc =  lambdameter(wv,data,hw=hw,wvinput=True)
     
     if band == '6562' :
         return wc*c.to('km/s').value/6562.817

@@ -3,7 +3,7 @@ from __future__ import absolute_import, division
 import numpy as np
 from fisspy.image.base import rot
 from fisspy import cm
-#import astropy.units as u
+import astropy.units as u
 import sunpy.map
 #from .solar_rotation import rot_hpc
 from sunpy.coordinates import frames
@@ -264,5 +264,5 @@ def map_rot_correct(mmap,refx,refy,reftime):
     
     sx = x - refx.value
     sy = y - refy.value
-    smap = mmap.shift(-sx,-sy)
+    smap = mmap.shift(-sx*u.arcsec,-sy*u.arcsec)
     return smap
