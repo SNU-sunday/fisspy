@@ -10,7 +10,7 @@ from scipy.fftpack import fft, ifft
 __author__ = "Juhyeong Kang"
 __email__ =  "jhkang@astro.snu.ac.kr"
 
-__all__ = ['wavelet', 'powerMap']
+__all__ = ['wavelet', 'waveCoherency', 'powerMap']
 
 class wavelet:
     
@@ -122,6 +122,7 @@ class wavelet:
         self.mother = mother.upper()
         self.param = param
         self.pad = pad
+        self.axis= axis
         
         #padding
         if pad:
@@ -295,6 +296,7 @@ class wavelet:
             raise ValueError('Mother must be one of MORLET, PAUL, DOG\n'
                              'mother = %s' %repr(self.mother))
         self.period = self.scale*self.fourier_factor
+        self.freq = self.dt/self.period
     
     def _motherParam(self):
         """
@@ -374,9 +376,19 @@ class wavelet:
         else:
             raise ValueError('Mother must be one of MORLET, PAUL, DOG')
         
-    def wave_signif(y,dt,scale,sigtest=0,mother='MORLET',
-                    param=False,lag1=0.0,siglvl=0.95,dof=-1,
-                    gws=False,confidence=False):
+        
+    def saveWavelet(self, savename):
+        """
+        Save the wavelet spectrum
+        """
+        np.savez(savename, wavelet=self.wave,
+                 period=self.period, scale=self.scale,
+                 coi=self.coi, dt=self.dt, dj=self.dj, axis=self.axis,
+                 s0=self.s0, j=self.j, mother=self.mother,
+                 param=self.param)
+        
+    def waveSignif(self, y, sigtest=0, lag1=0.0, siglvl=0.95, dof=-1,
+                    gws=False, confidence=False):
         """
         Compute the significance levels for a wavelet transform.
         
@@ -447,82 +459,82 @@ class wavelet:
         else:
             var = np.var(y)
         
-        j = len(scale)
+        j = len(self.scale)
         
-        fourier_factor, dofmin, cdelta, gamma_fac, dj0 = motherparam(mother,param)
-        period = scale*fourier_factor
-        freq = dt/period
+        self._motherParam()
         try:
             len(gws)
-            fft_theor = gws.copy()
+            self.fft_theor = gws.copy()
         except:
-            fft_theor = (1-lag1**2)/(1-2*lag1*np.cos(freq*2*np.pi)+lag1**2)
+            fft_theor = (1-lag1**2)/(1-2*lag1*np.cos(self.freq*2*np.pi)+lag1**2)
             fft_theor*=var
     
     
-        signif = fft_theor.copy()
+        self.signif = fft_theor.copy()
         
         if sigtest == 0:
-            dof = dofmin
-            signif = fft_theor * chisquare_inv(siglvl, dof)/dof
+            dof = self.dofmin
+            signif = fft_theor * self._chisquareInv(siglvl, dof)/dof
             if confidence:
                 sig = (1.-siglvl)/2.
-                chisqr = dof/np.array((chisquare_inv(1-sig,dof),
-                                       chisquare_inv(sig,dof)))
-                signif = np.dot(chisqr[:,None],fft_theor[None,:])
+                chisqr = dof/np.array((self._chisquareInv(1-sig, dof),
+                                       self._chisquareInv(sig, dof)))
+                signif = np.dot(chisqr[:,None], fft_theor[None,:])
         elif sigtest == 1:
-            if gamma_fac == -1:
+            if self.gamma_fac == -1:
                 raise ValueError('gamma_fac(decorrelation facotr) not defined for '
                                  'mother = %s with param = %s'
-                                 %(repr(mother),repr(param)))
+                                 %(repr(self.mother), repr(self.param)))
             if len(np.atleast_1d(dof)) != 1:
                 pass
             elif dof == -1:
-                dof = np.zeros(j)+dofmin
+                dof = np.zeros(j)+self.dofmin
             else:
                 dof = np.zeros(j)+dof
             dof[dof <= 1] = 1
-            dof = dofmin*(1+(dof*dt/gamma_fac/scale)**2)**0.5
-            dof[dof <= dofmin] = dofmin
+            dof = self.dofmin * (1 + (dof * self.dt/self.gamma_fac/self.scale)**2)**0.5
+            dof[dof <= self.dofmin] = self.dofmin
             if not confidence:
                 for i in range(j):
-                    chisqr = chisquare_inv(siglvl,dof[i])/dof[i]
-                    signif[i] = chisqr*fft_theor[i]
+                    chisqr = self._chisquareInv(siglvl, dof[i]) / dof[i]
+                    signif[i] = chisqr * fft_theor[i]
             else:
                 signif = np.empty(2,j)
                 sig = (1-siglvl)/2.
                 for i in range(j):
-                    chisqr = dof[i]/np.array((chisquare_inv(1-sig,dof[i]),chisquare_inv(sig,dof[i])))
+                    chisqr = dof[i]/np.array((self._chisquareInv(1-sig,dof[i]),
+                                            self._chisquareInv(sig, dof[i])))
                     signif[:,i] = fft_theor[i]*chisqr
         elif sigtest == 2:
             if len(dof) != 2:
                 raise ValueError('DOF must be set to [s1,s2], the range of scale-averages')
-            if cdelta == -1:
+            if self.cdelta == -1:
                 raise ValueError('cdelta & dj0 not defined for'
-                                 'mother = %s with param = %s' %(repr(mother),repr(param)))
-            dj= np.log2(scale[1]/scale[0])
+                                 'mother = %s with param = %s' %(repr(self.mother), repr(self.param)))
+            dj= np.log2(self.scale[1] / self.scale[0])
             s1 = dof[0]
             s2 = dof[1]
-            avg = (period>=s1)*(period<=s2)
+            avg = (self.period >= s1)*(self.period <= s2)
             navg = avg.sum()
             if not navg:
-                raise ValueError('No valid scales between %s and %s' %(repr(s1),repr(s2)))
-            s1=scale[avg].min()
-            s2=scale[avg].max()
-            savg = 1./(1./scale[avg]).sum()
+                raise ValueError('No valid scales between %s and %s' %(repr(s1), repr(s2)))
+            s1 = self.scale[avg].min()
+            s2 = self.scale[avg].max()
+            savg = 1./(1./self.scale[avg]).sum()
             smid = np.exp(0.5*np.log(s1*s2))
-            dof = (dofmin*navg*savg/smid)*(1+(navg*dj/dj0)**2)**0.5
-            fft_theor = savg*(fft_theor[avg]/scale[avg]).sum()
-            chisqr = chisquare_inv(siglvl,dof)/dof
+            dof = (self.dofmin*navg*savg/smid)*(1+(navg*dj/self.dj0)**2)**0.5
+            fft_theor = savg*(fft_theor[avg]/self.scale[avg]).sum()
+            chisqr = self._chisquareInv(siglvl,dof)/dof
             if confidence:
                 sig = (1-siglvl)/2.
-                chisqr = dof/np.array((chisquare_inv(1-sig,dof),chisquare_inv(sig,dof)))
-            signif = (dj*dt/cdelta/savg)*fft_theor*chisqr
+                chisqr = dof/np.array((self._chisquareInv(1-sig, dof),
+                                       self._chisquareInv(sig, dof)))
+            signif = (self.dj*self.dt/self.cdelta/savg)*fft_theor*chisqr
         else:
             raise ValueError('Sigtest must be 0,1, or 2')
-        return signif
+        self.signif = signif
     
-    def chisquare_inv(p,v):
+    def _chisquareInv(self,p,v):
         """
         Inverse of chi-square cumulative distribution function(CDF).
         
@@ -551,12 +563,12 @@ class wavelet:
         tolerance = 1e-4
         while x+tolerance >= maxv:
             maxv*=10.
-            x = fmin(chisquare_solve, minv, maxv, args=(p,v), xtol=tolerance)
+            x = fmin(self._chisquareSolve, minv, maxv, args=(p,v), xtol=tolerance)
             minv = maxv
         x*=v
         return x
         
-    def chisquare_solve(xguess,p,v):
+    def _chisquareSolve(self,xguess,p,v):
         """
         Chisqure_solve
         
@@ -569,195 +581,211 @@ class wavelet:
         if pguess >= 1-1e-4:
             pdiff = xguess
         return pdiff
+
+
+class powerMap:
     
-    def wave_coherency(wave1,time1,scale1,wave2,time2,scale2,
-                       dt=False,dj=False,coi=False,nosmooth=False):
-        """
-        Compute the wavelet coherency between two time series.
+    def __inint__(self, fname):
+    """
+    """
+    
+
+
+
+
+
+
+
+
+
+def waveCoherency(wave1, time1, scale1, wave2, time2, scale2,
+                   dt=False, dj=False, coi=False, nosmooth=False):
+    """
+    Compute the wavelet coherency between two time series.
+    
+    Parameters
+    ----------
+    wave1 : ~numpy.ndarray
+        Wavelet power spectrum for time series 1.
+    time1 : ~numpy.ndarray
+        A vector of times for time series 1.
+    scale1 : ~numpy.ndarray
+        A vector of scales for time series 1.
+    wave2 : ~numpy.ndarray
+        Wavelet power spectrum for time series 2.
+    time2 : ~numpy.ndarray
+        A vector of times for time series 2.
+    scale2 : ~numpy.ndarray
+        A vector of scales for time series 2.
+    dt : (optional) float
+        Amount of time between each Y value, i.e. the sampling time.
+            If not input, then calculated from time1[1]-time1[0]
+    dj : (optional) float
+        The spacing between discrete scales.
+            If not input, then calculated from scale1
+    coi : (optional) ~numpy.ndarray
+        The array of the cone-of influence.
+    nosmooth : (optional) bool
+        If True, then just compute the global_coher, global_phase, and
+        the unsmoothed cross_wavelet and return.
+    
+    Returns
+    -------
+    result : dict
+        The result is dictionary has these information.
         
-        Parameters
-        ----------
-        wave1 : ~numpy.ndarray
-            Wavelet power spectrum for time series 1.
-        time1 : ~numpy.ndarray
-            A vector of times for time series 1.
-        scale1 : ~numpy.ndarray
-            A vector of scales for time series 1.
-        wave2 : ~numpy.ndarray
-            Wavelet power spectrum for time series 2.
-        time2 : ~numpy.ndarray
-            A vector of times for time series 2.
-        scale2 : ~numpy.ndarray
-            A vector of scales for time series 2.
-        dt : (optional) float
-            Amount of time between each Y value, i.e. the sampling time.
-                If not input, then calculated from time1[1]-time1[0]
-        dj : (optional) float
-            The spacing between discrete scales.
-                If not input, then calculated from scale1
-        coi : (optional) ~numpy.ndarray
+        cross_wavelet : ~numpy.ndarray
+            The cross wavelet between the time series.
+        time : ~numpy.ndarray
+            The time array given by the overlap of time1 and time2.
+        scale : ~numpy.ndarray
+            The scale array of scale indices, given by the overlap of 
+            scale1 and scale2.
+        wave_phase : ~numpy.ndarray
+            The phase difference between time series 1 and time series 2.
+        wave_coher : ~numpy.ndarray
+            The wavelet coherency, as a function of time and scale.
+        global_phase : ~numpy.ndarray
+            The global (or mean) phase averaged over all times.
+        global_coher : ~numpy.ndarray
+            The global (or mean) coherence averaged over all times.
+        power1 : ~numpy.ndarray
+            The wavelet power spectrum should be the same as wave1
+            if time1 and time2 are identical, otherwise it is only the
+            overlapping portion. If nosmooth is set,
+            then this is unsmoothed, otherwise it is smoothed.
+        power2 : ~numpy.ndarray
+            same as power 1 but for time series 2.
+        coi : ~numpy.ndarray
             The array of the cone-of influence.
-        nosmooth : (optional) bool
-            If True, then just compute the global_coher, global_phase, and
-            the unsmoothed cross_wavelet and return.
         
-        Returns
-        -------
-        result : dict
-            The result is dictionary has these information.
-            
-            cross_wavelet : ~numpy.ndarray
-                The cross wavelet between the time series.
-            time : ~numpy.ndarray
-                The time array given by the overlap of time1 and time2.
-            scale : ~numpy.ndarray
-                The scale array of scale indices, given by the overlap of 
-                scale1 and scale2.
-            wave_phase : ~numpy.ndarray
-                The phase difference between time series 1 and time series 2.
-            wave_coher : ~numpy.ndarray
-                The wavelet coherency, as a function of time and scale.
-            global_phase : ~numpy.ndarray
-                The global (or mean) phase averaged over all times.
-            global_coher : ~numpy.ndarray
-                The global (or mean) coherence averaged over all times.
-            power1 : ~numpy.ndarray
-                The wavelet power spectrum should be the same as wave1
-                if time1 and time2 are identical, otherwise it is only the
-                overlapping portion. If nosmooth is set,
-                then this is unsmoothed, otherwise it is smoothed.
-            power2 : ~numpy.ndarray
-                same as power 1 but for time series 2.
-            coi : ~numpy.ndarray
-                The array of the cone-of influence.
-            
-        Notes
-        -----
-            This function based on the IDL code WAVE_COHERENCY.PRO written by C. Torrence, 
-        
-        References
-        ----------
-        Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
-        *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
-        http://paos.colorado.edu/research/wavelets/
-        
-        Example
-        -------
-        >>> res=wavelet.wave_coherency(wave1,time1,scale1,wave2,time2,scale2,\
-    dt,dj,coi=coi)
-        
-        """
-        if not dt: dt=time1[1]-time1[0]
-        if not dj: dj=np.log2(scale1[1]/scale1[0])
-        if time1 is time2:
-            t1s=0
-            t1e=len(time1)
-            t2s=t1s
-            t2e=t1e
-        else:
-            otime_start=min([time1.min(),time2.min()])
-            otime_end=max([time1.max(),time2.max()])
-            t1=np.where((time1 >= otime_start)*(time1 <= otime_end))[0]
-            t1s=t1[0]
-            t1e=t1[-1]+1
-            t2=np.where((time2 >= otime_start)*(time2 <= otime_end))[0]
-            t2s=t2[0]
-            t2e=t2[-1]+1
-        
-        oscale_start=min([scale1.min(),scale2.min()])
-        oscale_end=max([scale1.max(),scale2.max()])
-        s1=np.where((scale1 >= oscale_start)*(scale1 <= oscale_end))[0]
-        s2=np.where((scale2 >= oscale_start)*(scale2 <= oscale_end))[0]
-        s1s=s1[0]
-        s1e=s1[-1]+1
-        s2s=s2[0]
-        s2e=s2[-1]+1
-        
-        cross_wavelet=wave1[s1s:s1e,t1s:t1e]*wave2[s2s:s2e,t2s:t2e].conj()
-        power1=np.abs(wave1[s1s:s1e,t1s:t1e])**2
-        power2=np.abs(wave2[s2s:s2e,t2s:t2e])**2
-        
-        time=time1[t1s:t1e]
-        scale=scale1[s1s:s1e]
-        nj=s1e-s1s
-        
-        global1=power1.sum(1)
-        global2=power2.sum(1)
-        global_cross = cross_wavelet.sum(1)
-        global_coher = np.abs(global_cross)**2/(global1*global2)
-        global_phase = np.arctan(global_cross.imag/global_cross.real)*180./np.pi
-        
-        if nosmooth:
-            result = dict(global_coherence=global_coher,global_phase=global_phase,
-                          cross_wavelet=cross_wavelet)
-            return result
-        
-        nt=(4*scale/dt)//2*4+1
-        nt2=nt[:,np.newaxis]
-        ntmax=nt.max()
-        g=np.arange(ntmax)*np.ones((nj,1))
-        wh=g >= nt2
-        time_wavelet=(g-nt2//2)*dt/scale[:,np.newaxis]
-        wave_func=np.exp(-time_wavelet**2/2)
-        wave_func[wh]=0
-        wave_func=(wave_func/wave_func.sum(1)[:,np.newaxis]).real
-        cross_wavelet=fast_conv(cross_wavelet,wave_func,nt2)
-        power1=fast_conv(power1,wave_func,nt2)
-        power2=fast_conv(power2,wave_func,nt2)
-        scales=scale[:,np.newaxis]
-        cross_wavelet/=scales
-        power1/=scales
-        power2/=scales
-        
-        nw=int(0.6/dj/2+0.5)*2-1
-        weight=np.ones(nw)/nw
-        cross_wavelet=fast_conv2(cross_wavelet,weight)
-        power1=fast_conv2(power1,weight)
-        power2=fast_conv2(power2,weight)
-        
-        wave_phase=180./np.pi*np.arctan(cross_wavelet.imag/cross_wavelet.real)
-        power3=power1*power2
-        whp=power3 < 1e-9
-        power3[whp]=1e-9
-        wave_coher=(np.abs(cross_wavelet)**2/power3).real
-        
-        result=dict(cross_wavelet=cross_wavelet,time=time,scale=scale,
-                    wave_phase=wave_phase,wave_coher=wave_coher,
-                    global_phase=global_phase,global_coher=global_coher,
-                    power1=power1,power2=power2,coi=coi)
+    Notes
+    -----
+        This function based on the IDL code WAVE_COHERENCY.PRO written by C. Torrence, 
+    
+    References
+    ----------
+    Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
+    *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
+    http://paos.colorado.edu/research/wavelets/
+    
+    Example
+    -------
+    >>> res=wavelet.wave_coherency(wave1,time1,scale1,wave2,time2,scale2,\
+                                   dt,dj,coi=coi)
+    
+    """
+    if not dt: dt=time1[1]-time1[0]
+    if not dj: dj=np.log2(scale1[1]/scale1[0])
+    if time1 is time2:
+        t1s=0
+        t1e=len(time1)
+        t2s=t1s
+        t2e=t1e
+    else:
+        otime_start=min([time1.min(),time2.min()])
+        otime_end=max([time1.max(),time2.max()])
+        t1=np.where((time1 >= otime_start)*(time1 <= otime_end))[0]
+        t1s=t1[0]
+        t1e=t1[-1]+1
+        t2=np.where((time2 >= otime_start)*(time2 <= otime_end))[0]
+        t2s=t2[0]
+        t2e=t2[-1]+1
+    
+    oscale_start=min([scale1.min(),scale2.min()])
+    oscale_end=max([scale1.max(),scale2.max()])
+    s1=np.where((scale1 >= oscale_start)*(scale1 <= oscale_end))[0]
+    s2=np.where((scale2 >= oscale_start)*(scale2 <= oscale_end))[0]
+    s1s=s1[0]
+    s1e=s1[-1]+1
+    s2s=s2[0]
+    s2e=s2[-1]+1
+    
+    cross_wavelet=wave1[s1s:s1e,t1s:t1e]*wave2[s2s:s2e,t2s:t2e].conj()
+    power1=np.abs(wave1[s1s:s1e,t1s:t1e])**2
+    power2=np.abs(wave2[s2s:s2e,t2s:t2e])**2
+    
+    time=time1[t1s:t1e]
+    scale=scale1[s1s:s1e]
+    nj=s1e-s1s
+    
+    global1=power1.sum(1)
+    global2=power2.sum(1)
+    global_cross = cross_wavelet.sum(1)
+    global_coher = np.abs(global_cross)**2/(global1*global2)
+    global_phase = np.arctan(global_cross.imag/global_cross.real)*180./np.pi
+    
+    if nosmooth:
+        result = dict(global_coherence=global_coher,global_phase=global_phase,
+                      cross_wavelet=cross_wavelet)
         return result
     
-    def fast_conv(f,g,nt):
-        """
-        Fast convolution two given function f and g (method 1)
-        """
-        nf=f.shape
-        ng=g.shape
-        npad=2**(int(np.log2(max([nf[1],ng[1]])))+1)
-        wh1=np.arange(nf[0],dtype=int)
-        wh2=np.arange(nf[1],dtype=int)*np.ones((nf[0],1),dtype=int)-(nt.astype(int)-1)//2-1
-        pf=np.zeros([nf[0],npad],dtype=complex)
-        pg=np.zeros([nf[0],npad],dtype=complex)
-        pf[:,:nf[1]]=f
-        pg[:,:ng[1]]=g
-        conv=ifft(fft(pf)*fft(pg[:,::-1]))
-        result=conv[wh1,wh2.T].T
-        return result
+    nt=(4*scale/dt)//2*4+1
+    nt2=nt[:,np.newaxis]
+    ntmax=nt.max()
+    g=np.arange(ntmax)*np.ones((nj,1))
+    wh=g >= nt2
+    time_wavelet=(g-nt2//2)*dt/scale[:,np.newaxis]
+    wave_func=np.exp(-time_wavelet**2/2)
+    wave_func[wh]=0
+    wave_func=(wave_func/wave_func.sum(1)[:,np.newaxis]).real
+    cross_wavelet=_fastConv(cross_wavelet,wave_func,nt2)
+    power1=_fastConv(power1,wave_func,nt2)
+    power2=_fastConv(power2,wave_func,nt2)
+    scales=scale[:,np.newaxis]
+    cross_wavelet/=scales
+    power1/=scales
+    power2/=scales
     
-    def fast_conv2(f,g):
-        """
-        Fast convolution two given function f and g (method2)
-        """
-        nf=f.shape
-        ng=len(g)
-        npad=2**(int(np.log2(max([nf[0],ng])))+1)
-        
-        wh1=np.arange(nf[1],dtype=int)
-        wh2=np.arange(nf[0],dtype=int)*np.ones((nf[1],1),dtype=int)+ng//2
-        pf=np.zeros([npad,nf[1]],dtype=complex)
-        pg=np.zeros([npad,nf[1]],dtype=complex)
-        pf[:nf[0],:]=f
-        pg[:ng,:]=g[:,np.newaxis]
-        conv=ifft(fft(pf,axis=0)*fft(pg,axis=0),axis=0)
-        result=conv[wh2.T,wh1]
-        return result
+    nw=int(0.6/dj/2+0.5)*2-1
+    weight=np.ones(nw)/nw
+    cross_wavelet=_fastConv2(cross_wavelet,weight)
+    power1=_fastConv2(power1,weight)
+    power2=_fastConv2(power2,weight)
+    
+    wave_phase=180./np.pi*np.arctan(cross_wavelet.imag/cross_wavelet.real)
+    power3=power1*power2
+    whp=power3 < 1e-9
+    power3[whp]=1e-9
+    wave_coher=(np.abs(cross_wavelet)**2/power3).real
+    
+    result=dict(cross_wavelet=cross_wavelet,time=time,scale=scale,
+                wave_phase=wave_phase,wave_coher=wave_coher,
+                global_phase=global_phase,global_coher=global_coher,
+                power1=power1,power2=power2,coi=coi)
+    return result
+
+def _fastConv(self, f, g, nt):
+    """
+    Fast convolution two given function f and g (method 1)
+    """
+    nf=f.shape
+    ng=g.shape
+    npad=2**(int(np.log2(max([nf[1],ng[1]])))+1)
+    wh1=np.arange(nf[0],dtype=int)
+    wh2=np.arange(nf[1],dtype=int)*np.ones((nf[0],1),dtype=int)-(nt.astype(int)-1)//2-1
+    pf=np.zeros([nf[0],npad],dtype=complex)
+    pg=np.zeros([nf[0],npad],dtype=complex)
+    pf[:,:nf[1]]=f
+    pg[:,:ng[1]]=g
+    conv=ifft(fft(pf)*fft(pg[:,::-1]))
+    result=conv[wh1,wh2.T].T
+    return result
+
+def _fastConv2(self, f, g):
+    """
+    Fast convolution two given function f and g (method2)
+    """
+    nf=f.shape
+    ng=len(g)
+    npad=2**(int(np.log2(max([nf[0],ng])))+1)
+    
+    wh1=np.arange(nf[1],dtype=int)
+    wh2=np.arange(nf[0],dtype=int)*np.ones((nf[1],1),dtype=int)+ng//2
+    pf=np.zeros([npad,nf[1]],dtype=complex)
+    pg=np.zeros([npad,nf[1]],dtype=complex)
+    pf[:nf[0],:]=f
+    pg[:ng,:]=g[:,np.newaxis]
+    conv=ifft(fft(pf,axis=0)*fft(pg,axis=0),axis=0)
+    result=conv[wh2.T,wh1]
+    return result
