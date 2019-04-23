@@ -16,8 +16,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 __author__= "Juhyeong Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
-__all__ = ['FDView', 'TIOView', 'FISS_TIO_View',
-           'IRISView', 'AIACubeView', 'AIAmultiCube']
+
 
 class FDView:
     
@@ -45,8 +44,8 @@ class FDView:
         self.rim = self.FD[:,:,:,0]
         self.dmap = np.nan_to_num(self.FD[:,:,:,2] * self.mask)
         
-        for n, dm in enumerate(self.dmap):
-            self.dmap[n] -= np.median(dm[dm != 0])
+#        for n, dm in enumerate(self.dmap):
+#            self.dmap[n] -= np.median(dm[dm != 0])
             
         self.dmap[self.mask == 0] = 0
         self.dmap0 = self.dmap.copy()
