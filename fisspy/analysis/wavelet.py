@@ -13,96 +13,76 @@ __email__ =  "jhkang@astro.snu.ac.kr"
 __all__ = ['wavelet', 'waveCoherency', 'powerMap']
 
 class wavelet:
+    """
+    Compute the wavelet transform of the given data
+    with sampling rate dt.
+    
+    By default, the MORLET wavelet (k0=6) is used.
+    The wavelet basis is normalized to have total energy=1
+    at all scales.
+            
+    Parameters
+    ----------
+    data : ~numpy.ndarray
+        The time series N-D array.
+    dt : float
+        The time step between each y values.
+        i.e. the sampling time.
+    axis: int
+        The axis number to apply wavelet, i.e. temporal axis.
+            * Default is 0
+    dj : (optional) float
+        The spacing between discrete scales.
+        The smaller, the better scale resolution.
+            * Default is 0.25
+    s0 : (optional) float
+        The smallest scale of the wavelet.  
+            * Default is :math:`2 \cdot dt`.
+    j : (optional) int
+        The number of scales minus one.
+        Scales range from :math:`s0` up to :math:`s_0\cdot 2^{j\cdot dj}`, to give
+        a total of :math:`j+1` scales.
+            * Default is :math:`j=\log_2{(\\frac{n dt}{s_0 dj})}`.
+    mother : (optional) str
+        The mother wavelet function.
+        The choices are 'MORLET', 'PAUL', or 'DOG'
+            * Default is **'MORLET'**
+    param  : (optional) int
+        The mother wavelet parameter.\n
+        For **'MORLET'** param is k0, default is **6**.\n
+        For **'PAUL'** param is m, default is **4**.\n
+        For **'DOG'** param is m, default is **2**.\n
+    pad : (optional) bool
+        If set True, pad time series with enough zeros to get
+        N up to the next higher power of 2.
+        This prevents wraparound from the end of the time series
+        to the beginning, and also speeds up the FFT's 
+        used to do the wavelet transform.
+        This will not eliminate all edge effects.
+    
+    Notes
+    -----
+        This function based on the IDL code WAVELET.PRO written by C. Torrence, 
+        and Python code waveletFuncitions.py written by E. Predybayalo.
+    
+    References
+    ----------
+    Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
+    *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
+    http://paos.colorado.edu/research/wavelets/
+    
+    Example
+    -------
+    >>> from fisspy.analysis import wavelet
+    >>> res = wavelet.wavelet(data,dt,dj=dj,j=j,mother=mother,pad=True)
+    >>> wave = res.wave
+    >>> period = res.period
+    >>> scale = res.scale
+    >>> coi = res.coi
+    """
     
     def __init__(self, data, dt, axis=0, dj=0.25, s0=False, j=False,
                  mother='MORLET', param=False, pad=True):
-        """
-        Compute the wavelet transform of the given y
-        with sampling rate dt.
-        
-        By default, the MORLET wavelet (k0=6) is used.
-        The wavelet basis is normalized to have total energy=1
-        at all scales.
-        
-        Parameters
-        ----------
-        y : ~numpy.ndarray
-            The time series of length n.
-        dt : float
-            The time step between each y values.
-            i.e. the sampling time.
-        dj : (optional) float
-            The spacing between discrete scales.
-            The smaller, the better scale resolution.
-                * Default is 0.25
-        s0 : (optional) float
-            The smallest scale of the wavelet.  
-                * Default is :math:`2 \cdot dt`.
-        j : (optional) int
-            The number of scales minus one.
-            Scales range from :math:`s0` up to :math:`s_0\cdot 2^{j\cdot dj}`, to give
-            a total of :math:`j+1` scales.
-                * Default is :math:`j=\log_2{(\\frac{n dt}{s_0 dj})}`.
-        mother : (optional) str
-            The mother wavelet function.
-            The choices are 'MORLET', 'PAUL', or 'DOG'
-                * Default is **'MORLET'**
-        param  : (optional) int
-            The mother wavelet parameter.\n
-            For **'MORLET'** param is k0, default is **6**.\n
-            For **'PAUL'** param is m, default is **4**.\n
-            For **'DOG'** param is m, default is **2**.\n
-        pad : (optional) bool
-            If set True, pad time series with enough zeros to get
-            N up to the next higher power of 2.
-            This prevents wraparound from the end of the time series
-            to the beginning, and also speeds up the FFT's 
-            used to do the wavelet transform.
-            This will not eliminate all edge effects.
-        
-        Returns
-        -------
-        wavelet : class
-            wave : ~numpy.ndarray
-                The WAVELET transform of y.
-                (j+1, n) complex arry.
-                np.arctan2(wave.imag,wave.real) gives the WAVELET phase.
-                wave.real gives the WAVELET amplitude.
-                The WAVELET power spectrum is :math:`|wave|^2`.
-            period : ~numpy.ndarray
-                The vecotr of 'Fourier' periods (in time units)
-                that correspods to the scales.
-            scale : ~numpy.ndarray
-                The vecotr of scale indices, given by :math:`s_0 \cdot 2^{j \cdot dj}, 
-                j=0...j`
-                where :math:`j+1` is the total number of scales.
-            coi : ~numpy.ndarray
-                The Cone-of-Influence, which is a vector of N points
-                that contains the maximum period of useful information
-                at that particular time.
-                Periods greater than this are subject to edge effets.
-        
-        Notes
-        -----
-            This function based on the IDL code WAVELET.PRO written by C. Torrence, 
-            and Python code waveletFuncitions.py written by E. Predybayalo.
-        
-        References
-        ----------
-        Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
-        *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
-        http://paos.colorado.edu/research/wavelets/
-        
-        Example
-        -------
-        >>> from fisspy.analysis import wavelet
-        >>> res = wavelet.wavelet(y,dt,dj=dj,j=j,mother=mother,pad=True)
-        >>> wave = res.wave
-        >>> period = res.period
-        >>> scale = res.scale
-        >>> coi = res.coi
-        
-        """        
         
         shape0 = np.array(data.shape)
         self.n0 = shape0[axis]
@@ -153,12 +133,13 @@ class wavelet:
         tshape = tdata.shape
         indata = tdata.reshape([shape.prod(), self.n0])
         
-        self.wave = np.empty(np.concatenate([shape.prod(), [self.j+1, self.n0]]))
+        wshape = np.concatenate([shape, [self.j+1, self.n0]])
+        self.wave = np.empty(np.concatenate([shape.prod(), [self.j+1, self.n0]]),
+                             dtype=complex)
         for i, y in enumerate(indata):
             self.wave[i] = self._getWavelet(y)
         
-        self.wave = self.wave.reshape(tshape)
-        self.wave = self.wave.transpose(o2)
+        self.wave = self.wave.reshape(wshape)
         
     def _getWavelet(self, y):
 
@@ -175,6 +156,7 @@ class wavelet:
         
     
     def iwavelet(self, wave, scale):
+        #%% should be revised (period range option)
         """
         Inverse the wavelet to get the time-series
         
@@ -379,7 +361,7 @@ class wavelet:
         
     def saveWavelet(self, savename):
         """
-        Save the wavelet spectrum
+        Save the wavelet spectrum as .npz file.
         """
         np.savez(savename, wavelet=self.wave,
                  period=self.period, scale=self.scale,
@@ -399,8 +381,6 @@ class wavelet:
             If this is a single number, it is assumed to be the variance.
         dt : float
             The sampling time.
-        scale : ~numpy.ndarray
-            The vecotr of scale indices, from previous call to WAVELET.
         sigtest : (optional) int
             Allowable values are 0, 1, or 2
             if 0 (default), then just do a regular chi-square test
@@ -533,6 +513,7 @@ class wavelet:
         else:
             raise ValueError('Sigtest must be 0,1, or 2')
         self.signif = signif
+        return signif
     
     def _chisquareInv(self,p,v):
         """
@@ -582,12 +563,16 @@ class wavelet:
             pdiff = xguess
         return pdiff
 
-
+#%%!TODO
+#make powerSpectrum
+#plot wavelet power spectrum contour
+#plot global wavelet power spectrum
+#%%
 class powerMap:
-    
-    def __inint__(self, fname):
     """
     """
+    def __init__(self, fname):
+
     
 
 
