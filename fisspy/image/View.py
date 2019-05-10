@@ -41,11 +41,26 @@ class FDView:
         isotRefTime = Time(isotRefTime)
         self.isotime = isotRefTime + self.time *u.min
         self.t = 0
-        self.rim = self.FD[:,:,:,0]
+        self.rim = self.FD[:,:,:,0] * self.mask
+        self.rim0 = self.rim.copy()
         self.dmap = np.nan_to_num(self.FD[:,:,:,2] * self.mask)
         
-#        for n, dm in enumerate(self.dmap):
-#            self.dmap[n] -= np.median(dm[dm != 0])
+        xpos = self.header.get('xpos', False)
+        if xpos:
+            ypos = self.header['ypos']
+            xm = xpos - self.header['naxis2']/2*0.16
+            xM = xpos + self.header['naxis2']/2*0.16
+            ym = ypos - self.header['naxis3']/2*0.16
+            yM = ypos + self.header['naxis3']/2*0.16
+            self.extent = [xm, xM, ym, yM]
+        else:
+            xm = -self.header['naxis2']/2
+            xM = self.header['naxis2']/2
+            ym = -self.header['naxis3']/2
+            yM = self.header['naxis3']/2
+            self.extent = [xm, xM, ym, yM]
+        for n, dm in enumerate(self.dmap):
+            self.dmap[n] -= np.median(dm[dm != 0])
             
         self.dmap[self.mask == 0] = 0
         self.dmap0 = self.dmap.copy()
@@ -58,25 +73,46 @@ class FDView:
             self.timeavg()
         
     def imshow(self, fnum=0, figsize=(10,6), dpi=100,
-                 clim=[-3,3], cmap=plt.cm.RdBu_r, level=75):
+                 clim=[-3,3], cmap=plt.cm.RdBu_r, level=75,
+                 logRaster=False):
+        
+        if logRaster:
+            self.rim = np.log10(self.rim0)
         self.t = fnum
         self.lev0 = level
         self.fig, self.ax = plt.subplots(1,2, figsize=figsize)
         self.raster = self.ax[0].imshow(self.rim[self.t], cmap=plt.cm.gray,
                              origin='lower',
-                             interpolation='bilinear')
+                             interpolation='bilinear',
+                             extent=self.extent)
         self.doppler = self.ax[1].imshow(self.dmap[self.t], cmap=cmap, 
                              origin='lower', clim=clim,
-                             interpolation='bilinear')
+                             interpolation='bilinear',
+                             extent=self.extent)
         self.con = self.ax[1].contour(self.rim[self.t], colors='k',
                           origin='lower',
-                          levels=[self.rim[self.t].max()/100*self.lev0])
+                          levels=[self.rim[self.t].max()/100*self.lev0],
+                          extent=self.extent)
+        self.con0 = self.ax[0].contour(self.rim[self.t], colors='k',
+                          origin='lower',
+                          levels=[self.rim[self.t].max()/100*self.lev0],
+                          extent=self.extent)
         self.fig.suptitle('%s    fnum : %i'%(self.isotime[self.t].value, self.t))
         self.fig.canvas.mpl_connect('key_press_event', self._on_key)
-        self.fig.tight_layout(rect=[0,0,1,0.95])
         self.ax[0].set_title('%s'%self.header['ID0'])
         self.ax[1].set_title('%s'%self.header['ID2'])
-        
+        if self.header.get('xpos', False):
+            self.ax[0].set_xlabel('X (arcsec)')
+            self.ax[1].set_xlabel('X (arcsec)')
+            self.ax[0].set_ylabel('Y (arcsec)')
+            self.ax[1].set_ylabel('Y (arcsec)')
+        else:
+            self.ax[0].set_xlabel('X (pixel)')
+            self.ax[1].set_xlabel('X (pixel)')
+            self.ax[0].set_ylabel('Y (pixel)')
+            self.ax[1].set_ylabel('Y (pixel)')
+            
+        self.fig.tight_layout(rect=[0,0,1,0.95])
     def FourierFilter(self, filterRange):
         
         self.freq = fftfreq(self.nt, self.dt)*1e3
@@ -96,31 +132,32 @@ class FDView:
                 self.t +=1
             else:
                 self.t = 0
-            self.raster.set_data(self.rim[self.t])
-            self.doppler.set_data(self.dmap[self.t])
-            self.con.collections[0].remove()
-            self.con = self.ax[1].contour(self.rim[self.t], colors='k',
-                  origin='lower',
-                  levels=[self.rim[self.t].max()/100*self.lev0])
-            
         elif event.key == 'left':
             if self.t > 0:
                 self.t -=1
             else:
                 self.t = self.nt-1
-            self.raster.set_data(self.rim[self.t])
-            self.doppler.set_data(self.dmap[self.t])
-            self.con.collections[0].remove()
-            self.con = self.ax[1].contour(self.rim[self.t], colors='k',
-                  origin='lower',
-                  levels=[self.rim[self.t].max()/100*self.lev0])
+                
+        self.raster.set_data(self.rim[self.t])
+        self.doppler.set_data(self.dmap[self.t])
+        self.con.collections[0].remove()
+        self.con0.collections[0].remove()
+        self.con = self.ax[1].contour(self.rim[self.t], colors='k',
+              origin='lower',
+              levels=[self.rim[self.t].max()/100*self.lev0],
+              extent=self.extent)
+        self.con0 = self.ax[0].contour(self.rim[self.t], colors='k',
+              origin='lower',
+              levels=[self.rim[self.t].max()/100*self.lev0],
+              extent=self.extent)
+            
         self.fig.suptitle('%s    fnum : %i'%(self.isotime[self.t].value, self.t))
         self.fig.canvas.draw_idle()
     
     def chclim(self, v_clim, raster_clim=False):
         self.doppler.set_clim(v_clim)
         if raster_clim:
-            self.raster(raster_clim)
+            self.raster.set_clim(raster_clim)
             
     def setSection(self, xlim, ylim):
         self.ax[0].set_xlim(xlim)
@@ -511,7 +548,7 @@ class AIACubeView:
         self.endTime = Time(self.header['endobs'])
         self.wavelen = self.basename.split('_')[1]
         self.instrument = r'SDO/AIA %s $\AA$'%self.wavelen
-        self.cmap = cm.get_cmap('sdoaia%s'%self.wavelen)
+        self.cmap = plt.cm.get_cmap('sdoaia%s'%self.wavelen)
         if self.wavelen == '1600':
             self.dt = 24
         else:
@@ -520,7 +557,7 @@ class AIACubeView:
         self.tarr = self.startTime +\
                     np.arange(self.nt)*self.dt*u.second
         self.data0 = fits.getdata(fname)
-        self.data = self.data0.copy()
+        self.data = self.data0.astype(float)
         
         nx = self.header['naxis1']
         ny = self.header['naxis2']
@@ -686,7 +723,7 @@ class AIAmultiCube:
             self.endTime[n] = Time(self.header[n]['endobs'])
             self.wavelen[n] = self.basename[n].split('_')[1]
             self.instrument[n] = r'SDO/AIA %s $\AA$'%self.wavelen[n]
-            self.cmap[n] = cm.get_cmap('sdoaia%s'%self.wavelen[n])
+            self.cmap[n] = plt.cm.get_cmap('sdoaia%s'%self.wavelen[n])
             self.dt[n] = self.header[n]['cdelt3']
             self.nt[n] = self.header[n]['naxis3']
             self.tarr[n] = self.startTime[n] +\

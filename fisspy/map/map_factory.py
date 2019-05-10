@@ -257,12 +257,12 @@ def _mapShift(map1, sx, sy):
     
     x = np.arange(new_meta['naxis1'], dtype=float)
     xx0 = x * np.ones([new_meta['naxis2'],1])
-    xx = xx0 - delx
+    xx = xx0 + delx
     y = np.arange(new_meta['naxis2'], dtype=float)
     yy0 = y[:,None] + np.ones(new_meta['naxis1'])
-    yy = yy0 - dely
+    yy = yy0 + dely
     size = new_meta['naxis1']*new_meta['naxis2']
-    inp = np.array(yy.reshape(size), xx.reshape(size))
+    inp = np.array([yy.reshape(size), xx.reshape(size)])
     out = interp(inp.T)
     
     out = out.reshape(new_meta['naxis2'], new_meta['naxis1'])
