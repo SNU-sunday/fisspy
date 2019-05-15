@@ -16,14 +16,18 @@ class TDmap:
         """
         self._mark_switch = False
         self.data = data
+        self._R = R
+        self._angle = angle
+        self._xc = xc
+        self._yc = yc
         self.R = R
-        self.R0 = self.R
+        self._R0 = self.R
         self.angle = angle
-        self.angle0 = angle
+        self._angle0 = angle
         self.xc = xc
-        self.xc0 = xc
+        self._xc0 = xc
         self.yc = yc
-        self.yc0 = yc
+        self._yc0 = yc
         nt, ny, nx = data.shape
         self.nt = nt
         self.ny = ny
@@ -56,6 +60,10 @@ class TDmap:
     def imshow(self, rframe=False, ts=0, te=False, **kwargs):
         """
         """
+        self.cmap = kwargs.pop('cmap', plt.cm.RdBu_r)
+        self._cmap = self.cmap
+        self.clim = kwargs.get('clim', [self.data.min(), self.data.max()])
+        self._clim = self.clim
         if not rframe:
             rframe = self.nt//2
         if not te:
@@ -63,12 +71,14 @@ class TDmap:
         self.dt = (te-ts)/self.nt
         self.frame = rframe
         self.frame0 = rframe
+        self._frame = rframe
         tdextent = [ts, te, -self.R, self.R]
         self.tdextent = tdextent
         figsize = kwargs.pop('figsize', [10,7])
         self.fig, self.ax = plt.subplots(2, 1, figsize=figsize)
-        self.im = self.ax[0].imshow(self.data[rframe], origin='lower',
-                      extent=self.extent, **kwargs)
+        self.im = self.ax[0].imshow(self.data[rframe], self.cmap,
+                         origin='lower',
+                         extent=self.extent, **kwargs)
         self.slit = self.ax[0].plot([self.x1, self.x2],
                         [self.y1, self.y2], color='k')
         self.center = self.ax[0].scatter(self.xc, self.yc, 100,
@@ -77,8 +87,9 @@ class TDmap:
                              marker='+', c='b', label='%.1f'%self.R)
         self.bottom = self.ax[0].scatter(self.x1, self.y1, 100,
                              marker='+', c='r', label='-%.1f'%self.R)
-        self.tdMap = self.ax[1].imshow(self.td, origin='lower',
-                      extent=tdextent, **kwargs)
+        self.tdMap = self.ax[1].imshow(self.td, self.cmap,
+                            origin='lower',
+                            extent=tdextent, **kwargs)
         self.tSlit = self.ax[1].vlines(self.frame*self.dt,-self.R,self.R,
                             linestyles='dashed')
         self.ax[0].set_xlim(self.xc-self.R-1, self.xc+self.R+1)
@@ -98,7 +109,6 @@ class TDmap:
     def changeSlit(self, R, angle, xc=0, yc=0):
         """
         """
-        self.R0 = self.R
         self.R = R
         self.angle = angle
         self.ang = np.deg2rad(angle)
@@ -138,17 +148,17 @@ class TDmap:
         if self._mark_switch:
             self._rmMark()
             self.regionMark(self.pos)
-        if self.R != self.R0:
+        if self.R != self._R0:
             self.tdMap.set_extent(self.tdextent)
             self.ax[1].set_ylim(-self.R, self.R)
             self.ax[0].set_xlim(self.xc-self.R-1, self.xc+self.R+1)
-            self.ax[0].set_ylim(self.xc-self.R-1, self.xc+self.R+1)
+            self.ax[0].set_ylim(self.yc-self.R-1, self.yc+self.R+1)
             self.ax[0].legend()
             self.fig.tight_layout()
             self.tSlit.remove()
             self.tSlit = self.ax[1].vlines(self.frame*self.dt,-self.R,self.R,
                             linestyles='dashed')
-        if self.xc != self.xc0 or self.yc != self.yc0:
+        if self.xc != self._xc0 or self.yc != self._yc0:
             self.center.remove()
             self.center = self.ax[0].scatter(self.xc, self.yc, 100,
                                  marker='+', c='k')
@@ -231,12 +241,25 @@ class TDmap:
                 self.yc -= self.dx
             else:
                 self.yc = self.extent[3]
+        elif event.key == 'ctrl++':
+            self.R += self.dx
+        elif event.key == 'ctrl+-':
+            self.R -= self.dx
+        elif event.key == 'ctrl+h':
+            self.R = self._R
+            self.xc = self._xc
+            self.yc = self._yc
+            self.angle = self._angle
+            self.frame = self._frame
+            self.chclim(self._clim[0], self._clim[1])
+            self.chcmap(self._cmap)
         
-        if self.angle != self.angle0 or self.xc != self.xc0 or self.yc != self.yc0:
+        if self.angle != self._angle0 or self.xc != self._xc0 or self.yc != self._yc0 or self.R != self._R0:
             self.changeSlit(self.R, self.angle, xc=self.xc, yc=self.yc)
-            self.angle0 = self.angle
-            self.xc0 = self.xc
-            self.yc0 = self.yc
+            self._angle0 = self.angle
+            self._xc0 = self.xc
+            self._yc0 = self.yc
+            self._R0 = self.R
         if self.frame != self.frame0:
             self.im.set_data(self.data[self.frame])
             self.tSlit.remove()
@@ -250,10 +273,11 @@ class TDmap:
         """
         self.im.set_clim(cmin, cmax)
         self.tdMap.set_clim(cmin, cmax)
-        
+        self.clim = [cmin, cmax]
         
     def chcmap(self, cmap):
         """
         """
+        self.cmap=cmap
         self.im.set_cmap(cmap)
         self.tdMap.set_cmap(cmap)

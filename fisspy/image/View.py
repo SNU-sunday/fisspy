@@ -558,6 +558,7 @@ class AIACubeView:
                     np.arange(self.nt)*self.dt*u.second
         self.data0 = fits.getdata(fname)
         self.data = self.data0.astype(float)
+        self.RD = np.roll(self.data, -1, axis=0) - self.data
         
         nx = self.header['naxis1']
         ny = self.header['naxis2']
@@ -572,21 +573,67 @@ class AIACubeView:
                        ry-yc*dy,
                        ry+(ny-yc)*dy]
         
-    def imshow(self, fnum=0, figsize=(8,8), dpi=100, clim=[30,700]):
+    def imshow(self, fnum=0, figsize=(12,6), dpi=100):
         self.fnum = fnum
         
-        self.fig, self.ax = plt.subplots(1,1, figsize=figsize, dpi=dpi)
-        self.im = self.ax.imshow(self.data[self.fnum],
+        self.fig, self.ax = plt.subplots(1, 2,
+                                         figsize=figsize,
+                                         dpi=dpi)
+        self.im = self.ax[0].imshow(self.data[self.fnum],
                                  self.cmap,
                                  origin='lower',
                                  extent=self.extent,
-                                 clim=clim,
                                  interpolation='bilinear')
-        self.ax.set_title('%s   %s - (%i/%i)'%(self.instrument,
+        self.RDim = self.ax[1].imshow(self.RD[self.fnum],
+                           self.cmap, origin='lower',
+                           extent=self.extent,
+                           interpolation='bilinear')
+        self.ax[0].set_title('Original')
+        self.ax[1].set_title('Running Difference')
+        self.fig.suptitle('%s   %s - (%i/%i)'%(self.instrument,
                                            self.tarr[self.fnum].value,
                                            self.fnum,
                                            self.nt))
+        self.fig.tight_layout(rect=[0,0,1,0.97])
         self.fig.canvas.mpl_connect('key_press_event', self._on_key)
+    
+    def fimshow(self, fnum=0, figsize=(12,6), dpi=100):
+        self.fnum = fnum
+        self.fig, self.ax = plt.subplots(2, 2,
+                                         figsize=figsize,
+                                         dpi=dpi)
+        self.im = self.ax[0].imshow(self.data[self.fnum],
+                                 self.cmap,
+                                 origin='lower',
+                                 extent=self.extent,
+                                 interpolation='bilinear')
+        self.RDim = self.ax[2].imshow(self.RD[self.fnum],
+                                 self.cmap,
+                                 origin='lower',
+                                 extent=self.extent,
+                                 interpolation='bilinear')
+        self.fim = self.ax[1].imshow(self.fdata[self.fnum],
+                                 self.cmap,
+                                 origin='lower',
+                                 extent=self.extent,
+                                 interpolation='bilinear')
+        self.fRDim = self.ax[0].imshow(self.fRD[self.fnum],
+                                 self.cmap,
+                                 origin='lower',
+                                 extent=self.extent,
+                                 interpolation='bilinear')
+        self.ax[0].set_title('Original')
+        self.ax[1].set_title('Filtered [%.1f - %.1f mHz]'%(self.filterRange[0],
+                                                           self.filterRange[1]))
+        self.ax[2].set_title('Running Difference')
+        self.ax[3].set_title('RD Filtered [%.1f - %.1f mHz]'%(self.filterRange[0],
+                                                              self.filterRange[1]))
+        self.fig.suptitle('%s   %s - (%i/%i)'%(self.instrument,
+                                           self.tarr[self.fnum].value,
+                                           self.fnum,
+                                           self.nt))
+        self.fig.tight_layout(rect=[0,0,1,0.97])
+        self.fig.canvas.mpl_connect('key_press_event', self._on_key2)
         
     def _on_key(self, event):
         if event.key == 'right':
@@ -601,11 +648,36 @@ class AIACubeView:
             else:
                 self.fnum = self.nt-1
         
-        self.ax.set_title('%s   %s - (%i/%i)'%(self.instrument,
+        self.fig.suptitle('%s   %s - (%i/%i)'%(self.instrument,
                                            self.tarr[self.fnum].value,
                                            self.fnum,
                                            self.nt))
         self.im.set_data(self.data[self.fnum])
+        self.RDim.set_data(self.RD[self.fnum])
+        self.fig.canvas.draw_idle()
+        
+        
+    def _on_key2(self, event):
+        if event.key == 'right':
+            if self.fnum < self.nt-1:
+                self.fnum += 1
+            else:
+                self.fnum = 0
+
+        elif event.key == 'left':
+            if self.fnum > 0:
+                self.fnum -=1
+            else:
+                self.fnum = self.nt-1
+        
+        self.fig.suptitle('%s   %s - (%i/%i)'%(self.instrument,
+                                           self.tarr[self.fnum].value,
+                                           self.fnum,
+                                           self.nt))
+        self.im.set_data(self.data[self.fnum])
+        self.RDim.set_data(self.RD[self.fnum])
+        self.fim.set_data(self.fdata[self.fnum])
+        self.fRDim.set_data(self.fRD[self.fnum])
         self.fig.canvas.draw_idle()
         
     def mdata(self):
@@ -626,18 +698,23 @@ class AIACubeView:
         self.im.set_cmap(self.cmap)
         
     def subSection(self, xlim, ylim):
-        self.ax.set_xlim(xlim)
-        self.ax.set_ylim(ylim)
+        self.ax[0].set_xlim(xlim)
+        self.ax[1].set_xlim(xlim)
+        self.ax[0].set_ylim(ylim)
+        self.ax[1].set_ylim(ylim)
         
     def FourierFilter(self, filterRange):
+        self.filterRange = filterRange
         self.freq = fftfreq(self.nt, self.dt)*1e3
         filt = np.logical_or(np.abs(self.freq) <= filterRange[0],
                              np.abs(self.freq) >= filterRange[1])
         
         ftd = fft(self.data, axis=0)
+        ftrd = fft(self.RD, axis=0)
         ftd[filt] = 0
+        ftrd[filt] = 0
         self.fdata = ifft(ftd, axis=0).real
-        self.data = self.fdata.copy()
+        self.fRD = ifft(ftrd, axis=0).real
         
 class AIAmultiCube:
     
