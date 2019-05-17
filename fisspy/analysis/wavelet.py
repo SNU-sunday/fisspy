@@ -10,9 +10,9 @@ from scipy.fftpack import fft, ifft
 __author__ = "Juhyeong Kang"
 __email__ =  "jhkang@astro.snu.ac.kr"
 
-__all__ = ['wavelet', 'waveCoherency', 'powerMap']
+__all__ = ['Wavelet', 'WaveCoherency', 'PowerMap']
 
-class wavelet:
+class Wavelet:
     """
     Compute the wavelet transform of the given data
     with sampling rate dt.
@@ -568,11 +568,11 @@ class wavelet:
 #plot wavelet power spectrum contour
 #plot global wavelet power spectrum
 #%%
-class powerMap:
+class PowerMap:
     """
     """
     def __init__(self, fname):
-
+        1111
     
 
 
@@ -583,7 +583,7 @@ class powerMap:
 
 
 
-def waveCoherency(wave1, time1, scale1, wave2, time2, scale2,
+def WaveCoherency(wave1, time1, scale1, wave2, time2, scale2,
                    dt=False, dj=False, coi=False, nosmooth=False):
     """
     Compute the wavelet coherency between two time series.

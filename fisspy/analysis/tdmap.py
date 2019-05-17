@@ -9,10 +9,38 @@ __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
 
-class TDmap:
-    def __init__(self, data, R, angle, extent=[0, 'end', 0, 'end'], xc=0, yc=0):
+class TDmap(object):
+    def __init__(self, data, R, angle=0, extent=[0, 'end', 0, 'end'], xc=0, yc=0):
         """
-        Make time distance map
+        Make interactive time distance map
+        
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            3-dimensional data array, (time, y, x)
+        R : `float`
+            The half length of the slit
+        angle : `float`, optional
+            The angle of the slit in degree. Default is 0 
+        extent : `list`, optional
+            The bounding box in data coordinates that the image will fill.
+        xc : 'float', optional
+            Center of the slit position in x-axis
+        yc : 'float', optional
+            Center of the slit position in y-axis
+            
+        Returns 
+        -------
+        td : `~fisspy.analysis.TDmap`
+            A new time distance class object.
+        
+        Examples
+        --------
+        >>> from fisspy.analysis import TDmap
+        >>> from import numpy as np
+        >>> data = np.random.rand(200,250) * np.sin(np.arange(300)*np.pi/20)[:,None,None]
+        >>> td = TDmap(data, 40, xc=125, yc= 100)
+        >>> td.imshow(clim=[-3, 3], interpolation='bilinear')
         """
         self._mark_switch = False
         self.data = data
@@ -59,6 +87,34 @@ class TDmap:
     
     def imshow(self, rframe=False, ts=0, te=False, **kwargs):
         """
+        Display interactive image and time-distance map.
+        
+        Parameters
+        ----------
+        rframe : `int`, optional
+            The reference frame. Default is self.nt//2
+        ts : `int`, optional
+            Start time. Default is 0
+        te : `int`, optional
+            End time. Default is self.nt
+        kwargs : 
+            
+        Interactive Button
+        ------------------
+        'left' :
+            Show previous time image.
+        'right' :
+            Show next time image.
+        'up' :
+            Increase the angle of the slit by 1.
+        'down' :
+            Increase the angle of the slit by 1.
+        'ctrl++' :
+            Change the central slit position to the right by pixel size.
+        'ctrl+-' :
+            Change the central slit position to the left by pixel size.
+        'ctrl+h' :
+            Change to the orignal setting.
         """
         self.cmap = kwargs.pop('cmap', plt.cm.RdBu_r)
         self._cmap = self.cmap
@@ -67,8 +123,10 @@ class TDmap:
         if not rframe:
             rframe = self.nt//2
         if not te:
-            te = self.nt-1
-        self.dt = (te-ts)/self.nt
+            te = self.nt-0.5
+            ts = ts-0.5
+        self.tLength = te-ts
+        self.dt = self.tLength/self.nt
         self.frame = rframe
         self.frame0 = rframe
         self._frame = rframe
@@ -101,6 +159,8 @@ class TDmap:
         self.ax[1].set_ylabel('Distance')
         self.ax[1].set_title('Time-Distance Map')
         self.ax[1].set_xlim(tdextent[0], tdextent[1])
+        #set.ax[1].set_position([lbrt])
+        self.ax[1].set_aspect(adjustable='box', aspect='auto')
         self.ax[1].set_ylim(-self.R, self.R)
         self.ax[0].legend()
         self.fig.tight_layout()
@@ -154,6 +214,7 @@ class TDmap:
             self.ax[0].set_xlim(self.xc-self.R-1, self.xc+self.R+1)
             self.ax[0].set_ylim(self.yc-self.R-1, self.yc+self.R+1)
             self.ax[0].legend()
+#            self.ax[1].set_aspect(adjustable='box', aspect=0.8*self.R/80)
             self.fig.tight_layout()
             self.tSlit.remove()
             self.tSlit = self.ax[1].vlines(self.frame*self.dt,-self.R,self.R,
