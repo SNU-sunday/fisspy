@@ -1,3 +1,3 @@
 from __future__ import absolute_import
 
-from . map_factory import fissmap
+from fisspy.map.map_factory import *

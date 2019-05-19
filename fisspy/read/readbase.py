@@ -12,20 +12,44 @@ import matplotlib.pyplot as plt
 from astropy.constants import c
 from fisspy.analysis.doppler import lambdameter
 
-__author__= "Juhyeong Kang"
+__author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
 class FISS(object):
     """
     FISS(file)
     
-    FISS class. Used to read a FISS data file.
+    FISS class. Used to read a FISS data file (raw/ proc/ comp/ FD).
+    
+    Parameters
+    ----------
+    file : `str`
+        File name of the FISS fts data.
+    noiseSuprresion : `bool`, optional
+        If True Savitzky-Golay noise filter is applied in the wavelength axis.
+        Default is False.
+    simpleWvCalib : `bool`, optional
+        If True wavelength is simply calibrated by using the header parameters.
+        Default is True.
+    absScale : `bool`, optional
+        If False the central wavelength is set to be zero.
+        If True the central wavelength is set to be wavelength at lab frame.
+        It works if simpleWvCalibration is True.
+        Default is True
+    
+    Other Parameters
+    ----------------
+    **kwargs : `~scipy.signal.svagol_filter` properties
+    
+    See also
+    --------
+    `~scipy.signal.savgol_filter`
     
     Examples
     --------
-    >>> from fisspy.read import FISS
+    >>> from fisspy import read
     >>> import fisspy.data.sample
-    >>> fiss = FISS(fisspy.data.sample.FISS_IMAGE)
+    >>> fiss = read.FISS(fisspy.data.sample.FISS_IMAGE)
     """
     
     def __init__(self, file, noiseSuppresion= False,
@@ -71,8 +95,8 @@ class FISS(object):
             self.nwv = self.header['naxis1']
             self.date = self.header['date']
             self.band = self.header['wavelen'][:4]
-            self.frame = self._readFrame()
-            self.refProfile = self.frame.mean((0,1))
+            self.data = self._readFrame()
+            self.refProfile = self.data.mean((0,1))
             self.wv = self._waveCalibration(simpleWvCalib= simpleWvCalib,
                                             absScale= absScale, **kwargs)
             self.wvRef = self.centralWavelength = self.header['crval1']
@@ -104,7 +128,7 @@ class FISS(object):
             self.time = fits.getdata(join(self.dirname,
                                           file.replace(self.cam, 't')))
             self.refTime = self.header['reftime']
-            self.frame = fits.getdata(file)
+            self.data = fits.getdata(file)
             if self.band == '6562':
                 self.camera = 'A'
                 self.set = '1'
@@ -123,7 +147,7 @@ class FISS(object):
                 self.cm = [cm.fe, cm.fe, plt.cm.jet, cm.fe, plt.cm.jet]
         else:
             self.cm = plt.cm.gray
-            self.frame = fits.getdata(file)
+            self.data = fits.getdata(file)
         
         
     def _getHeader(self):
@@ -134,16 +158,13 @@ class FISS(object):
         
         Returns
         -------
-        header : astropy.io.fits.Header
+        header : `astropy.io.fits.Header`
             The fts file header.
         
         Notes
         -----
             This function automatically check the existance of the pca file by
             reading the fts header.
-        
-        Example
-        -------
         """
         header0 = fits.getheader(self.filename)
     
@@ -205,12 +226,7 @@ class FISS(object):
         
     def _readFrame(self):
         """
-        _readFrame(self):
-            
         Read the FISS fts file.
-        
-        Example
-        -------
         """
         
         if not self.pfile:
@@ -223,6 +239,7 @@ class FISS(object):
             
     def _readPCA(self, ncoeff=False):
         """
+        Read the PCA compressed FISS fts file.
         """
         
         pdata = fits.getdata(join(self.dirname, self.pfile))
@@ -240,6 +257,11 @@ class FISS(object):
     def _waveCalibration(self, simpleWvCalib= True, absScale= True,
                          **kwargs):
         """
+        Wavelength calibration
+        
+        If SimpleWvCalib is True, the wavelength is calibrated by using information in header.
+        If absScale is True, the central wavelength is set to be wavelength in the lab frame, 
+        but if absScale is False, the central wavelength is set to be zero.
         """
         method = kwargs.pop('method', True)
         if simpleWvCalib:
@@ -301,16 +323,14 @@ class FISS(object):
         return (w - wc) * dldw
     
     def _noiseSuppresion(self, **kwargs):
-        """
-        """
-        windowLength = kwargs.pop('window_length', 7)
-        polyOrder = kwargs.pop('polyorder', 2)
+        window_length = kwargs.pop('window_length', 7)
+        polyorder = kwargs.pop('polyorder', 2)
         deriv = kwargs.pop('deriv', 0)
         delta = kwargs.pop('delta', 1.0)
         mode = kwargs.pop('mode', 'interp')
         cval = kwargs.pop('cval', 0.0)
         
-        self.frame = savgol_filter(self.frame, windowLength, polyOrder,
+        self.data = savgol_filter(self.data, window_length, polyorder,
                                    deriv= deriv, delta= delta, cval= cval,
                                    mode= mode)
         self.noiseSuppression = True
@@ -340,7 +360,7 @@ class FISS(object):
             hw = abs(dldw)/2.
             
         s = np.abs(self.wv - wv[:, None]) <= hw
-        self.raster = np.array([self.frame[:,:,i].sum(2)/i.sum() for i in s])
+        self.raster = np.array([self.data[:,:,i].sum(2)/i.sum() for i in s])
         self.rasterWavelength = wv
         if not noReturn:
             return self.raster
@@ -401,7 +421,7 @@ class FISS(object):
             plt.tick_params(which='minor', direction='in', size=3)
             plt.xlim(self.wv.min(), self.wv.max())
             
-        plt.plot(self.wv, self.frame[y,x], color = color)
+        plt.plot(self.wv, self.data[y,x], color = color)
         plt.tight_layout()
         plt.show()
             
@@ -410,7 +430,7 @@ class FISS(object):
                     wvinput= True, shift2velocity= False):
         """
         """
-        lineShift, intensity = lambdameter(self.wv, self.frame,
+        lineShift, intensity = lambdameter(self.wv, self.data,
                                            ref_spectrum= self.refProfile,
                                            wvRange= wvRange, hw= hw,
                                            wvinput= wvinput)
@@ -427,16 +447,16 @@ class FISS(object):
         figsize = kwargs.get('figsize', [8,6])
         plt.figure(figsize= figsize)
         if self.ndim == 2:
-            plt.imshow(self.frame, self.cm, origin='lower')
+            plt.imshow(self.data, self.cm, origin='lower')
         elif self.ndim ==3:
             if axis == 0:
-                plt.imshow(self.frame[frameNumber],
+                plt.imshow(self.data[frameNumber],
                            self.cm, origin='lower')
             elif axis == 1:
-                plt.imshow(self.frame[:,frameNumber],
+                plt.imshow(self.data[:,frameNumber],
                            self.cm, origin='lower')
             elif axis == 2:
-                plt.imshow(self.frame[:,:,frameNumber],
+                plt.imshow(self.data[:,:,frameNumber],
                            self.cm, origin='lower')
         plt.title(self.ftype)
         plt.xlabel('X [pix]')
@@ -449,7 +469,7 @@ class FISS(object):
         """
         figsize = kwargs.get('figsize', [8,6])
         plt.figure(figsize= figsize)
-        plt.plot(self.time, self.frame[:,position[1],
+        plt.plot(self.time, self.data[:,position[1],
                                        position[0],wavelegthFrame])
         plt.title('X = %i, Y = %i / Wavelegth = %s'%(position[0],
                                                      position[1],
@@ -467,12 +487,12 @@ class FISS(object):
         """
         """
         
-        figsize = kwargs.get('figsize', [self.frame.shape[2]/100*5+2,
-                                         self.frame.shape[1]/100+2])
+        figsize = kwargs.get('figsize', [self.data.shape[2]/100*5+2,
+                                         self.data.shape[1]/100+2])
         fig, ax = plt.subplots(1, 5, figsize= figsize)
         im = [None]*5
         for i in range(5):
-            im[i] = ax[i].imshow(self.frame[Timeframe,:,:,i], self.cm[i],
+            im[i] = ax[i].imshow(self.data[Timeframe,:,:,i], self.cm[i],
                                   origin='lower')
             ax[i].set_title(self.header['ID%i'%i])
             ax[i].set_xlabel('X [pix]')
@@ -491,9 +511,9 @@ class FISS(object):
         plt.figure(figsize= figsize)
         plt.title('GST/FISS %s Band %s'%(self.band, self.date))
         if self.camera == 'A':
-            plt.imshow(self.frame[:,x], origin='lower', cmap=self.cm)
+            plt.imshow(self.data[:,x], origin='lower', cmap=self.cm)
         else:
-            plt.imshow(self.frame[:,x,::-1], origin='lower', cmap=self.cm)
+            plt.imshow(self.data[:,x,::-1], origin='lower', cmap=self.cm)
         plt.xlabel(r'X [pix]')
         plt.ylabel(r'Slit [pix]')
         plt.tick_params(which='major',width= 1.5, size= 5)

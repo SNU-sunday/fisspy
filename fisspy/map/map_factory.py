@@ -5,7 +5,6 @@ from fisspy.image.base import rot
 from fisspy import cm
 import astropy.units as u
 import sunpy.map
-#from .solar_rotation import rot_hpc
 from sunpy.coordinates import frames
 from astropy.coordinates import SkyCoord
 from sunpy.coordinates.ephemeris import get_earth
@@ -15,9 +14,9 @@ from interpolation.splines import LinearSpline
 __author__="Juhyeong Kang"
 __email__="jhkang@astro.snu.ac.kr"
 
-__all__=["fissmap", "map_header", "align", "map_rot_correct"]
+__all__=["fissMap", "map_header", "align", "map_rot_correct"]
 
-def fissmap(data0,header0,pre_align=False,**kwargs):
+def fissMap(data0,header0,pre_align=False,**kwargs):
     """
     Make sunpy.map.Map for given data and header.
     
