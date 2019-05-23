@@ -3,7 +3,6 @@ from __future__ import absolute_import, division
 import numpy as np
 from fisspy.image.base import rot
 from fisspy import cm
-import astropy.units as u
 import sunpy.map
 from sunpy.coordinates import frames
 from astropy.coordinates import SkyCoord

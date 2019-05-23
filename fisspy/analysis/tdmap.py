@@ -24,9 +24,9 @@ class TDmap(object):
             The angle of the slit in degree. Default is 0 
         extent : `list`, optional
             The bounding box in data coordinates that the image will fill.
-        xc : 'float', optional
+        xc : `float`, optional
             Center of the slit position in x-axis
-        yc : 'float', optional
+        yc : `float`, optional
             Center of the slit position in y-axis
             
         Returns 
@@ -159,7 +159,6 @@ class TDmap(object):
         self.ax[1].set_ylabel('Distance')
         self.ax[1].set_title('Time-Distance Map')
         self.ax[1].set_xlim(tdextent[0], tdextent[1])
-        #set.ax[1].set_position([lbrt])
         self.ax[1].set_aspect(adjustable='box', aspect='auto')
         self.ax[1].set_ylim(-self.R, self.R)
         self.ax[0].legend()
@@ -168,6 +167,22 @@ class TDmap(object):
         
     def changeSlit(self, R, angle, xc=0, yc=0):
         """
+        Change the slit of time-distance map
+        
+        Parameters
+        ----------
+        R : `float`
+            The half length of the slit.
+        angle : `float`
+            The angle of the slit in degree.
+        xc : `float`, optional
+            Center of the slit position in x-axis
+        yc : `float`, optional
+            Center of the slit position in y-axis
+        
+        Examples
+        --------
+        >>> td.chageSlit(50, td.angle)
         """
         self.R = R
         self.angle = angle
@@ -229,9 +244,17 @@ class TDmap(object):
             
     def regionMark(self, position):
         """
-        siwtch: True = on
-                False = off
-        position: float or list
+        Mark the region of interest on the slit
+        
+        Parameters
+        ----------
+        position : `float` or `list`
+            Distance from the centeral position of the slit.
+            * Note : This position can note be higher than the half length of the slit.
+            
+        Examples
+        --------
+        >>> td.regionMark(20)
         """
         
         self._mark_switch = True
@@ -248,9 +271,20 @@ class TDmap(object):
     
     def chRegion(self, position):
         """
+        Change the marked region
+        Remove all set region and mark the new region
+        
+        Parameters
+        ----------
+        position : `float` or `list`
+            Distance from the centeral position of the slit.
+            * Note : This position can note be higher than the half length of the slit.
+            
+        Examples
+        --------
+        >>> td.chRegion([15, 30])
         """
-        self.mark.remove()
-        self.hlines.remove()
+        self._rmMark()
         self.regionMark(position)
         
     def _rmMark(self):
@@ -329,8 +363,20 @@ class TDmap(object):
             self.frame0 = self.frame
         self.fig.canvas.draw_idle()
     
-    def chclim(self, cmin, cmax):
+    def chclim(self, cmin=None, cmax=None):
         """
+        Change the colorbar limit
+        
+        Parameters
+        ----------
+        cmin : `float`
+            Minimum range of the colorbar
+        cmax : `float`
+            Maximum range of the colorbar
+            
+        Examples
+        --------
+        >>> td.chclim(-3, 3)
         """
         self.im.set_clim(cmin, cmax)
         self.tdMap.set_clim(cmin, cmax)
@@ -338,6 +384,16 @@ class TDmap(object):
         
     def chcmap(self, cmap):
         """
+        Change the colormap of the image and time-distance map
+        
+        Parameters
+        ----------
+        cmap : `~matplotlib.colors.Colormap`
+            A Colormap  instance.
+            
+        Examples
+        --------
+        >>> td.chcmap(plt.cm.jet)
         """
         self.cmap=cmap
         self.im.set_cmap(cmap)

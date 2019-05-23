@@ -14,12 +14,54 @@ from fisspy.analysis.doppler import lambdameter
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
+__all__ = ["rawData","FISS"]
 
+class rawData:
+    """
+    rawData class. Used to read a raw data of the FISS.
+    
+    Parameters
+    ----------
+    
+    file : `str`
+        File name of the raw fts data file of the FISS.
+    
+    Examples
+    --------
+    
+    """
+    
+    def ___init___(self, file):
+        if file.find('A.fts') != -1 or  file.find('A.fts') != -1:
+            self.ftype = 'Rase Data'
+        self.filename = file
+        self.header = fits.getheader(file)
+        self.data = fits.getdata(file)
+        self.ndim = self.header['naxis']
+        self.cam = self.split('.fts')[0][-1]
+        self.nwv = self.header['naxis1']
+        self.ny = self.header['naxis2']
+        self.nx = self.header['naxis3']
+        self.date = self.header['date']
+        self.band = self.header['wavelen'][:4]
+        
+        if self.band == '6562' or self.band =='8542':
+            self.set = '1'
+        elif self.band == '5889' or self.band == '5434':
+            self.set = '2'
+        self.cm = plt.cm.gray
+        
+    def imshow(self, **kwargs):
+        
+        figsize = kwargs.pop('figsize', [10, 8])
+        self.cm = kwargs.pop('cmap', plt.cm.gray)
+        
+        self.fig = plt.figure(figsize=figsize)
+        self.ax = self.fig.add_subplot()
+        
 class FISS(object):
     """
-    FISS(file)
-    
-    FISS class. Used to read a FISS data file (raw/ proc/ comp/ FD).
+    FISS class. Used to read a FISS data file (proc or comp).
     
     Parameters
     ----------
@@ -85,7 +127,7 @@ class FISS(object):
         self.filename = file
         self.dirname = dirname(file)
         self.basename = basename(file)
-        self.header = self._getHeader()
+        self.header = _getHeader(file)
         self.pfile = self.header.pop('pfile',False)
         self.ndim = self.header['naxis']
         
@@ -149,80 +191,6 @@ class FISS(object):
             self.cm = plt.cm.gray
             self.data = fits.getdata(file)
         
-        
-    def _getHeader(self):
-        """
-        _getHeader(self)
-        
-        Get the FISS fts file header.
-        
-        Returns
-        -------
-        header : `astropy.io.fits.Header`
-            The fts file header.
-        
-        Notes
-        -----
-            This function automatically check the existance of the pca file by
-            reading the fts header.
-        """
-        header0 = fits.getheader(self.filename)
-    
-        pfile = header0.pop('pfile',False)
-        if not pfile:
-            return header0
-        else:
-            header = fits.Header()
-            header['pfile']=pfile
-            for i in header0['comment']:
-                sori = i.split('=')
-                if len(sori) == 1:
-                    skv = sori[0].split(None,1)
-                    if len(skv) == 1:
-                        pass
-                    else:
-                        header[skv[0]] = skv[1]
-                else:
-                    key = sori[0]
-                    svc = sori[1].split('/')
-                    try:
-                        item = float(svc[0])
-                    except:
-                        item = svc[0].split("'")
-                        if len(item) != 1:
-                            item = item[1].split(None,0)[0]
-                        else:
-                            item = item[0].split(None,0)[0]
-                    try:
-                        if item-int(svc[0]) == 0:
-                            item = int(item)
-                    except:
-                        pass
-                    if len(svc) == 1:
-                        header[key] = item
-                    else:
-                        header[key] = (item,svc[1])
-                        
-        header['simple'] = True
-        alignl=header0.pop('alignl',-1)
-        
-        if alignl == 0:
-            keys=['reflect','reffr','reffi','cdelt2','cdelt3','crota2',
-                  'crpix3','shift3','crpix2','shift2','margin2','margin3']
-            header['alignl'] = (alignl,'Alignment level')
-            for i in keys:
-                header[i] = (header0[i],header0.comments[i])
-            header['history'] = str(header0['history'])
-        if alignl == 1:
-            keys=['reflect','reffr','reffi','cdelt2','cdelt3','crota1',
-                  'crota2','crpix3','crval3','shift3','crpix2','crval2',
-                  'shift2','margin2','margin3']
-            header['alignl'] = (alignl,'Alignment level')
-            for i in keys:
-                header[i] = (header0[i],header0.comments[i])
-            header['history'] = str(header0['history'])
-            
-        return header
         
     def _readFrame(self):
         """
@@ -519,3 +487,75 @@ class FISS(object):
         plt.tick_params(which='major',width= 1.5, size= 5)
         plt.tight_layout()
         plt.show()
+        
+def _getHeader(file):
+    """
+    Get the FISS fts file header.
+    
+    Returns
+    -------
+    header : `astropy.io.fits.Header`
+        The fts file header.
+    
+    Notes
+    -----
+        This function automatically check the existance of the pca file by
+        reading the fts header.
+    """
+    header0 = fits.getheader(file)
+
+    pfile = header0.pop('pfile',False)
+    if not pfile:
+        return header0
+    else:
+        header = fits.Header()
+        header['pfile']=pfile
+        for i in header0['comment']:
+            sori = i.split('=')
+            if len(sori) == 1:
+                skv = sori[0].split(None,1)
+                if len(skv) == 1:
+                    pass
+                else:
+                    header[skv[0]] = skv[1]
+            else:
+                key = sori[0]
+                svc = sori[1].split('/')
+                try:
+                    item = float(svc[0])
+                except:
+                    item = svc[0].split("'")
+                    if len(item) != 1:
+                        item = item[1].split(None,0)[0]
+                    else:
+                        item = item[0].split(None,0)[0]
+                try:
+                    if item-int(svc[0]) == 0:
+                        item = int(item)
+                except:
+                    pass
+                if len(svc) == 1:
+                    header[key] = item
+                else:
+                    header[key] = (item,svc[1])
+                    
+    header['simple'] = True
+    alignl=header0.pop('alignl',-1)
+    
+    if alignl == 0:
+        keys=['reflect','reffr','reffi','cdelt2','cdelt3','crota2',
+              'crpix3','shift3','crpix2','shift2','margin2','margin3']
+        header['alignl'] = (alignl,'Alignment level')
+        for i in keys:
+            header[i] = (header0[i],header0.comments[i])
+        header['history'] = str(header0['history'])
+    if alignl == 1:
+        keys=['reflect','reffr','reffi','cdelt2','cdelt3','crota1',
+              'crota2','crpix3','crval3','shift3','crpix2','crval2',
+              'shift2','margin2','margin3']
+        header['alignl'] = (alignl,'Alignment level')
+        for i in keys:
+            header[i] = (header0[i],header0.comments[i])
+        header['history'] = str(header0['history'])
+        
+    return header
