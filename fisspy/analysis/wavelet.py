@@ -569,11 +569,11 @@ class Wavelet:
 #plot global wavelet power spectrum
 #%%
 class PowerMap:
+    
     """
     """
     def __init__(self, fname):
         1111
-    
 
 
 

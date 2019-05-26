@@ -11,6 +11,8 @@ from fisspy import cm
 import matplotlib.pyplot as plt
 from astropy.constants import c
 from fisspy.analysis.doppler import lambdameter
+from matplotlib import gridspec
+from fisspy.image import interactiveImage as interIm
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
@@ -31,34 +33,119 @@ class rawData:
     
     """
     
-    def ___init___(self, file):
+    def ___init___(self, file, scale=0.16):
         if file.find('A.fts') != -1 or  file.find('A.fts') != -1:
-            self.ftype = 'Rase Data'
+            self.ftype = 'raw'
         self.filename = file
+        self.xDelt = scale
+        self.yDelt = scale
+        
         self.header = fits.getheader(file)
         self.data = fits.getdata(file)
+        self.data = self.data.transpose([1, 0, 2])
         self.ndim = self.header['naxis']
         self.cam = self.split('.fts')[0][-1]
+        if self.cam == 'A':
+            self.wvDelt = 0.019
+        elif self.cam == 'B':
+            self.wvDelt = -0.026
         self.nwv = self.header['naxis1']
         self.ny = self.header['naxis2']
         self.nx = self.header['naxis3']
         self.date = self.header['date']
         self.band = self.header['wavelen'][:4]
+        #simple wavelength calibration
+        self.wave = (np.arange(self.nwv)-self.nwv//2)*self.wvDelt
+        self.waveCenter = 0
+        self.extentRaster = [0, self.nx*self.xDelt,
+                             0, self.ny*self.yDelt]
+        self.extentSpectro = [self.wave.min()-self.wvDelt/2,
+                              self.wave.max()+self.wvDelt/2,
+                              0, self.ny*self.yDelt]
         
         if self.band == '6562' or self.band =='8542':
             self.set = '1'
         elif self.band == '5889' or self.band == '5434':
             self.set = '2'
-        self.cm = plt.cm.gray
+        self.cmap = plt.cm.gray
         
-    def imshow(self, **kwargs):
+    def imshow(self, x=None, y=None, wv=None, **kwargs):
+        """
+        Draw the interactive image for single band FISS raw data.
+        """
         
-        figsize = kwargs.pop('figsize', [10, 8])
-        self.cm = kwargs.pop('cmap', plt.cm.gray)
+        self.xpix = round((x-self.xDelt/2)/self.xDelt)
+        self.x = self.xpix*self.xDelt+self.xDelt/2
+        self.ypix = round((y-self.yDelt/2)/self.yDelt)
+        self.y = self.ypix*self.yDelt+self.yDelt/2
+        self.wvpix = round(wv/self.wvDelt)
+        self.wv = self.wvpix*self.wvDelt
         
+        #figure setting
+        figsize = kwargs.pop('figsize', [10, 6])
+        self.cmap = kwargs.pop('cmap', self.cmap)
+        self.imInterp = kwargs.pop('interpolation', 'bilinear')
         self.fig = plt.figure(figsize=figsize)
-        self.ax = self.fig.add_subplot()
+        gs = gridspec.GridSpec(2, 3)
+        self.axRaster = self.fig.add_subplot(gs[:, 0])
+        self.axSpectro = self.fig.add_subplot(gs[0, 1:])
+        self.axProfile = self.fig.add_subplot(gs[1, 1:])
+        self.axRaster.set_xlabel('X (arcsec)')
+        self.axRaster.set_ylabel('Y (arcsec)')
+        self.axSpectro.set_xlabel(r'Wavelength ($\AA$)')
+        self.axSpectro.set_ylabel('Y (arcsec)')
+        self.axProfile.set_xlabel(r'Wavelength ($\AA$)')
+        self.axProfile.set_ylabel('Intensity (Count)')
+        self.axRaster.set_title(self.date)
+        self.axSpectro.set_title("X = %.2f'', Y = %.2f''"%(self.x, self.y))
+        self.axRaster.set_xlim(self.extentRaster[0], self.extentRaster[1])
+        self.axRaster.set_ylim(self.extentRaster[2], self.extentRaster[3])
+        self.axSpectro.set_xlim(self.extentSpectro[0], self.extentSpectro[1])
+        self.axSpectro.set_ylim(self.extentSpectro[2], self.extentSpectro[3])
+        self.axProfile.set_title(self.band)
+        self.axProfile.set_xlim(self.wave.min(), self.wave.max())
+        self.axProfile.set_ylim(self.data.min()-100, self.data.max()+100)
+        self.axProfile.tick_params(direction='in')
         
+        # Draw
+        self.imRaster = self.axRaster.imshow(self.data[:,:,self.wvpix].T,
+                                             self.cmap,
+                                             origin='lower',
+                                             extent=self.extentRaster,
+                                             interpolation=self.imInterp,
+                                             **kwargs)
+        self.imSpectro = self.axSpectro.imshow(self.data[self.xpix],
+                                               self.cmap,
+                                               origin='lower',
+                                               extent=self.extentSpectro,
+                                               **kwargs)
+        self.plotProfile = self.axProfile.plot(self.wave,
+                                               self.data[self.x, self.y],
+                                               color='k')[0]
+        self.vlineRaster = self.axRaster.vlines(self.x,
+                                                self.extentRaster[2],
+                                                self.extentRaster[3],
+                                                linestyles='dashed')
+        self.pointRaster = self.axRaster.scatter(self.x, self.y, 50,
+                                                 marker='x',
+                                                 color='k')
+        self.vlineSpectro = self.axSpectro.vlines(self.wv,
+                                                  self.extentSpectro[2],
+                                                  self.extentSpectro[3],
+                                                  linestyles='dashed')
+        self.hlineSpectro = self.axSpectro.hlines(self.y,
+                                                  self.extentSpectro[0],
+                                                  self.extentSpectro[1],
+                                                  linestyles='dashed')
+        self.hlineProfile = self.axProfile.hlines(self.wv,
+                                                  self.extentSpectro[2],
+                                                  self.extentSpectro[3],
+                                                  linestyles='dashed',
+                                                  colors='b')
+        self.fig.tight_layout()
+        iIm = interIm.singleBand(self, x, y, wv, **kwargs)  # Basic resource to make interactive image is `~fisspy.image.tdmap.TDmap`
+        
+        plt.show()
 class FISS(object):
     """
     FISS class. Used to read a FISS data file (proc or comp).
@@ -234,9 +321,11 @@ class FISS(object):
         method = kwargs.pop('method', True)
         if simpleWvCalib:
             if absScale:
+                self.waveCenter = self.header['crval1']
                 return (np.arange(self.nwv) -
                         self.header['crpix1']) * self.header['cdelt1'] + self.header['crval1']
             else:
+                self.waveCenter = 0
                 return (np.arange(self.nwv) -
                         self.header['crpix1']) * self.header['cdelt1']
         else:
@@ -559,3 +648,28 @@ def _getHeader(file):
         header['history'] = str(header0['history'])
         
     return header
+
+def _getRaster(data, wave, wvPoint, wvDelt, hw= 0.05):
+    """
+    getRaster(wv, hw)
+    
+    Make raster images for given wavelengths with in width 2*hw
+    
+    Parameters
+    ----------
+    wv   : float or 1d ndarray
+        Referenced wavelengths.
+    hw   : float
+        A half-width of wavelength integration in unit of Angstrom.
+        Default is 0.05
+        
+    Example
+    -------
+    
+    """
+    if hw < abs(wvDelt)/2.:
+        hw = abs(wvDelt)/2.
+        
+    s = np.abs(wave - wvPoint) <= hw
+    return data[:,:,s].mean(2)
+        
