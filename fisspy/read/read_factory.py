@@ -11,15 +11,17 @@ import matplotlib.pyplot as plt
 from astropy.constants import c
 from fisspy.analysis.doppler import lambdameter
 from fisspy.image import interactive_image as IAI
-from fisspy.read.readbase import _getRaster, _getHeader, _readFrame
+from fisspy.read.readbase import getRaster, getHeader, readFrame
+from astropy.time import Time
+import astropy.units as u
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
-__all__ = ["rawData","FISS"]
+__all__ = ["rawData", "FISS", "FD"]
 
 class rawData:
     """
-    rawData class. Used to read a raw data of the FISS.
+    Read a raw data of the FISS.
     
     Parameters
     ----------
@@ -86,7 +88,7 @@ class rawData:
         >>> raster = raw.getRaster(0.5)
         """
         self.wv = wv
-        return _getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
+        return getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
     
     def imshow(self, x=None, y=None, wv=None, scale='minMax',
                sigFactor=3, helpBox=True, **kwargs):
@@ -155,7 +157,7 @@ class rawData:
     
 class FISS(object):
     """
-    FISS class. Used to read a FISS data file (proc or comp).
+    Read a FISS data file (proc or comp).
     
     Parameters
     ----------
@@ -202,9 +204,9 @@ class FISS(object):
         self.xDelt = 0.16
         self.yDelt = 0.16
         
-        self.header = _getHeader(file)
+        self.header = getHeader(file)
         self.pfile = self.header.pop('pfile',False)
-        self.data = _readFrame(file, self.pfile, ncoeff=ncoeff)
+        self.data = readFrame(file, self.pfile, ncoeff=ncoeff)
         self.ndim = self.header['naxis']
         self.nwv = self.header['naxis1']
         self.ny = self.header['naxis2']
@@ -264,7 +266,7 @@ class FISS(object):
         """
         
         self.wv = wv
-        return _getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
+        return getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
 
     
     def _waveCalibration(self, simpleWaveCalib= True, absScale= True,
@@ -352,7 +354,7 @@ class FISS(object):
     
         
     def lambdaMeter(self, hw= 0.03, sp= 5e3, wvRange= False,
-                    wvinput= True, shift2velocity= False):
+                    wvinput= True, shift2velocity= True):
         """
         """
         lineShift, intensity = lambdameter(self.wave, self.data,
@@ -413,7 +415,6 @@ class FISS(object):
         self.iIm = IAI.singleBand(self, x, y, wv,
                                   scale=scale, sigFactor=sigFactor,
                                   helpBox=helpBox, **kwargs)  # Basic resource to make interactive image is `~fisspy.image.tdmap.TDmap`
-        plt.show()
         
     def chRasterClim(self, cmin, cmax):
         self.iIm.chRasterClim(cmin, cmax)
@@ -435,7 +436,71 @@ class FISS(object):
         
 class FD:
     """
+    Read the FISS DATA (FD) file.
     """
-    def __init__(self, file):
-       if file.find('FD') != -1:
-           self.ftype = 'FD'
+    def __init__(self, fdFile, maskFile, timeFile, maskValue=-1,
+                 timeAvg=False, spatialAvg=False):
+        self.ftype = 'FD'
+        self.data = fits.getdata(fdFile)
+        self.header = fits.getheader(fdFile)
+        self.time = fits.getdata(timeFile)
+        self.xDelt = self.yDelt = 0.16
+        unit = fits.getheader(timeFile)['unit']
+        if unit == 'min':
+            self.time *= 60
+        
+        self.mask = fits.getdata(maskFile).astype(bool)
+        self.dt = np.median(self.time-np.roll(self.time, 1))
+        self.nt, self.ny, self.nx, self.nid = self.data.shape
+        
+        reftime = self.header['reftime']
+        self.isotime = _isoRefTime(reftime) + self.time * u.sec
+        
+        wid = self.header['ID1'][:2]
+        if wid == 'HI':
+            self.cmap = cm.ha
+        elif wid == 'Ca':
+            self.cmap = cm.ca
+        elif wid == 'Na':
+            self.cmap = cm.na
+        elif wid == 'Fe':
+            self.cmap = cm.fe
+            
+        xpos = self.header.get('xpos', False)
+        if xpos:
+            ypos = self.header['ypos']
+            xm = xpos - self.nx/2*self.xDelt
+            xM = xpos + self.nx/2*self.xDelt
+            ym = ypos - self.ny/2*self.yDelt
+            yM = ypos + self.ny/2*self.yDelt
+        else:
+            xm = -self.nx/2*self.xDelt
+            xM = self.nx/2*self.xDelt
+            ym = -self.ny/2*self.yDelt
+            yM = self.ny/2*self.yDelt
+        self.extent = [xm, xM, ym, yM]
+        
+        if maskValue != -1:
+            self._mask(maskValue)
+            
+            
+    def _mask(self, val):
+        self.data[np.invert(self.mask),:] = val
+    def _spatialAverage(self):
+    def _temporalAverage(self):
+    def bandpassFilter(self):
+    def originalData(self, maskValue=-1, timeAvg=False, spatialAvg=False):
+    def imshowTimeseries(self):
+    def imshowMulti(self):
+    def imshowPower(self):
+    def imshowWavelet(self):
+        
+def _isoRefTime(refTime):
+    year = refTime[:4]
+    month = refTime[4:6]
+    day = refTime[6:8]
+    hour = refTime[9:11]
+    minute = refTime[11:13]
+    sec = refTime[13:15]
+    isot = '%s-%s-%sT%s:%s:%s'%(year, month, day, hour, minute, sec)
+    return Time(isot)

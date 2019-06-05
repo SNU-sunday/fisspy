@@ -9,9 +9,9 @@ from os.path import join, dirname
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
-__all__ = ["_readFrame", "_readPCA", "_getHeader", "_getRaster"]
+__all__ = ["readFrame", "_readPCA", "getHeader", "getRaster"]
 
-def _readFrame(file, pfile=False, ncoeff=False):
+def readFrame(file, pfile=False, ncoeff=False):
     """
     Read the FISS fts file.
     """
@@ -40,7 +40,7 @@ def _readPCA(file, pfile, ncoeff=False):
     spec *= 10.**data[:,:,ncoeff][:,:,None]
     return spec  
 
-def _getHeader(file):
+def getHeader(file):
     """
     Get the FISS fts file header.
     
@@ -112,7 +112,7 @@ def _getHeader(file):
         
     return header
 
-def _getRaster(data, wave, wvPoint, wvDelt, hw=0.05):
+def getRaster(data, wave, wvPoint, wvDelt, hw=0.05):
     """
     getRaster(wv, hw)
     
