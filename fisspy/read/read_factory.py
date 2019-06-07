@@ -1,6 +1,3 @@
-"""
-"""
-
 from __future__ import absolute_import, division
 import numpy as np
 from astropy.io import fits
@@ -12,8 +9,12 @@ from astropy.constants import c
 from fisspy.analysis.doppler import lambdameter
 from fisspy.image import interactive_image as IAI
 from fisspy.read.readbase import getRaster, getHeader, readFrame
+from fisspy.analysis.filter import FourierFilter
 from astropy.time import Time
 import astropy.units as u
+from matplotlib.widgets import Button
+from scipy.fftpack import fft, fftfreq
+from matplotlib import gridspec
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
@@ -439,9 +440,13 @@ class FD:
     Read the FISS DATA (FD) file.
     """
     def __init__(self, fdFile, maskFile, timeFile, maskValue=-1,
-                 timeAvg=False, spatialAvg=False):
+                 spatialAvg=False, timeAvg=False):
+        self.maskValue = maskValue
         self.ftype = 'FD'
-        self.data = fits.getdata(fdFile)
+        self.data = fits.getdata(fdFile).astype(float)
+        self.min = np.min(self.data, axis=(1,2))
+        self.max = np.max(self.data, axis=(1,2))
+        self.odata = self.data.copy()
         self.header = fits.getheader(fdFile)
         self.time = fits.getdata(timeFile)
         self.xDelt = self.yDelt = 0.16
@@ -458,14 +463,20 @@ class FD:
         
         wid = self.header['ID1'][:2]
         if wid == 'HI':
-            self.cmap = cm.ha
-        elif wid == 'Ca':
-            self.cmap = cm.ca
-        elif wid == 'Na':
-            self.cmap = cm.na
-        elif wid == 'Fe':
-            self.cmap = cm.fe
+            self.cmap = [cm.ha]*self.nid
             
+        elif wid == 'Ca':
+            self.cmap = [cm.ca]*self.nid
+        elif wid == 'Na':
+            self.cmap = [cm.na]*self.nid
+        elif wid == 'Fe':
+            self.cmap = [cm.fe]*self.nid
+        
+        self.idh = self.header['ID*']
+        for i in range(nid):
+            if self.idh[i][-1] == 'V':
+                self.cmap[i] = plt.cm.RdBu_r
+                
         xpos = self.header.get('xpos', False)
         if xpos:
             ypos = self.header['ypos']
@@ -482,18 +493,86 @@ class FD:
         
         if maskValue != -1:
             self._mask(maskValue)
+        if spatialAvg:
+            self._spatialAverage()
+        if timeAvg:
+            self._timeAverage()
+        self._PowerSpectrum()
+        
             
-            
+    def _PowerSpectrum(self):
+        self.freq = fftfreq(self.nt, self.dt)*1e3
+        self.power = np.abs(fft(self.data, axis=0))**2
+        
     def _mask(self, val):
         self.data[np.invert(self.mask),:] = val
+        
     def _spatialAverage(self):
-    def _temporalAverage(self):
-    def bandpassFilter(self):
-    def originalData(self, maskValue=-1, timeAvg=False, spatialAvg=False):
-    def imshowTimeseries(self):
+        for i in self.nt:
+            med = np.median(self.data[i,self.mask[i]], 0)
+            self.data[i] -= med
+            self.min[i] -= med
+            self.max[i] -= med
+            
+    def _timeAverage(self):
+        med = np.median(self.data, 0)
+        self.data -= med
+        self.min -= np.median(med, (1,2))
+        self.max -= np.median(med, (1,2))
+        
+    def originalData(self, maskValue=-1, spatialAvg=False, timeAvg=False):
+        self.data = self.odata
+        if maskValue != -1:
+            self.maskValue = maskValue
+            self._mask(maskValue)
+        if spatialAvg:
+            self._spatialAverage()
+        if timeAvg:
+            self._timeAverage()
+            
+    def bandpassFilter(self, filterRange):
+        self.data = FourierFilter(self.data, self.nt, self.dt, filterRange,
+                                  axis=axis)
+        if self.maskValue != -1:
+            self._mask(self.maskValue)
+            
+    def imshow(self, **kwargs):
+        
+        # Figure setting
+        figsize = kwargs.pop('figsize', [10, 6])
+        self.fig = plt.figure('FISS DATA', figsize=figsize)
+        self.imInterp = kwargs.get('interpolation', 'bilinear')
+        gs = gridspec.GridSpec(2,3)
+        self.axRaster = self.fig.add_subplot(gs[:, 0])
+        self.axTS = self.fig.add_subplot(gs[0, 1:]) # TimeSeries
+        self.axPower = self.fig.add_subplot(gs[1, 1:])
+        self.axRaster.set_xlabel('X (arcsec)')
+        self.axRaster.set_ylabel('Y (arcsec)')
+        self.axTS.set_xlabel('Time (sec)')
+        self.axTS.set_ylabel('Intensity (count)')
+        self.axPower.set_xlabel('Frequency (mHz)')
+        self.axPower.set_ylabel('Power')
+        self.axPower.set_xlim(0, 12)
+        self.axTS.set_xlim(self.time.min(), self.time.max())
+        self.axTS.minorticks_on()
+        self.axPower.minorticks_on()
+        self.axTS.tick_params(which='both', direction='in')
+        self.axPower.tick_params(which='both', direction='in')
+        self.axRaster.set_title(self.idh[0])
+        self.axTS.set_title('Time series')
+        self.axPower.set_title('Fourier Power Spectrum')
+        
+        # Plot
+        self.imRaster = self.axRaster.imshow(self.data[0,:,:,0],
+                                             self.cmap[0],
+                                             origin='lower',
+                                             extent=self.extent,
+                                             clim=[self.min[0,0],
+                                                   self.max[0,0]])
+        
+    def _on_key(self):
+    def _pushB(self):
     def imshowMulti(self):
-    def imshowPower(self):
-    def imshowWavelet(self):
         
 def _isoRefTime(refTime):
     year = refTime[:4]
