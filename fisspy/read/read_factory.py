@@ -459,7 +459,9 @@ class FD:
         self.nt, self.ny, self.nx, self.nid = self.data.shape
         
         reftime = self.header['reftime']
-        self.isotime = _isoRefTime(reftime) + self.time * u.sec
+        self.reftime = _isoRefTime(reftime)
+        self.isotime = self.reftime + self.time * u.sec
+        self.timei = self.time-self.time[0]
         
         wid = self.header['ID1'][:2]
         if wid == 'HI':
@@ -501,8 +503,9 @@ class FD:
         
             
     def _PowerSpectrum(self):
-        self.freq = fftfreq(self.nt, self.dt)*1e3
-        self.power = np.abs(fft(self.data, axis=0))**2
+        self.freq = (fftfreq(self.nt, self.dt)*1e3)[:self.nt//2]
+        
+        self.power = (np.abs(fft(self.data, axis=0))**2)[:self.nt//2]
         
     def _mask(self, val):
         self.data[np.invert(self.mask),:] = val
@@ -536,8 +539,13 @@ class FD:
         if self.maskValue != -1:
             self._mask(self.maskValue)
             
-    def imshow(self, **kwargs):
+    def imshow(self, x=0, y=0, t=0, cid, **kwargs):
         
+        self.x = x
+        self.y = y
+        self.t = t
+        self.cid = cid
+        xpix = 
         # Figure setting
         figsize = kwargs.pop('figsize', [10, 6])
         self.fig = plt.figure('FISS DATA', figsize=figsize)
@@ -569,6 +577,15 @@ class FD:
                                              extent=self.extent,
                                              clim=[self.min[0,0],
                                                    self.max[0,0]])
+        self.timeseries = self.axTS.plot(self.timei,
+                                         self.data[self.t, ypix,
+                                                   xpix, self.cid],
+                                         color='k')[0]
+        self.powerSpectrum = self.axPower.plot(self.freq,
+                                               self.fdata[self.t, ypix,
+                                                          xpix, self.cid],
+                                               color='k')[0]
+        
         
     def _on_key(self):
     def _pushB(self):
