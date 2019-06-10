@@ -265,6 +265,7 @@ class singleBand:
                                    np.median(raster)+raster.std()*self.sigFactor)
         else:
             self.imRaster.set_clim(raster.min(), raster.max())
+            
     def _chSpect(self):
         self.x0 = self.x
         self.xpix0 = self.xpix

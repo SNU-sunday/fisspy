@@ -128,18 +128,19 @@ class Wavelet:
         #array handeling
         order_ini = np.arange(data.ndim)
         o1 = np.delete(order_ini, axis)
-        o2 = np.concatenate([o1, axis])
+        o2 = np.concatenate([o1, [axis]])
         tdata = data.transpose(o2)
-        tshape = tdata.shape
         indata = tdata.reshape([shape.prod(), self.n0])
         
         wshape = np.concatenate([shape, [self.j+1, self.n0]])
-        self.wave = np.empty(np.concatenate([shape.prod(), [self.j+1, self.n0]]),
+        self.wave = np.empty(np.concatenate([[shape.prod()], [self.j+1, self.n0]]),
                              dtype=complex)
         for i, y in enumerate(indata):
-            self.wave[i] = self._getWavelet(y)
+            self.wave[i] = self._getWavelet(y)[:,:self.n0]
         
         self.wave = self.wave.reshape(wshape)
+        self.power = np.abs(self.wave)**2
+        self.gws = self.power.mean(axis=-1)
         
     def _getWavelet(self, y):
 
