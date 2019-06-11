@@ -98,7 +98,7 @@ class Wavelet:
         self.s0 = s0
         self.j = j
         self.dt = dt
-        self.dj = 0.25
+        self.dj = dj
         self.mother = mother.upper()
         self.param = param
         self.pad = pad

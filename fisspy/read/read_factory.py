@@ -574,7 +574,8 @@ class FD:
                 self.min[i] = -tmp
                 self.max[i] = tmp
                 
-    def imshow(self, x=0, y=0, t=0, cid=0, scale='minMax', **kwargs):
+    def imshow(self, x=0, y=0, t=0, cid=0, scale='minMax', 
+               levels=None, **kwargs):
         
         self.kwargs = kwargs
         
@@ -588,7 +589,7 @@ class FD:
             raise ValueError("scale must be either 'minMax' or 'log'.")
         
         # transpose to pixel position.
-        xpix, ypix, tpix = self._transposedPosition(x, y, t)
+        xpix, ypix, tpix = self._pixelPosition(x, y, t)
         self.x0 = self.x
         self.y0 = self.y
         self.t0 = self.t
@@ -604,8 +605,8 @@ class FD:
         gs = gridspec.GridSpec(3,3)
         self.axRaster = self.fig.add_subplot(gs[:, 0])
         self.axTS = self.fig.add_subplot(gs[0, 1:]) # TimeSeries
-        self.axPower = self.fig.add_subplot(gs[1, 1:])
-        self.axWavelet = self.fig.add_subplot(gs[2, 1:])
+        self.axWavelet = self.fig.add_subplot(gs[1, 1:])
+        self.axPower = self.fig.add_subplot(gs[2, 1:])
         self.axRaster.set_xlabel('X (arcsec)')
         self.axRaster.set_ylabel('Y (arcsec)')
         self.axTS.set_xlabel('Time (sec)')
@@ -648,8 +649,9 @@ class FD:
                                                power,
                                                color='k')[0]
         #wavelet 
-        levels = [0.1, 0.25, 0.4, 
-                  0.55, 0.7, 1]
+        if not levels:
+            levels = [0.1, 0.25, 0.4, 
+                      0.55, 0.7, 1]
         self.levels = levels
         self._plotWavelet(xpix, ypix)
         divider = make_axes_locatable(self.axWavelet)
@@ -727,7 +729,7 @@ class FD:
                     self.axTS.set_ylabel('Intensity (Count)')
                 
         if self.x != self.x0 or self.y != self.y0:
-            xpix, ypix, tpix = self._transposedPosition(self.x, self.y,
+            xpix, ypix, tpix = self._pixelPosition(self.x, self.y,
                                                    self.t)
             self._changePlot(xpix, ypix)
             self._changeWavelet(xpix, ypix)
@@ -741,7 +743,7 @@ class FD:
         self.fig.canvas.draw_idle()
         
     def _changeID(self):
-        xpix, ypix, tpix = self._transposedPosition(self.x, self.y,
+        xpix, ypix, tpix = self._pixelPosition(self.x, self.y,
                                                    self.t)
         self._changePlot(xpix, ypix)
         self._changeWavelet(xpix, ypix)
@@ -761,7 +763,7 @@ class FD:
     def _changeRaster(self):
         self.imRaster.set_data(self.data[self.tpix, :, :, self.cid])
         
-    def _transposedPosition(self, x, y, t):
+    def _pixelPosition(self, x, y, t):
         tpix = np.abs(self.timei-t).argmin()
         xpix = np.abs(self._xar-x).argmin()
         ypix = np.abs(self._yar-y).argmin()
@@ -776,17 +778,17 @@ class FD:
         self._plotWavelet(xpix, ypix)
         
     def _plotWavelet(self, xpix, ypix):
-        wave = Wavelet(self.data[:, ypix, xpix, self.cid],
+        self.wavelet = Wavelet(self.data[:, ypix, xpix, self.cid],
                        self.dt, **self.kwargs)
-        wpower = wave.power/wave.power.max()
-        self.contour = self.axWavelet.contourf(self.timei, wave.period/60,
+        wpower = self.wavelet.power/self.wavelet.power.max()
+        self.contour = self.axWavelet.contourf(self.timei, self.wavelet.period/60,
                                                wpower, len(self.levels),
                                                colors=['w'])
         self.contourIm = self.axWavelet.contourf(self.contour,
                                                  levels=self.levels
                                                  )
-        self.axWavelet.fill_between(self.timei, wave.coi/60,
-                                    wave.period.max()/60, color='grey',
+        self.axWavelet.fill_between(self.timei, self.wavelet.coi/60,
+                                    self.wavelet.period.max()/60, color='grey',
                                     alpha=0.4, hatch='x')
         self.axWavelet.set_title('Wavelet Power Spectrum')
         self.axWavelet.set_xlabel('Time (sec)')
@@ -799,6 +801,13 @@ class FD:
                                                    ls='dashed',
                                                    color='k')
         self.axWavelet.set_ylim(16, 0.5)
+    
+    def changeLevels(self, levels):
+        """
+        """
+        self.levels = levels
+        xpix, ypix, tpix = self._pixelPosition(self.x, self.y, self.t)
+        self._changeWavelet(xpix, ypix)
         
 def _isoRefTime(refTime):
     year = refTime[:4]
