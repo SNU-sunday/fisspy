@@ -543,12 +543,37 @@ class FD:
             self._spatialAverage()
         if timeAvg:
             self._timeAverage()
+        self.min = np.min(self.data, axis=(1,2))
+        self.max = np.max(self.data, axis=(1,2))
+        self.min = self.min[self.reftpix]
+        self.max = self.max[self.reftpix]
+        for i in range(self.nid):
+            if self.idh[i][-1] == 'V':
+                self.cmap[i] = plt.cm.RdBu_r
+                tmp = np.abs(self.max[i]-self.min[i])/2*0.7
+                if tmp > 15:
+                    tmp = 0.8
+                self.min[i] = -tmp
+                self.max[i] = tmp
             
     def bandpassFilter(self, filterRange):
-        self.data = FourierFilter(self.data, self.nt, self.dt, filterRange)
+        self.data = FourierFilter(self.data, self.nt, self.dt*1e-3, filterRange)
         if self.maskValue != -1:
             self._mask(self.maskValue)
-            
+        self._PowerSpectrum()
+        self.min = np.min(self.data, axis=(1,2))
+        self.max = np.max(self.data, axis=(1,2))
+        self.min = self.min[self.reftpix]
+        self.max = self.max[self.reftpix]
+        for i in range(self.nid):
+            if self.idh[i][-1] == 'V':
+                self.cmap[i] = plt.cm.RdBu_r
+                tmp = np.abs(self.max[i]-self.min[i])/2*0.7
+                if tmp > 15:
+                    tmp = 0.8
+                self.min[i] = -tmp
+                self.max[i] = tmp
+                
     def imshow(self, x=0, y=0, t=0, cid=0, scale='minMax', **kwargs):
         
         self.kwargs = kwargs
@@ -694,7 +719,12 @@ class FD:
             if event.key == 'ctrl+%i'%iid:
                 self.cid = iid
                 self._changeID()
+                self.axRaster.set_title(self.idh[iid])
                 self.imRaster.set_cmap(self.cmap[self.cid])
+                if self.idh[iid][-1] == 'V':
+                    self.axTS.set_ylabel('Velocity (km/s)')
+                else:
+                    self.axTS.set_ylabel('Intensity (Count)')
                 
         if self.x != self.x0 or self.y != self.y0:
             xpix, ypix, tpix = self._transposedPosition(self.x, self.y,
