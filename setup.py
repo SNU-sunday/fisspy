@@ -13,7 +13,7 @@ setup(
     install_requires=["numba", "numpy", "scipy", "astropy>=3.0",
                       "sunpy>=0.9.6", "pandas", "matplotlib>=2.0",
 		      "interpolation>=2.0", "statsmodels",
-		      "suds-jurko", "pillow"],
+		      "suds-jurko", "pillow", "ffmpeg"],
     zip_safe=False
     )
 

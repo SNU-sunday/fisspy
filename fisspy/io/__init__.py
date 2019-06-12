@@ -8,4 +8,4 @@ import warnings
 
 warnings.warn("As of v0.9.0, the `fisspy.io` module is deprecated "
               "and will be removed in a v1.0.0 version. "
-              "Use `fisspy.read` to read FISS data file.", Warning)
+              "Use `fisspy.read` to read the FISS data file.", Warning)

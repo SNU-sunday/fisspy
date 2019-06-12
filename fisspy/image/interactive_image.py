@@ -42,12 +42,20 @@ class singleBand:
     
     def __init__(self, fiss, x=None, y=None, wv=None, scale='minMax', 
                  sigFactor=3, helpBox=True, **kwargs):
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
+        
         if not x:
             x = fiss.nx//2*fiss.xDelt
         if not y:
             y = fiss.ny//2*fiss.yDelt
         if not wv:
             wv = fiss.centralWavelength
+        plt.rcParams['keymap.back'].remove('left')
+        plt.rcParams['keymap.forward'].remove('right')
         self.scale = scale
         self.sigFactor = sigFactor
         self.hw = kwargs.pop('hw', 0.05)
@@ -98,13 +106,14 @@ class singleBand:
             ax.text(0.05,0.5,'ctrl+down: Move to down')
             ax.text(0.05,0.4,'right: Increase the wavelength')
             ax.text(0.05,0.3,'left: Decrease the wavelength')
-            ax.text(0.05,0.2,'ctrl+spacebar: Change to current mouse point')
+            ax.text(0.05,0.2,'spacebar: Change to current mouse point')
             
             
         #figure setting
         figsize = kwargs.pop('figsize', [10, 6])
         self.cmap = kwargs.pop('cmap', fiss.cmap)
-        self.fig = plt.figure(self.band, figsize=figsize)
+        self.fig = plt.figure(figsize=figsize)
+        self.fig.canvas.set_window_title(self.band)
         self.imInterp = kwargs.get('interpolation', fiss.imInterp)
         gs = gridspec.GridSpec(2, 3)
         self.axRaster = self.fig.add_subplot(gs[:, 0])
@@ -223,12 +232,12 @@ class singleBand:
                 self.wv -= abs(self.wvDelt)
             else:
                 self.wv = self.wave.max()
-        elif event.key == 'ctrl+ ' and event.inaxes == self.axRaster:
+        elif event.key == ' ' and event.inaxes == self.axRaster:
             self.x = event.xdata
             self.y = event.ydata
-        elif event.key == 'ctrl+ ' and event.inaxes == self.axProfile:
+        elif event.key == ' ' and event.inaxes == self.axProfile:
             self.wv = event.xdata
-        elif event.key == 'ctrl+ ' and event.inaxes == self.axSpectro:
+        elif event.key == ' ' and event.inaxes == self.axSpectro:
             self.wv = event.xdata
             self.y = event.ydata
         elif event.key == 'ctrl+h':
@@ -313,8 +322,15 @@ class dualBand:
     """
     def __init__(self, fissA, fissB, x=None, y=None, wvA=None, wvB=None,
                  scale='minMax', sigFactor=3, helpBox=True, **kwargs):
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
         
         kwargs['interpolation'] = kwargs.pop('interpolation', 'bilinear')
+        plt.rcParams['keymap.back'].remove('left')
+        plt.rcParams['keymap.forward'].remove('right')
         self.fissA = fissA
         self.fissB = fissB
         self.nx = self.fissA.nx
@@ -380,15 +396,18 @@ class dualBand:
             ax.text(0.05,0.32,'left: Decrease the wavelength of the fissA')
             ax.text(0.05,0.22,'up: Increase the wavelength of the fissB')
             ax.text(0.05,0.12,'down: Decrease the wavelength of the fissB')
-            ax.text(0.05,0.02,'ctrl+spacebar: Change to current mouse point')
+            ax.text(0.05,0.02,'spacebar: Change to current mouse point')
         
         #figure setting
         figsize = kwargs.pop('figsize', [12, 6])
-        self.fig = plt.figure('Dual Band Image', figsize=figsize)
+        self.fig = plt.figure(figsize=figsize)
+        self.fig.canvas.set_widnow_title('Dual Band Image')
         self.imInterp = kwargs.get('interpolation', 'bilinear')
         gs = gridspec.GridSpec(2,4)
         self.axRasterA = self.fig.add_subplot(gs[:,0])
-        self.axRasterB = self.fig.add_subplot(gs[:,1])
+        self.axRasterB = self.fig.add_subplot(gs[:,1],
+                                              sharex=self.axRasterA,
+                                              sharey=self.axRasterA)
         self.axProfileA = self.fig.add_subplot(gs[0,2:])
         self.axProfileB = self.fig.add_subplot(gs[1,2:])
         self.axRasterA.set_xlabel('X (arcsec)')
@@ -520,13 +539,13 @@ class dualBand:
                 self.wvB -= abs(self.fissB.wvDelt)
             else:
                 self.wvB = self.fissB.wave.max()
-        elif event.key == 'ctrl+ ' and (event.inaxes == self.axRasterA or 
+        elif event.key == ' ' and (event.inaxes == self.axRasterA or 
                                         event.inaxes == self.axRasterB) :
             self.x = event.xdata
             self.y = event.ydata
-        elif event.key == 'ctrl+ ' and event.inaxes == self.axProfileA:
+        elif event.key == ' ' and event.inaxes == self.axProfileA:
             self.wvA = event.xdata
-        elif event.key == 'ctrl+ ' and event.inaxes == self.axProfileB:
+        elif event.key == ' ' and event.inaxes == self.axProfileB:
             self.wvB = event.xdata
         elif event.key == 'ctrl+h':
             self.wvA = self.wvAH

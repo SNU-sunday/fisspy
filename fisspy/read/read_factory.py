@@ -12,11 +12,10 @@ from fisspy.read.readbase import getRaster, getHeader, readFrame
 from fisspy.analysis.filter import FourierFilter
 from astropy.time import Time
 import astropy.units as u
-from scipy.fftpack import fft, fftfreq
 from matplotlib import gridspec
 from fisspy.analysis.wavelet import Wavelet
 from matplotlib import ticker
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+#from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
@@ -124,6 +123,12 @@ class rawData:
         ----------------
         **kwargs : `~matplotlib.pyplot` properties
         """
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
+        
         if not x:
             x = self.nx//2*self.xDelt
         if not y:
@@ -402,6 +407,11 @@ class FISS(object):
         ----------------
         **kwargs : `~matplotlib.pyplot` properties
         """
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
         
         if not x:
             x = self.nx//2*self.xDelt
@@ -444,6 +454,8 @@ class FD:
     def __init__(self, fdFile, maskFile, timeFile, maskValue=-1,
                  spatialAvg=False, timeAvg=False):
         self.maskValue = maskValue
+        self._spAvg = spatialAvg
+        self._timeAvg = timeAvg
         self.ftype = 'FD'
         self.data = fits.getdata(fdFile).astype(float)
         self.odata = self.data.copy()
@@ -497,10 +509,9 @@ class FD:
         if maskValue != -1:
             self._mask(maskValue)
         if spatialAvg:
-            self._spatialAverage()
+            self.spatialAverage()
         if timeAvg:
-            self._timeAverage()
-        self._PowerSpectrum()
+            self.timeAverage()
         self.min = self.min[self.reftpix]
         self.max = self.max[self.reftpix]
         self.idh = self.header['ID*']
@@ -513,22 +524,17 @@ class FD:
                 self.min[i] = -tmp
                 self.max[i] = tmp
             
-    def _PowerSpectrum(self):
-        self.freq = (fftfreq(self.nt, self.dt)*1e3)[:self.nt//2]
-        
-        self.power = (np.abs(fft(self.data, axis=0))**2)[:self.nt//2]
-        
     def _mask(self, val):
         self.data[np.invert(self.mask),:] = val
         
-    def _spatialAverage(self):
+    def spatialAverage(self):
         for i in range(self.nt):
             med = np.median(self.data[i,self.mask[i]], 0)
             self.data[i] -= med
             self.min[i] -= med
             self.max[i] -= med
             
-    def _timeAverage(self):
+    def timeAverage(self):
         med = np.median(self.data, 0)
         self.data -= med
         self.min -= np.median(med, (0,1))
@@ -540,9 +546,9 @@ class FD:
             self.maskValue = maskValue
             self._mask(maskValue)
         if spatialAvg:
-            self._spatialAverage()
+            self.spatialAverage()
         if timeAvg:
-            self._timeAverage()
+            self.timeAverage()
         self.min = np.min(self.data, axis=(1,2))
         self.max = np.max(self.data, axis=(1,2))
         self.min = self.min[self.reftpix]
@@ -574,19 +580,16 @@ class FD:
                 self.min[i] = -tmp
                 self.max[i] = tmp
                 
-    def imshow(self, x=0, y=0, t=0, cid=0, scale='minMax', 
-               levels=None, **kwargs):
+    def imshow(self, x=0, y=0, t=0, cid=0, 
+               levels=None, maxPeriod=32, helpBox=True, **kwargs):
         
         self.kwargs = kwargs
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
         
-        #Scale setting
-        if scale == 'log':
-            for i in range(self.nid):
-                if self.idh[i][-1] != 'V':
-                    self.min = np.log(self.min)
-                    self.max = np.log(self.max)
-        elif scale != 'minMax':
-            raise ValueError("scale must be either 'minMax' or 'log'.")
         
         # transpose to pixel position.
         xpix, ypix, tpix = self._pixelPosition(x, y, t)
@@ -597,31 +600,49 @@ class FD:
         self.yh = self.y
         self.th = self.t
         self.cid = cid
+        self.cidh = cid
+        self.maxPeriod = maxPeriod
+        
+        
+        #Keyboard helpBox
+        if helpBox:
+            helpFig = plt.figure('Key Help Box', figsize=[3.5, 3])
+            ax = helpFig.add_subplot(111)
+            ax.set_position([0,0,1,1])
+            ax.set_axis_off()
+            ax.text(0.05, 0.91, 'ctrl+h: Reset to original setting')
+            ax.text(0.05, 0.81, 'ctrl+num: Draw the plot ID = num')
+            ax.text(0.05, 0.71, 'ctrl+right: Move to right')
+            ax.text(0.05, 0.61, 'ctrl+left: Move to left')
+            ax.text(0.05, 0.51, 'ctrl+up: Move to up')
+            ax.text(0.05, 0.41, 'ctrl+down: Move to down')
+            ax.text(0.05, 0.31, 'right: Next time data')
+            ax.text(0.05, 0.21, 'right: Previous time data')
+            ax.text(0.05, 0.11, 'spacebar: change to current mouse point')
+            ax.text(0.05, 0.01, 'ctrl+b: back to the previous image')
+        
         
         # Figure setting
         figsize = kwargs.pop('figsize', [10, 8])
-        self.fig = plt.figure('FISS DATA', figsize=figsize)
+        self.fig = plt.figure(figsize=figsize)
+        self.fig.canvas.set_window_title('FISS Data')
         self.imInterp = kwargs.get('interpolation', 'bilinear')
-        gs = gridspec.GridSpec(3,3)
-        self.axRaster = self.fig.add_subplot(gs[:, 0])
-        self.axTS = self.fig.add_subplot(gs[0, 1:]) # TimeSeries
-        self.axWavelet = self.fig.add_subplot(gs[1, 1:])
-        self.axPower = self.fig.add_subplot(gs[2, 1:])
+        gs = gridspec.GridSpec(5,5)
+        
+        self.axRaster = self.fig.add_subplot(gs[0:3, :2]) # Raster
         self.axRaster.set_xlabel('X (arcsec)')
         self.axRaster.set_ylabel('Y (arcsec)')
+        self.axRaster.set_title(self.idh[0])
+        
+        self.axTS = self.fig.add_subplot(gs[1:3, 2:]) # TimeSeries
         self.axTS.set_xlabel('Time (sec)')
         self.axTS.set_ylabel('Intensity (count)')
-        self.axPower.set_xlabel('Frequency (mHz)')
-        self.axPower.set_ylabel('Power')
-        self.axPower.set_xlim(0, 10)
         self.axTS.set_xlim(self.timei[0], self.timei[-1])
         self.axTS.minorticks_on()
-        self.axPower.minorticks_on()
         self.axTS.tick_params(which='both', direction='in')
-        self.axPower.tick_params(which='both', direction='in')
-        self.axRaster.set_title(self.idh[0])
         self.axTS.set_title('Time series')
-        self.axPower.set_title('Fourier Power Spectrum')
+        
+        self.axWavelet = self.fig.add_subplot(gs[3:, 2:])
         self.axWavelet.set_title('Wavelet Power Spectrum')
         self.axWavelet.set_xlabel('Time (sec)')
         self.axWavelet.set_ylabel('Period (minute)')
@@ -629,12 +650,21 @@ class FD:
         self.axWavelet.set_yscale('log', basey=2)
         self.axWavelet.yaxis.set_major_formatter(ticker.ScalarFormatter())
         self.axWavelet.ticklabel_format(axis='y',style='plain')
-        self.axWavelet.set_ylim(32, 1)
+        self.axWavelet.set_ylim(self.maxPeriod, 0.5)
+        
+        self.axPower = self.fig.add_subplot(gs[3:, :2])
+        self.axPower.set_title('Power Spectrum')
+        
+        self.axPower.set_ylabel('Period (minute)')
+        self.axPower.set_ylim(self.maxPeriod, 0.5)
+        self.axPower.set_yscale('log', basey=2)
+        self.axPower.yaxis.set_major_formatter(ticker.ScalarFormatter())
+        self.axPower.ticklabel_format(axis='x',style='sci', scilimits=(0,1))
+        self.axPower.minorticks_on()
+        self.axPower.tick_params(which='both', direction='in')
         
         # Plot
         data = self.data[:, ypix, xpix, self.cid]
-        power = self.power[:, ypix, xpix, self.cid]
-        power /= power.max()
         self.imRaster = self.axRaster.imshow(self.data[tpix,:,:,cid],
                                              self.cmap[cid],
                                              origin='lower',
@@ -645,18 +675,25 @@ class FD:
         self.timeseries = self.axTS.plot(self.timei,
                                          data,
                                          color='k')[0]
-        self.powerSpectrum = self.axPower.plot(self.freq,
-                                               power,
-                                               color='k')[0]
+        
         #wavelet 
         if not levels:
             levels = [0.1, 0.25, 0.4, 
                       0.55, 0.7, 1]
         self.levels = levels
         self._plotWavelet(xpix, ypix)
-        divider = make_axes_locatable(self.axWavelet)
-        cax = divider.append_axes('right', size='5%', pad=0)
-        plt.colorbar(self.contourIm, cax=cax)
+#        divider = make_axes_locatable(self.axWavelet)
+#        cax = divider.append_axes('right', size='5%', pad=0.1)
+#        plt.colorbar(self.contourIm, cax=cax)
+        
+        #gws
+        self.powerGWS = self.axPower.plot(self.gws, self.period, color='k',
+                                          label='GWS')[0]
+        #lws
+        self.lws = self.wavelet.power[:, tpix]
+        self.powerLWS = self.axPower.plot(self.lws, self.period,
+                                          color='r', label='LWS')[0]
+        self.axPower.legend()
         
         # marker
         self.point = self.axRaster.scatter(self.x, self.y, 50,
@@ -668,13 +705,45 @@ class FD:
         self.vlineWavelet = self.axWavelet.axvline(self.t,
                                                    ls='dashed',
                                                    color='k')
+        peakPGWS = self.period[self.gws.argmax()]
+        peakPLWS = self.period[self.lws.argmax()]
+        self.hlineGWS = self.axPower.axhline(peakPGWS,
+                                             ls='dotted',
+                                             color='k')
+        self.hlineLWS = self.axPower.axhline(peakPLWS,
+                                             ls='dotted',
+                                             color='r')
+        
+        #infoBox
+        self.axInfo = self.fig.add_subplot(gs[0, 2:])
+        self.axInfo.set_axis_off()
+        self.isotInfo = self.axInfo.text(0.05, 0.8,
+                                    '%s'%self.isotime[self.tpix].value,
+                                    fontsize=12)
+        self.tInfo = self.axInfo.text(0.05, 0.55,
+                                 't=%i sec (tpix=%i)'%(self.t, self.tpix),
+                                 fontsize=12)
+        self.posiInfo = self.axInfo.text(0.05, 0.3,
+                        "X=%.1f'', Y=%.1f'' (xpix=%i, ypix=%i)"%(self.x,
+                                                                 self.y,
+                                                                 xpix,
+                                                                 ypix),
+                                            fontsize=12)
+        self.peakPeriodGWS = self.axInfo.text(0.05, -0.1,
+                                         r'P$_{peak, GWS}$=%.2f min'%peakPGWS,
+                                         fontsize=12)
+        self.peakPeriodLWS = self.axInfo.text(0.05, -0.35,
+                                         r'P$_{peak, LWS}$=%.2f min'%peakPLWS,
+                                         fontsize=12)
         
         #Axis limit
         self.axTS.set_ylim(data.min(), data.max())
-        self.axPower.set_ylim(0, 1)
+        self.axPower.set_xlim(0, self.lpmax)
         self.axWavelet.set_aspect(adjustable='box', aspect='auto')
         self.fig.tight_layout()
         self.fig.canvas.mpl_connect('key_press_event', self._on_key)
+        
+        plt.show()
         
     def _on_key(self, event):
         if event.key == 'ctrl+right':
@@ -682,41 +751,85 @@ class FD:
                 self.x += self.xDelt
             else:
                 self.x = self._xar[0]
+            self.xb = self.x0
+            self.yb = self.y0
+            self.tb = self.t0
         elif event.key == 'ctrl+left':
             if self.x > self._xar[0]:
                 self.x -= self.xDelt
             else:
                 self.x = self._xar[-1]
+            self.xb = self.x0
+            self.yb = self.y0
+            self.tb = self.t0
         elif event.key == 'ctrl+up':
             if self.y < self._yar[-1]:
                 self.y += self.yDelt
             else:
                 self.y = self._yar[0]
+            self.xb = self.x0
+            self.yb = self.y0
+            self.tb = self.t0
         elif event.key == 'ctrl+down':
             if self.y > self._yar[0]:
                 self.y -= self.yDelt
             else:
                 self.y = self._yar[-1]
+            self.xb = self.x0
+            self.yb = self.y0
+            self.tb = self.t0
         elif event.key == 'right':
             if self.tpix < self.nt-1:
                 self.tpix += 1
             else:
                 self.tpix = 0
             self.t = self.timei[self.tpix]
+            self.xb = self.x0
+            self.yb = self.y0
+            self.tb = self.t0
         elif event.key == 'left':
             if self.tpix > 0:
                 self.tpix -= 1
             else:
                 self.tpix = self.nt-1
             self.t = self.timei[self.tpix]
-        elif event.key == 'ctrl+ ' and event.inaxes == self.axRaster:
+            self.xb = self.x0
+            self.yb = self.y0
+            self.tb = self.t0
+        elif event.key == ' ' and event.inaxes == self.axRaster:
+            self.xb = self.x0
+            self.yb = self.y0
+            self.tb = self.t0
             self.x = event.xdata
             self.y = event.ydata
-        elif event.key == 'ctrl+ ' and (event.inaxes == self.axTS or
-                                        event.inaxes == self.axWavelet):
+        elif event.key == ' ' and (event.inaxes == self.axTS or
+                                   event.inaxes == self.axWavelet):
             self.t = event.xdata
+            self.xb = self.x0
+            self.yb = self.y0
+            self.tb = self.t0
             self.tpix = np.abs(self.timei-self.t).argmin()
             self.t = self.timei[self.tpix]
+        elif event.key == 'ctrl+b':
+            x = self.x 
+            y = self.y
+            t = self.t
+            self.x = self.xb
+            self.y = self.yb
+            self.t = self.tb
+            self.xb = x
+            self.yb = y
+            self.tb = t
+            self.tpix = np.abs(self.timei-self.t).argmin()
+        elif event.key == 'ctrl+h':
+            self.x = self.xh
+            self.y = self.yh
+            self.t = self.th
+            self.tpix = np.abs(self.timei-self.t).argmin()
+            self.cid = self.cidh
+            self._changeID()
+            self.axRaster.set_title(self.idh[self.cid])
+            self.imRaster.set_cmap(self.cmap[self.cid])
         for iid in range(self.nid):
             if event.key == 'ctrl+%i'%iid:
                 self.cid = iid
@@ -731,34 +844,56 @@ class FD:
         if self.x != self.x0 or self.y != self.y0:
             xpix, ypix, tpix = self._pixelPosition(self.x, self.y,
                                                    self.t)
-            self._changePlot(xpix, ypix)
             self._changeWavelet(xpix, ypix)
+            self._changePlot(xpix, ypix)
             self.x0 = self.x
             self.y0 = self.y
-        elif self.t != self.t0:
+            self.posiInfo.set_text(
+                    "X=%.1f'', Y=%.1f'' (xpix=%i, ypix=%i)"%(self.x,
+                                                             self.y,
+                                                             xpix,
+                                                             ypix))
+        if self.t != self.t0:
             self._changeRaster()
+            self.lws = self.wavelet.power[:, self.tpix]
+            self.powerLWS.set_xdata(self.lws)
             self.vlineTS.set_xdata(self.t)
             self.vlineWavelet.set_xdata(self.t)
+            peakPLWS = self.period[self.lws.argmax()]
+            self.hlineLWS.set_ydata(peakPLWS)
             self.t0 = self.t
+            self.isotInfo.set_text('%s'%self.isotime[self.tpix].value)
+            self.tInfo.set_text('t=%i sec (tpix=%i)'%(self.t, self.tpix))
+            self.peakPeriodLWS.set_text(
+                    r'P$_{peak, LWS}$=%.2f min'%peakPLWS)
         self.fig.canvas.draw_idle()
         
     def _changeID(self):
         xpix, ypix, tpix = self._pixelPosition(self.x, self.y,
                                                    self.t)
-        self._changePlot(xpix, ypix)
         self._changeWavelet(xpix, ypix)
+        self._changePlot(xpix, ypix)
         self._changeRaster()
         self.imRaster.set_clim(self.min[self.cid],
                                self.max[self.cid])
         
     def _changePlot(self, xpix, ypix):
         data = self.data[:, ypix, xpix, self.cid]
-        power = self.power[:, ypix, xpix, self.cid]
-        power /= power.max()
         self.timeseries.set_ydata(data)
         self.axTS.set_ylim(data.min(), data.max())
-        self.powerSpectrum.set_ydata(self.power[:, ypix, xpix, self.cid])
+        self.powerGWS.set_xdata(self.gws)
+        self.lws = self.wavelet.power[:, self.tpix]
+        self.powerLWS.set_xdata(self.lws)
         self.point.set_offsets([self.x, self.y])
+        peakPGWS = self.period[self.gws.argmax()]
+        peakPLWS = self.period[self.lws.argmax()]
+        self.hlineGWS.set_ydata(peakPGWS)
+        self.hlineLWS.set_ydata(peakPLWS)
+        self.peakPeriodGWS.set_text(
+                    r'P$_{peak, GWS}$=%.2f min'%peakPGWS)
+        self.peakPeriodLWS.set_text(
+                    r'$P_{peak, LWS}$=%.2f min'%peakPLWS)
+        self.axPower.set_xlim(0, self.lpmax)
         
     def _changeRaster(self):
         self.imRaster.set_data(self.data[self.tpix, :, :, self.cid])
@@ -780,15 +915,18 @@ class FD:
     def _plotWavelet(self, xpix, ypix):
         self.wavelet = Wavelet(self.data[:, ypix, xpix, self.cid],
                        self.dt, **self.kwargs)
+        self.lpmax = self.wavelet.power.max()
+        self.period = self.wavelet.period/60
+        self.gws = self.wavelet.gws
         wpower = self.wavelet.power/self.wavelet.power.max()
-        self.contour = self.axWavelet.contourf(self.timei, self.wavelet.period/60,
+        self.contour = self.axWavelet.contourf(self.timei, self.period,
                                                wpower, len(self.levels),
                                                colors=['w'])
         self.contourIm = self.axWavelet.contourf(self.contour,
                                                  levels=self.levels
                                                  )
         self.axWavelet.fill_between(self.timei, self.wavelet.coi/60,
-                                    self.wavelet.period.max()/60, color='grey',
+                                    self.period.max(), color='grey',
                                     alpha=0.4, hatch='x')
         self.axWavelet.set_title('Wavelet Power Spectrum')
         self.axWavelet.set_xlabel('Time (sec)')
@@ -800,14 +938,133 @@ class FD:
         self.vlineWavelet = self.axWavelet.axvline(self.t,
                                                    ls='dashed',
                                                    color='k')
-        self.axWavelet.set_ylim(16, 0.5)
+        self.axWavelet.set_ylim(self.maxPeriod, 0.5)
     
-    def changeLevels(self, levels):
+    def chLevels(self, levels):
         """
         """
         self.levels = levels
         xpix, ypix, tpix = self._pixelPosition(self.x, self.y, self.t)
         self._changeWavelet(xpix, ypix)
+    
+    def chInterp(self, interp):
+        """
+        """
+        self.imInterp = interp
+        self.imRaster.set_interpolation(interp)
+    
+    def chBPFilter(self, filterRange):
+        """
+        """
+        self.originalData(maskValue=self.maskValue, spatialAvg=self._spAvg,
+                          timeAvg=self._timeAvg)
+        self.bandpassFilter(filterRange)
+        
+    def chRasterClim(self, cmin, cmax):
+        """
+        """
+        self.imRaster.set_clim(cmin, cmax)
+        
+    def chPosition(self, x, y):
+        """
+        """
+        self.x = x
+        self.y = y
+        self.x0 = x
+        self.y0 =y
+        xpix, ypix, tpix = self._pixelPosition(x, y, self.t)
+        self._changeWavelet(xpix, ypix)
+        self._changePlot(xpix, ypix)
+        self.posiInfo.set_text(
+                    "X=%.1f'', Y=%.1f'' (xpix=%i, ypix=%i)"%(self.x,
+                                                             self.y,
+                                                             xpix,
+                                                             ypix))
+        
+    def chtime(self, t):
+        """
+        """
+        self.t = t
+        self.t0 = t
+        self._changeRaster()
+        self.lws = self.wavelet.power[:, self.tpix]
+        self.LWS.set_xdata(self.lws)
+        self.vlineTS.set_xdata(self.t)
+        self.vlineWavelet.set_xdata(self.t)
+        peakPLWS = self.period[self.lws.argmax()]
+        self.hlineLWS.set_ydata(peakPLWS)
+        self.t0 = self.t
+        self.isotInfo.set_text('%s'%self.isotime[self.tpix].value)
+        self.tInfo.set_text('t=%i sec (tpix=%i)'%(self.t, self.tpix))
+        self.peakPeriodLWS.set_text(
+                r'P$_{peak, LWS}$=%.2f min'%peakPLWS)
+
+class calibData:
+    """
+    
+    """
+    
+    def __init__(self, file):
+        
+        if file.find('BiasDark') != -1:
+            self.ftype = 'BiasDark'
+        elif file.find('Flat') != -1:
+            self.ftype = 'Flat'
+        elif file.find('FLAT') != -1:
+            self.ftype = 'FLAT'
+        elif file.find('SLIT') != -1:
+            self.ftype = 'SLIT'
+        
+        self.data = fits.getdata(file)
+        self.header = fits.getheader(file)
+        
+        self.nx = self.header['naxis1']
+        self.ny = self.header['naxis2']
+        if self.ftype == 'Flat':
+            self.nf = self.header['naxis3']
+            
+        if file.find('_A') != -1:
+            self.cam = 'A'
+        elif file.find('_B') != -1:
+            self.cam = 'B'
+            
+    def imshow(self):
+        """
+        """
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
+        
+        self.fig, self.ax = plt.subplots(figsize=[10, 6])
+        if self.ftype != 'Flat':
+            self.image = self.ax.imshow(self.data, origin='lower',
+                                        cmap = plt.cm.gray)
+            self.fig.tight_layout()
+        else:
+            self.num = 0
+            self.num0 = self.num
+            self.image = self.ax.imshow(self.data[self.num], origin='lower',
+                                        cmap = plt.cm.gray)
+            self.fig.tight_layout()
+            self.fig.canvas.mpl_connect('key_press_event', self._onKey)
+            
+    def _onKey(self, event):
+        if event.key == 'right':
+            if self.num < self.nf-1:
+                self.num += 1
+            else:
+                self.num = 0
+        elif event.key == 'left':
+            if self.num > 0:
+                self.num -= 1
+            else:
+                self.num = self.nf-1
+        if self.num != self.num0:
+            self.image.set_data(self.data[self.num])
+            self.num0 = self.num
+        self.fig.canvas.draw_idle()
         
 def _isoRefTime(refTime):
     year = refTime[:4]

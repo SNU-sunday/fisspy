@@ -75,7 +75,7 @@ class Wavelet:
     -------
     >>> from fisspy.analysis import wavelet
     >>> res = wavelet.wavelet(data,dt,dj=dj,j=j,mother=mother,pad=True)
-    >>> wave = res.wave
+    >>> wavelet = res.wavelet
     >>> period = res.period
     >>> scale = res.scale
     >>> coi = res.coi
@@ -133,13 +133,13 @@ class Wavelet:
         indata = tdata.reshape([shape.prod(), self.n0])
         
         wshape = np.concatenate([shape, [self.j+1, self.n0]])
-        self.wave = np.empty(np.concatenate([[shape.prod()], [self.j+1, self.n0]]),
+        self.wavelet = np.empty(np.concatenate([[shape.prod()], [self.j+1, self.n0]]),
                              dtype=complex)
         for i, y in enumerate(indata):
-            self.wave[i] = self._getWavelet(y)[:,:self.n0]
+            self.wavelet[i] = self._getWavelet(y)[:,:self.n0]
         
-        self.wave = self.wave.reshape(wshape)
-        self.power = np.abs(self.wave)**2
+        self.wavelet = self.wavelet.reshape(wshape)
+        self.power = np.abs(self.wavelet)**2
         self.gws = self.power.mean(axis=-1)
         
     def _getWavelet(self, y):
@@ -156,15 +156,15 @@ class Wavelet:
         return res
         
     
-    def iwavelet(self, wave, scale):
+    def iwavelet(self, wavelet, scale):
         #%% should be revised (period range option)
         """
         Inverse the wavelet to get the time-series
         
         Parameters
         ----------
-        wave : ~numpy.ndarray
-            wavelet power.
+        wavelet : ~numpy.ndarray
+            wavelet.
         
         Returns
         -------
@@ -184,7 +184,7 @@ class Wavelet:
             
         Example
         -------
-        >>> iwave = res.iwavelet(wave)
+        >>> iwave = res.iwavelet(wavelet)
         """
         scale2=1/scale**0.5
         
@@ -204,7 +204,7 @@ class Wavelet:
             elif self.param==6:
                 psi0=0.88406
         
-        iwave=self.dj*self.dt**0.5/(self.cdelta*psi0)*np.dot(scale2, wave.real)
+        iwave=self.dj*self.dt**0.5/(self.cdelta*psi0)*np.dot(scale2, wavelet.real)
         return iwave
     
     def _motherFunc(self):
@@ -364,7 +364,7 @@ class Wavelet:
         """
         Save the wavelet spectrum as .npz file.
         """
-        np.savez(savename, wavelet=self.wave,
+        np.savez(savename, wavelet=self.wavelet,
                  period=self.period, scale=self.scale,
                  coi=self.coi, dt=self.dt, dj=self.dj, axis=self.axis,
                  s0=self.s0, j=self.j, mother=self.mother,
