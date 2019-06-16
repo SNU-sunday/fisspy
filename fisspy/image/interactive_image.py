@@ -207,46 +207,82 @@ class singleBand:
                 self.xpix += 1
             else:
                 self.xpix = 0
+            self.xpixb = self.xpix
+            self.ypixb = self.ypix
+            self.wvb = self.wv
         elif event.key == 'ctrl+left':
             if self.xpix > 0:
                 self.xpix -= 1
             else:
                 self.xpix = self.nx-1
+            self.xpixb = self.xpix
+            self.ypixb = self.ypix
+            self.wvb = self.wv
         elif event.key == 'ctrl+up':
             if self.ypix < self.ny-1:
                 self.ypix += 1
             else:
                 self.ypix = 0
+            self.xpixb = self.xpix
+            self.ypixb = self.ypix
+            self.wvb = self.wv
         elif event.key == 'ctrl+down':
             if self.ypix > 0:
                 self.ypix -= 1
             else:
                 self.ypix = self.ny-1
+            self.xpixb = self.xpix
+            self.ypixb = self.ypix
+            self.wvb = self.wv
         elif event.key == 'right':
             if self.wv < self.wave.max():
                 self.wv += abs(self.wvDelt)
             else:
                 self.wv = self.wave.min()
+            self.xpixb = self.xpix
+            self.ypixb = self.ypix
+            self.wvb = self.wv
         elif event.key == 'left':
             if self.wv > self.wave.min():
                 self.wv -= abs(self.wvDelt)
             else:
                 self.wv = self.wave.max()
+            self.xpixb = self.xpix
+            self.ypixb = self.ypix
+            self.wvb = self.wv
         elif event.key == ' ' and event.inaxes == self.axRaster:
             self.x = event.xdata
             self.y = event.ydata
+            self.xb = self.x
+            self.yb = self.y
+            self.wvb = self.wv
         elif event.key == ' ' and event.inaxes == self.axProfile:
             self.wv = event.xdata
+            self.wvb = self.wv
+            self.xb = self.x
+            self.yb = self.y
         elif event.key == ' ' and event.inaxes == self.axSpectro:
             self.wv = event.xdata
             self.y = event.ydata
+            self.wvb = self.wv
+            self.xb = self.x
+            self.yb = self.y
         elif event.key == 'ctrl+h':
             self.wv = self.wvH
             self.x = self.xH
             self.xpix = self.xpixH
             self.y = self.yH
             self.ypix = self.ypixH
-        
+        elif event.key == 'ctrl+b':
+            xpix = self.xpix
+            ypix = self.ypix
+            wv = self.wv
+            self.xpix = self.xpixb
+            self.ypix = self.ypixb
+            self.wv = self.wvb
+            self.xpixb = xpix
+            self.ypixb = ypix
+            self.wvb = wv
         if self.x != self.x0 or self.y != self.y0:
             self.xpix = int(round((self.x-self.xDelt/2)/self.xDelt))
             self.ypix = int(round((self.y-self.yDelt/2)/self.yDelt))
@@ -504,54 +540,111 @@ class dualBand:
                 self.x += self.xDelt
             else:
                 self.x = self._xMin+self.xDelt//2
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == 'ctrl+left':
             if self.x > self._xMin:
                 self.x -= self.xDelt
             else:
                 self.x = self._xMax-self.xDelt//2
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == 'ctrl+up':
             if self.y < self._yMax:
                 self.y += self.yDelt
             else:
                 self.y = self._yMin+self.yDelt//2
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == 'ctrl+down':
             if self.y > self._yMin:
                 self.y -= self.yDelt
             else:
                 self.y = self._yMax-self.yDelt//2
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == 'right':
             if self.wvA < self.fissA.wave.max():
                 self.wvA += abs(self.fissA.wvDelt)
             else:
                 self.wvA = self.fissA.wave.min()
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == 'left':
             if self.wvA > self.fissA.wave.min():
                 self.wvA -= abs(self.fissA.wvDelt)
             else:
                 self.wvA = self.fissA.wave.max()
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == 'up':
             if self.wvB < self.fissB.wave.max():
                 self.wvB += abs(self.fissB.wvDelt)
             else:
                 self.wvB = self.fissB.wave.min()
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == 'down':
             if self.wvB > self.fissB.wave.min():
                 self.wvB -= abs(self.fissB.wvDelt)
             else:
                 self.wvB = self.fissB.wave.max()
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == ' ' and (event.inaxes == self.axRasterA or 
                                         event.inaxes == self.axRasterB) :
             self.x = event.xdata
             self.y = event.ydata
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == ' ' and event.inaxes == self.axProfileA:
             self.wvA = event.xdata
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == ' ' and event.inaxes == self.axProfileB:
             self.wvB = event.xdata
+            self.xb = self.x
+            self.yb = self.y
+            self.wvAb = self.wvA
+            self.wvBb = self.wvB
         elif event.key == 'ctrl+h':
             self.wvA = self.wvAH
             self.wvB = self.wvBH
             self.x = self.xH
             self.y = self.yH
+        elif event.key == 'ctrl+b':
+            x = self.x
+            y = self.y
+            wvA = self.wvA
+            wvB = self.wvB
+            self.x = self.xb
+            self.y = self.yb
+            self.wvA = self.wvAb
+            self.wvB = self.wvBb
+            self.xb = x
+            self.yb = y
+            self.wvAb = wvA
+            self.wvBb = wvB
             
         if self.x != self.x0 or self.y != self.y0:
             self._chSpect()
