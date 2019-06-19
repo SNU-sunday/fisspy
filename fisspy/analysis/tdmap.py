@@ -10,7 +10,8 @@ __email__ = "jhkang@astro.snu.ac.kr"
 
 
 class TDmap(object):
-    def __init__(self, data, R, angle=0, extent=[0, 'end', 0, 'end'], xc=0, yc=0):
+    def __init__(self, data, R, dt=1, extent=[0, 'end', 0, 'end'],
+                 xc=0, yc=0, angle=0):
         """
         Make interactive time distance map
         
@@ -62,6 +63,7 @@ class TDmap(object):
         self.nx = nx
         ang = np.deg2rad(angle)
         self.ang = ang
+        self.dt = dt
         if extent[1] == 'end':
             extent[1] = nx-1
             extent[3] = ny-1
@@ -85,7 +87,7 @@ class TDmap(object):
         
         self.td = td
     
-    def imshow(self, rframe=False, ts=0, te=False, **kwargs):
+    def imshow(self, rframe=False, **kwargs):
         """
         Display interactive image and time-distance map.
         
@@ -122,9 +124,9 @@ class TDmap(object):
         self._clim = self.clim
         if not rframe:
             rframe = self.nt//2
-        if not te:
-            te = self.nt-0.5
-            ts = ts-0.5
+        ts = -0.5*self.dt
+        te = self.nt*self.dt+ts
+        self._tarr = np.arange(ts, te, self.dt)
         self.tLength = te-ts
         self.dt = self.tLength/self.nt
         self.frame = rframe
@@ -348,6 +350,11 @@ class TDmap(object):
             self.frame = self._frame
             self.chclim(self._clim[0], self._clim[1])
             self.chcmap(self._cmap)
+        elif event.key == ' ' and event.inaxes == self.ax[0]:
+            self.xc = event.xdata
+            self.yc = event.ydata
+        elif event.key == ' ' and event.inaxes == self.ax[1]:
+            self.frame = np.abs(self._tarr-event.xdata).argmin()
         
         if self.angle != self._angle0 or self.xc != self._xc0 or self.yc != self._yc0 or self.R != self._R0:
             self.changeSlit(self.R, self.angle, xc=self.xc, yc=self.yc)

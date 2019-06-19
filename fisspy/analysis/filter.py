@@ -8,6 +8,8 @@ __email__ = "jhkang@astro.snu.ac.kr"
 def FourierFilter(data, nt, dt, filterRange, axis=0):
     """
     """
+    if data.dtype == '>f8':
+        data = data.astype(float)
     freq = fftfreq(nt, dt)
     if filterRange[0] == None:
         filterRange[0] = 0

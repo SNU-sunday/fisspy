@@ -563,7 +563,9 @@ class FD:
                 self.max[i] = tmp
             
     def bandpassFilter(self, filterRange):
-        self.data = FourierFilter(self.data, self.nt, self.dt*1e-3, filterRange)
+        for n, i in enumerate(filterRange):
+            filterRange[n] = i*1e-3
+        self.data = FourierFilter(self.data, self.nt, self.dt, filterRange)
         if self.maskValue != -1:
             self._mask(self.maskValue)
         self._PowerSpectrum()

@@ -54,8 +54,8 @@ class singleBand:
             y = fiss.ny//2*fiss.yDelt
         if not wv:
             wv = fiss.centralWavelength
-        plt.rcParams['keymap.back'].remove('left')
-        plt.rcParams['keymap.forward'].remove('right')
+        self.extentRaster = fiss.extentRaster
+        self.extentSpectro = fiss.extentSpectro
         self.scale = scale
         self.sigFactor = sigFactor
         self.hw = kwargs.pop('hw', 0.05)
@@ -64,13 +64,9 @@ class singleBand:
         self.ypix = round((y-fiss.yDelt/2)/fiss.yDelt)
         self.y = self.ypix*fiss.yDelt+fiss.yDelt/2
         self.wv = wv
-        self.xpix0 = self.xpix
-        self.ypix0 = self.ypix
         self.x0 = self.x
         self.y0 = self.y
         self.wv0 = self.wv
-        self.xpixH = self.xpix
-        self.ypixH = self.ypix
         self.xH = self.x
         self.yH = self.y
         self.wvH = self.wv
@@ -80,18 +76,15 @@ class singleBand:
         self.wvDelt = fiss.wvDelt
         self.wave = fiss.wave
         self.data = fiss.data
-        self.ftype = fiss.ftype
-        self.nx = fiss.nx
-        self.ny = fiss.ny
-        self.nwv = fiss.nwv
         self.band = fiss.band
         self.cam = fiss.cam
-        fiss.x = self.x
-        fiss.xpix = self.xpix
-        fiss.y = self.y
-        fiss.ypix = self.ypix
-        fiss.wv = self.wv
-
+        self._xMin = self.extentRaster[0]
+        self._xMax = self.extentRaster[1]
+        self._yMin = self.extentRaster[2]
+        self._yMax = self.extentRaster[3]
+        self._wvMin = self.extentSpectro[0]
+        self._wvMax = self.extentSpectro[1]
+        
             
         #Keyboard helpBox
         if helpBox:
@@ -203,92 +196,87 @@ class singleBand:
         ### Interactive keyboard input
         # Position
         if event.key == 'ctrl+right':
-            if self.xpix < self.nx-1:
-                self.xpix += 1
+            if self.x < self._xMax:
+                self.x += self.xDelt
             else:
-                self.xpix = 0
-            self.xpixb = self.xpix
-            self.ypixb = self.ypix
-            self.wvb = self.wv
+                self.x = self._xMin
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvb = self.wv0
         elif event.key == 'ctrl+left':
-            if self.xpix > 0:
-                self.xpix -= 1
+            if self.x > self._xMin:
+                self.x -= self.xDelt
             else:
-                self.xpix = self.nx-1
-            self.xpixb = self.xpix
-            self.ypixb = self.ypix
-            self.wvb = self.wv
+                self.x = self._xMax
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvb = self.wv0
         elif event.key == 'ctrl+up':
-            if self.ypix < self.ny-1:
-                self.ypix += 1
+            if self.y < self._yMax:
+                self.y += self.yDelt
             else:
-                self.ypix = 0
-            self.xpixb = self.xpix
-            self.ypixb = self.ypix
-            self.wvb = self.wv
+                self.y = self._yMin
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvb = self.wv0
         elif event.key == 'ctrl+down':
-            if self.ypix > 0:
-                self.ypix -= 1
+            if self.y > self._yMin:
+                self.y -= self.yDelt
             else:
-                self.ypix = self.ny-1
-            self.xpixb = self.xpix
-            self.ypixb = self.ypix
-            self.wvb = self.wv
+                self.y = self._yMax
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvb = self.wv0
         elif event.key == 'right':
-            if self.wv < self.wave.max():
+            if self.wv < self._wvMax:
                 self.wv += abs(self.wvDelt)
             else:
-                self.wv = self.wave.min()
-            self.xpixb = self.xpix
-            self.ypixb = self.ypix
-            self.wvb = self.wv
+                self.wv = self._wvMin
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvb = self.wv0
         elif event.key == 'left':
-            if self.wv > self.wave.min():
+            if self.wv > self._wvMin:
                 self.wv -= abs(self.wvDelt)
             else:
-                self.wv = self.wave.max()
-            self.xpixb = self.xpix
-            self.ypixb = self.ypix
-            self.wvb = self.wv
+                self.wv = self._wvMax
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvb = self.wv0
         elif event.key == ' ' and event.inaxes == self.axRaster:
             self.x = event.xdata
             self.y = event.ydata
-            self.xb = self.x
-            self.yb = self.y
-            self.wvb = self.wv
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvb = self.wv0
         elif event.key == ' ' and event.inaxes == self.axProfile:
             self.wv = event.xdata
-            self.wvb = self.wv
-            self.xb = self.x
-            self.yb = self.y
+            self.wvb = self.wv0
+            self.xb = self.x0
+            self.yb = self.y0
         elif event.key == ' ' and event.inaxes == self.axSpectro:
             self.wv = event.xdata
             self.y = event.ydata
-            self.wvb = self.wv
-            self.xb = self.x
-            self.yb = self.y
+            self.wvb = self.wv0
+            self.xb = self.x0
+            self.yb = self.y0
         elif event.key == 'ctrl+h':
             self.wv = self.wvH
             self.x = self.xH
-            self.xpix = self.xpixH
             self.y = self.yH
-            self.ypix = self.ypixH
         elif event.key == 'ctrl+b':
-            xpix = self.xpix
-            ypix = self.ypix
+            x = self.x
+            y = self.y
             wv = self.wv
-            self.xpix = self.xpixb
-            self.ypix = self.ypixb
+            self.x = self.xb
+            self.y = self.yb
             self.wv = self.wvb
-            self.xpixb = xpix
-            self.ypixb = ypix
+            self.xb = x
+            self.yb = y
             self.wvb = wv
         if self.x != self.x0 or self.y != self.y0:
             self.xpix = int(round((self.x-self.xDelt/2)/self.xDelt))
             self.ypix = int(round((self.y-self.yDelt/2)/self.yDelt))
-        if self.xpix != self.xpix0 or self.ypix != self.ypix0:
-            self.x = self.xpix*self.xDelt+self.xDelt/2
-            self.y = self.ypix*self.yDelt+self.yDelt/2
             self._chSpect()
         if self.wv != self.wv0:
             self._chRaster()
@@ -313,9 +301,7 @@ class singleBand:
             
     def _chSpect(self):
         self.x0 = self.x
-        self.xpix0 = self.xpix
         self.y0 = self.y
-        self.ypix0 = self.ypix
         
         if self.cam == 'A':
             spectro = self.data[:, self.xpix]
@@ -365,14 +351,12 @@ class dualBand:
             pass
         
         kwargs['interpolation'] = kwargs.pop('interpolation', 'bilinear')
-        plt.rcParams['keymap.back'].remove('left')
-        plt.rcParams['keymap.forward'].remove('right')
         self.fissA = fissA
         self.fissB = fissB
         self.nx = self.fissA.nx
         self.xDelt = self.fissA.xDelt
         self.yDelt = self.fissA.yDelt
-        if self.fissA.ny > self.fissB.ny:
+        if self.fissA.ny >= self.fissB.ny:
             self.fissA.data = self.fissA.data[:self.fissB.ny]
             self.ny = self.fissB.ny
             self.extentRaster = self.fissB.extentRaster
@@ -437,7 +421,7 @@ class dualBand:
         #figure setting
         figsize = kwargs.pop('figsize', [12, 6])
         self.fig = plt.figure(figsize=figsize)
-        self.fig.canvas.set_widnow_title('Dual Band Image')
+        self.fig.canvas.set_window_title('Dual Band Image')
         self.imInterp = kwargs.get('interpolation', 'bilinear')
         gs = gridspec.GridSpec(2,4)
         self.axRasterA = self.fig.add_subplot(gs[:,0])
@@ -478,11 +462,14 @@ class dualBand:
                              self.fissA.wvDelt, hw=self.hw)
         rasterB = _getRaster(self.fissB.data, self.fissB.wave, self.wvB,
                              self.fissB.wvDelt, hw=self.hw)
-        wh = rasterB >5
+        
+        whA = rasterA > 5
+        whB = rasterB > 5
         if self.scale == 'log':
             rasterA = np.log10(rasterA)
             rasterB = np.log10(rasterB)
-        cmin = rasterB[wh].min()
+        cminA = rasterB[whA].min()
+        cminB = rasterB[whB].min()
         self.imRasterA = self.axRasterA.imshow(rasterA,
                                                self.fissA.cmap,
                                                origin='lower',
@@ -506,8 +493,8 @@ class dualBand:
             self.imRasterB.set_clim(np.median(rasterB)-rasterB.std()*self.sigFactor,
                                     np.median(rasterB)+rasterB.std()*self.sigFactor)
         else:
-            self.imRasterA.set_clim(rasterA.min(), rasterA.max())
-            self.imRasterB.set_clim(cmin, rasterB.max())
+            self.imRasterA.set_clim(cminA, rasterA.max())
+            self.imRasterB.set_clim(cminB, rasterB.max())
             
         #Reference
         self.vlineRasterA = self.axRasterA.axvline(self.x,
@@ -540,93 +527,93 @@ class dualBand:
                 self.x += self.xDelt
             else:
                 self.x = self._xMin+self.xDelt//2
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == 'ctrl+left':
             if self.x > self._xMin:
                 self.x -= self.xDelt
             else:
                 self.x = self._xMax-self.xDelt//2
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == 'ctrl+up':
             if self.y < self._yMax:
                 self.y += self.yDelt
             else:
                 self.y = self._yMin+self.yDelt//2
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == 'ctrl+down':
             if self.y > self._yMin:
                 self.y -= self.yDelt
             else:
                 self.y = self._yMax-self.yDelt//2
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == 'right':
             if self.wvA < self.fissA.wave.max():
                 self.wvA += abs(self.fissA.wvDelt)
             else:
                 self.wvA = self.fissA.wave.min()
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == 'left':
             if self.wvA > self.fissA.wave.min():
                 self.wvA -= abs(self.fissA.wvDelt)
             else:
                 self.wvA = self.fissA.wave.max()
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == 'up':
             if self.wvB < self.fissB.wave.max():
                 self.wvB += abs(self.fissB.wvDelt)
             else:
                 self.wvB = self.fissB.wave.min()
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == 'down':
             if self.wvB > self.fissB.wave.min():
                 self.wvB -= abs(self.fissB.wvDelt)
             else:
                 self.wvB = self.fissB.wave.max()
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == ' ' and (event.inaxes == self.axRasterA or 
                                         event.inaxes == self.axRasterB) :
             self.x = event.xdata
             self.y = event.ydata
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == ' ' and event.inaxes == self.axProfileA:
             self.wvA = event.xdata
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == ' ' and event.inaxes == self.axProfileB:
             self.wvB = event.xdata
-            self.xb = self.x
-            self.yb = self.y
-            self.wvAb = self.wvA
-            self.wvBb = self.wvB
+            self.xb = self.x0
+            self.yb = self.y0
+            self.wvAb = self.wvA0
+            self.wvBb = self.wvB0
         elif event.key == 'ctrl+h':
             self.wvA = self.wvAH
             self.wvB = self.wvBH
@@ -677,8 +664,10 @@ class dualBand:
         rasterA = _getRaster(self.fissA.data, self.fissA.wave, self.wvA,
                              self.fissA.wvDelt,
                              hw=self.hw)
+        wh = rasterA > 5
         if self.scale == 'log':
             rasterA = np.log10(rasterA)
+        cmin = rasterA[wh].min()
         self.imRasterA.set_data(rasterA)
         self.vlineProfileA.set_xdata(self.wvA)
         self.axProfileA.set_title(r'%s Band (wv = %.2f $\AA$)'%(self.fissA.band,
@@ -687,7 +676,7 @@ class dualBand:
             self.imRasterA.set_clim(np.median(rasterA)-rasterA.std()*self.sigFactor,
                                     np.median(rasterA)+rasterA.std()*self.sigFactor)
         else:
-            self.imRasterA.set_clim(rasterA.min(), rasterA.max())
+            self.imRasterA.set_clim(cmin, rasterA.max())
         
     def _chRasterB(self):
         self.wvB0 = self.wvB
@@ -706,4 +695,10 @@ class dualBand:
             self.imRasterB.set_clim(np.median(rasterB)-rasterB.std()*self.sigFactor,
                                     np.median(rasterB)+rasterB.std()*self.sigFactor)
         else:
-            self.imRasterB.set_clim(cmin, rasterB.max())    
+            self.imRasterB.set_clim(cmin, rasterB.max())
+            
+#class showWavelet:
+#    """
+#    """
+#    def __init__(self, wavelet):
+#        self

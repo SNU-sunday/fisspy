@@ -105,79 +105,68 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
         nw = ss.sum()
         data0 = data0[:,:,ss].copy()
         wv = wv[ss].copy()
-    na=int(data0.size/nw)
-    data=data0.reshape((na,nw))
+    na = int(data0.size/nw)
+    data = data0.reshape((na,nw))
 
     
-    s=data.argmin(axis=-1)
+    s = data.argmin(axis=-1)
     
     if wvinput and hw == 0.:
         raise ValueError('The half-width value must be greater than 0.')
-#        fna=range(na)
-#        wtmp=wv[np.array((s-5,s-4,s-3,s-2,s-1,s,s+1,s+2,s+3,s+4,s+5))]
-#        mwtmp=np.median(wtmp,axis=0)
-#        sp0=np.array([data[i,s[i]-5:s[i]+6] for i in fna])
-#        c=np.array([scipy.polyfit(wtmp[:,i]-mwtmp[i],sp0[i,:],2) for i in fna])
-#        wc=mwtmp-c[:,1]/(2*c[:,0])
-#        p=[scipy.poly1d(c[i,:]) for i in fna]
-#        intc=np.array([p[i](wc[i]-mwtmp[i]) for i in fna])
-#        wc=wc.reshape(reshape).T
-#        intc=intc.reshape(reshape).T
-#        return wc, intc
         
-    posi0=np.arange(na)
-    smin=[0,wv[0]]
-    smax=[na-1,wv[-1]]
-    order=[na,len(wv)]
+    posi0 = np.arange(na)
+    smin = [0,wv[0]]
+    smax = [na-1,wv[-1]]
+    order = [na,len(wv)]
     if wvinput:
-            interp=LinearSpline(smin,smax,order,data)
-            wl=np.array((posi0,wv[s]-hw)).T; wr=np.array((posi0,wv[s]+hw)).T
-            intc=0.5*(interp(wl)+interp(wr))
+            interp = LinearSpline(smin,smax,order,data)
+            wl = np.array((posi0,wv[s]-hw)).T; wr = np.array((posi0,wv[s]+hw)).T
+            intc = 0.5*(interp(wl)+interp(wr))
     else:
-        intc=np.ones(na)*sp
+        intc = np.ones(na)*sp
     
-    wc=np.zeros(na)
-    hwc=np.zeros(na)
-    ref=1    
-    rep=0
-    s0=s.copy()
-    more=data[posi0,s0]>100
+    wc = np.zeros(na)
+    hwc = np.zeros(na)
+    ref = 1    
+    rep = 0
+    s0 = s.copy()
+    more = data[posi0,s0] > 100
     
     while ref > 0.00001 and rep <6:
-        sp1=data-intc[:,None]
-        comp=sp1[:,0:nw-1]*sp1[:,1:nw]
+        sp1 = data-intc[:,None]
+        comp = sp1[:,0:nw-1]*sp1[:,1:nw]
         
-        s=comp[more] <=0.
-        nsol=s.sum(axis=1)
-        j=nsol//2
-        whl=nsol.cumsum()-nsol+j-1
-        whr=nsol.cumsum()-nsol+j
-        whp, whs=np.where(s)
-        l=whs[whl]
-        r=whs[whr]
-        posi=posi0[more]
-        wl0=wv[l]-dwv/(sp1[posi,l+1]-sp1[posi,l])*sp1[posi,l]
-        wr0=wv[r]-dwv/(sp1[posi,r+1]-sp1[posi,r])*sp1[posi,r]
-        wc[more]=0.5*(wl0+wr0)
-        hwc[more]=0.5*np.abs(wr0-wl0)
+        s = comp[more] <=0.
+        nsol = s.sum(axis=1)
+        j = nsol//2
+        whl = nsol.cumsum()-nsol+j-1
+        whr = nsol.cumsum()-nsol+j
+        whp, whs = np.where(s)
+        l = whs[whl]
+        r = whs[whr]
+        posi = posi0[more]
+        wl0 = wv[l]-dwv/(sp1[posi,l+1]-sp1[posi,l])*sp1[posi,l]
+        wr0 = wv[r]-dwv/(sp1[posi,r+1]-sp1[posi,r])*sp1[posi,r]
+        wc[more] = 0.5*(wl0+wr0)
+        hwc[more] = 0.5*np.abs(wr0-wl0)
         
         if wvinput:
-            wl=np.array((posi,wc[more]-hw)).T; wr=np.array((posi,wc[more]+hw)).T
-            intc[more]=0.5*(interp(wl)+interp(wr))
-            ref0=np.abs(hwc-hw)
-            ref=ref0.max()
-            more=(ref0>0.00001)*(data[posi0,s0]>100)
+            wl = np.array((posi,wc[more]-hw)).T; wr=np.array((posi,wc[more]+hw)).T
+            intc[more] = 0.5*(interp(wl)+interp(wr))
+            ref0 = np.abs(hwc-hw)
+            ref = ref0.max()
+            more = (ref0>0.00001)*(data[posi0,s0]>100)
         else:
-            ref=0
-        rep+=1
+            ref = 0
+        rep += 1
     
 
     wc = wc.reshape(reshape) - wvoffset
     if wvinput:
-        intc=intc.reshape(reshape)
+        intc = intc.reshape(reshape)
         return wc, intc
     else:
-        hwc=hwc.reshape(reshape)
+        hwc = hwc.reshape(reshape)
         return wc, hwc
 
 def LOS_velocity(wv,data,hw=0.01,band=False):

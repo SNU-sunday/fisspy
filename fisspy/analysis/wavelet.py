@@ -10,7 +10,7 @@ from scipy.fftpack import fft, ifft
 __author__ = "Juhyeong Kang"
 __email__ =  "jhkang@astro.snu.ac.kr"
 
-__all__ = ['Wavelet', 'WaveCoherency', 'PowerMap']
+__all__ = ['Wavelet', 'WaveCoherency']
 
 class Wavelet:
     """
@@ -106,9 +106,10 @@ class Wavelet:
         
         #padding
         if pad:
-            power = int(np.log2(self.n0)+0.4999)
-            self.padding = np.zeros(2**(power+1)-self.n0)
-            self.n = self.n0 + len(self.padding)
+#            power = int(np.log2(self.n0)+0.4999)
+            power = int(np.log2(self.n0))
+            self.npad = 2**(power+1)-self.n0
+            self.n = self.n0 + self.npad
         else:
             self.n = self.n0
         
@@ -137,6 +138,8 @@ class Wavelet:
                              dtype=complex)
         for i, y in enumerate(indata):
             self.wavelet[i] = self._getWavelet(y)[:,:self.n0]
+#        self.wavelet = self._getWavelet(indata)[:,:,:self.n0]
+        
         
         self.wavelet = self.wavelet.reshape(wshape)
         self.power = np.abs(self.wavelet)**2
@@ -144,14 +147,20 @@ class Wavelet:
         
     def _getWavelet(self, y):
 
+#        x = y - y.mean(axis=-1)[:,None]
+        x = y - y.mean(axis=-1)
+        
         #reconstruct the time series to analyze if set pad
-        x = y - y.mean()
         if self.pad:
-            x = np.append(x, self.padding)
+#            shape = y.shape
+#            self.padding = np.zeros([shape[0], self.npad])
+            self.padding = np.zeros(self.npad)
+            x = np.concatenate((x, self.padding), axis=-1)
         
         # FFT
         fx = fft(x)
         
+#        res = ifft(fx[:,None,:]*self.nowf)
         res = ifft(fx*self.nowf)
         return res
         
@@ -569,12 +578,12 @@ class Wavelet:
 #plot wavelet power spectrum contour
 #plot global wavelet power spectrum
 #%%
-class PowerMap:
-    
-    """
-    """
-    def __init__(self, fname):
-        1111
+#class PowerMap:
+#    
+#    """
+#    """
+#    def __init__(self, fname):
+#        1111
 
 
 
