@@ -5,6 +5,7 @@ from __future__ import absolute_import, division
 import numpy as np
 from interpolation.splines import LinearSpline
 import matplotlib.pyplot as plt
+
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
@@ -126,9 +127,7 @@ class TDmap(object):
             rframe = self.nt//2
         ts = -0.5*self.dt
         te = self.nt*self.dt+ts
-        self._tarr = np.arange(ts, te, self.dt)
-        self.tLength = te-ts
-        self.dt = self.tLength/self.nt
+        self._tarr = np.arange(0, te+0.5*self.dt, self.dt)
         self.frame = rframe
         self.frame0 = rframe
         self._frame = rframe
@@ -150,8 +149,9 @@ class TDmap(object):
         self.tdMap = self.ax[1].imshow(self.td, self.cmap,
                             origin='lower',
                             extent=tdextent, **kwargs)
-        self.tSlit = self.ax[1].vlines(self.frame*self.dt,-self.R,self.R,
-                            linestyles='dashed')
+        self.tSlit = self.ax[1].axvline(self.frame*self.dt,
+                            ls='dashed',
+                            c='lime')
         self.ax[0].set_xlim(self.xc-self.R-1, self.xc+self.R+1)
         self.ax[0].set_ylim(self.yc-self.R-1, self.yc+self.R+1)
         self.ax[0].set_xlabel('X')
@@ -224,7 +224,7 @@ class TDmap(object):
         self.tdMap.set_data(self.td)
         if self._mark_switch:
             self._rmMark()
-            self.regionMark(self.pos)
+            self.Mark(self.pos)
         if self.R != self._R0:
             self.tdMap.set_extent(self.tdextent)
             self.ax[1].set_ylim(-self.R, self.R)
@@ -233,9 +233,7 @@ class TDmap(object):
             self.ax[0].legend()
 #            self.ax[1].set_aspect(adjustable='box', aspect=0.8*self.R/80)
             self.fig.tight_layout()
-            self.tSlit.remove()
-            self.tSlit = self.ax[1].vlines(self.frame*self.dt,-self.R,self.R,
-                            linestyles='dashed')
+            self.tSlit.set_xdata(self.frame*self.dt)
         if self.xc != self._xc0 or self.yc != self._yc0:
             self.center.remove()
             self.center = self.ax[0].scatter(self.xc, self.yc, 100,
@@ -244,7 +242,7 @@ class TDmap(object):
             self.ax[0].set_ylim(self.yc-self.R-1, self.yc+self.R+1)
             
             
-    def regionMark(self, position):
+    def Mark(self, position):
         """
         Mark the region of interest on the slit
         
@@ -256,7 +254,7 @@ class TDmap(object):
             
         Examples
         --------
-        >>> td.regionMark(20)
+        >>> td.Mark(20)
         """
         
         self._mark_switch = True
@@ -287,7 +285,7 @@ class TDmap(object):
         >>> td.chRegion([15, 30])
         """
         self._rmMark()
-        self.regionMark(position)
+        self.Mark(position)
         
     def _rmMark(self):
         self.mark.remove()
@@ -364,9 +362,7 @@ class TDmap(object):
             self._R0 = self.R
         if self.frame != self.frame0:
             self.im.set_data(self.data[self.frame])
-            self.tSlit.remove()
-            self.tSlit = self.ax[1].vlines(self.frame*self.dt,-self.R,self.R,
-                            linestyles='dashed')
+            self.tSlit.set_xdata(self.frame*self.dt)
             self.frame0 = self.frame
         self.fig.canvas.draw_idle()
     
