@@ -1,403 +1,387 @@
-"""
-"""
-
 from __future__ import absolute_import, division
 import numpy as np
-from interpolation.splines import LinearSpline
 import matplotlib.pyplot as plt
+from matplotlib import gridspec
+from fisspy.analysis.filter import FourierFilter
+from interpolation.splines import LinearSpline
+from matplotlib.animation import FuncAnimation
+import astropy.units as u
+from astropy.time import Time
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
-
-class TDmap(object):
-    def __init__(self, data, R, dt=1, extent=[0, 'end', 0, 'end'],
-                 xc=0, yc=0, angle=0):
-        """
-        Make interactive time distance map
+class TDmap:
+    """
+    Make Time-Distance map for given slit position
+    
+    Parameters
+    ----------
+    data : `~numpy.ndarray`
+        3-dimensional data array (time, y, x).
+    header : '~astropy.io.fits.header.Header
+        Header of data.
+    tarr : `~numpy.ndarray`, optional
+        Array of time (unit: second).
+    filterRange : `list`, optional
+        List of range of Fourier bandpass filters
         
-        Parameters
-        ----------
-        data : `~numpy.ndarray`
-            3-dimensional data array, (time, y, x)
-        R : `float`
-            The half length of the slit
-        angle : `float`, optional
-            The angle of the slit in degree. Default is 0 
-        extent : `list`, optional
-            The bounding box in data coordinates that the image will fill.
-        xc : `float`, optional
-            Center of the slit position in x-axis
-        yc : `float`, optional
-            Center of the slit position in y-axis
-            
-        Returns 
-        -------
-        td : `~fisspy.analysis.TDmap`
-            A new time distance class object.
+    Returns
+    -------
+    td : `~fisspy.analysis.tdmap.TDmap`
+        A new time distance class object.
+    
+    Examples
+    --------
+    
+    """
+    
+    def __init__(self, data, header, tarr=None, filterRange=None, cmap=None):
         
-        Examples
-        --------
-        >>> from fisspy.analysis import TDmap
-        >>> from import numpy as np
-        >>> data = np.random.rand(200,250) * np.sin(np.arange(300)*np.pi/20)[:,None,None]
-        >>> td = TDmap(data, 40, xc=125, yc= 100)
-        >>> td.imshow(clim=[-3, 3], interpolation='bilinear')
-        """
-        self._mark_switch = False
         self.data = data
-        self._R = R
-        self._angle = angle
-        self._xc = xc
-        self._yc = yc
+        self.header = header
+        self.nx = self.header['naxis1']
+        self.ny = self.header['naxis2']
+        self.nt = self.header['naxis3']
+        self.dx = self.header['cdelt1']
+        self.dy = self.header['cdelt2']
+        self.dt = self.header['cdelt3']
+        self.rx = self.header['crval1']
+        self.ry = self.header['crval2']
+        self.cmap = cmap
+            
+        if not np.any(tarr):
+            tarr = np.arange(0, self.nt*self.dt, self.dt)
+        self._tarr = tarr
+        self.Time = Time(self.header['sttime']) + tarr*u.second
+        
+        self.extent = [self.rx-self.nx/2*self.dx,
+                       self.rx+self.nx/2*self.dx,
+                       self.ry-self.ny/2*self.dy,
+                       self.ry+self.ny/2*self.dy]
+        self._xarr = np.linspace(self.extent[0]+self.dx*0.5,
+                                 self.extent[1]-self.dx*0.5,
+                                 self.nx)
+        self._yarr = np.linspace(self.extent[2]+self.dy*0.5,
+                                 self.extent[3]-self.dy*0.5,
+                                 self.ny)
+        
+        self.smin = [self._tarr[0],
+                     self.extent[2]+0.5*self.dy,
+                     self.extent[0]+0.5*self.dx]
+        self.smax = [self._tarr[-1],
+                     self.extent[3]-0.5*self.dy,
+                     self.extent[1]-0.5*self.dx]
+        self.order = [self.nt, self.ny, self.nx]
+        
+        self._tname = ['ori']
+        if not filterRange:
+            self.nfilter = 1
+            self.fdata = np.empty([1, self.nt, self.ny, self.nx])
+        else:
+            self.nfilter = len(filterRange)+1
+            self.fdata = np.empty([self.nfilter, self.nt, self.ny, self.nx])
+            
+            for n, fR in enumerate(filterRange):
+                self._tname += ['%.1f - %.1f mHZ'%(fR[0], fR[1])]
+                self.fdata[n+1] = FourierFilter(self.data, self.nt,
+                          self.dt*1e-3, fR)
+            
+        self.fdata[0] = self.data
+        self.interp = []
+        for data in self.fdata:
+            self.interp += [LinearSpline(self.smin, self.smax,
+                                         self.order, data)]
+        
+    def get_TD(self, R, xc, yc, angle):
         self.R = R
-        self._R0 = self.R
-        self.angle = angle
-        self._angle0 = angle
         self.xc = xc
-        self._xc0 = xc
         self.yc = yc
-        self._yc0 = yc
-        nt, ny, nx = data.shape
-        self.nt = nt
-        self.ny = ny
-        self.nx = nx
-        ang = np.deg2rad(angle)
-        self.ang = ang
-        self.dt = dt
-        if extent[1] == 'end':
-            extent[1] = nx-1
-            extent[3] = ny-1
-        self.extent = extent
-        self.dx = (extent[1]-extent[0])/nx
+        self.angle = angle
+        ang = np.deg2rad(self.angle)
+        nl = int(np.ceil(2*R/self.dx))
         self.x1 = -R*np.cos(ang) + xc
         self.x2 = R*np.cos(ang) + xc
         self.y1 = -R*np.sin(ang) + yc
         self.y2 = R*np.sin(ang) + yc
-        smin = [extent[2], extent[0]]
-        smax = [extent[3], extent[1]]
-        order = [ny, nx]
-        nl = int(np.ceil(2*R/(extent[1]-extent[0])*(nx-1)))
         x = np.linspace(self.x1, self.x2, nl)
         y = np.linspace(self.y1, self.y2, nl)
-        td = np.empty([nl, nt])
-        for i, ta in enumerate(data):
-            interp = LinearSpline(smin, smax, order, ta)
-            iarr = np.array([y,x]).T
-            td[:,i] = interp(iarr).T
         
-        self.td = td
+        oiarr = np.empty([nl, self.nt, 3])
+        oiarr[:,:,0] = self._tarr
+        oiarr[:,:,1] = y[:,None]
+        oiarr[:,:,2] = x[:,None]
+        iarr = oiarr.reshape([nl*self.nt, 3])
+        
+        td = self.interp[self.filterNum-1](iarr)
+        
+        return td.reshape([nl, self.nt])
     
-    def imshow(self, rframe=False, **kwargs):
-        """
-        Display interactive image and time-distance map.
+    def imshow(self, R=5, xc=None, yc=None, angle=0, t=0,
+               filterNum=1, fps=10, cmap=plt.cm.gray,
+               interpolation='bilinear'):
         
-        Parameters
-        ----------
-        rframe : `int`, optional
-            The reference frame. Default is self.nt//2
-        ts : `int`, optional
-            Start time. Default is 0
-        te : `int`, optional
-            End time. Default is self.nt
-        kwargs : 
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
+        if not xc:
+            xc = self.rx
+        if not yc:
+            yc = self.ry
+        self.R = self._R0 = R
+        self.angle = self._angle0 = angle
+        self.xc = self._xc0 = xc
+        self.yc = self._yc0 = yc
+        self.filterNum = self._filterNum0 = filterNum
+        self.t = self._t0 = t
+        self.fps = fps
+        self.pause = 'ini'
+        self.pos = []
+        self.mark = []
+        self.hlines = []
+        tpix = np.abs(self._tarr-self.t).argmin()
+        self.td = self.get_TD(R,xc,yc,angle)
+        self.tdextent = [self._tarr[0]-0.5*self.dt,
+                         self._tarr[-1]+0.5*self.dt,
+                         -self.R,
+                         self.R]
+        if not self.cmap:
+            self.cmap = cmap
+        
+        self.fig= plt.figure(figsize=[14,9])
+        self.fig.canvas.set_window_title('%s ~ %s'%(self.Time[0], self.Time[-1]))
+        gs = gridspec.GridSpec(5, self.nfilter)
+        
+        self.axTD = self.fig.add_subplot(gs[3:, :])
+        self.axTD.set_xlabel('Time (sec)')
+        self.axTD.set_ylabel('Distance (arcsec)')
+        self.axTD.set_title('%i: %s,  '
+                            'Time: %s, '
+                            'tpix: %i'%(filterNum, self._tname[filterNum-1],
+                                        self.Time[tpix].value,
+                                        tpix))
+        self.imTD = self.axTD.imshow(self.td,
+                                     extent=self.tdextent,
+                                     origin='lower',
+                                     cmap=self.cmap,
+                                     interpolation=interpolation)
+        
+        self.axRaster = []
+        self.im = []
+        for i in range(self.nfilter):
+            if i == 0:
+                self.axRaster += [self.fig.add_subplot(gs[:3, i])]
+                self.axRaster[i].set_xlabel('X (arcsec)')
+                self.axRaster[i].set_ylabel('Y (arcsec)')
+            else:
+                self.axRaster += [self.fig.add_subplot(gs[:3, i],
+                                                       sharex=self.axRaster[0],
+                                                       sharey=self.axRaster[0])]
+                self.axRaster[i].tick_params(labelleft=False, labelbottom=False)
+            self.axRaster[i].set_title('%i: %s'%(i+1, self._tname[i]))
+            self.im += [self.axRaster[i].imshow(self.fdata[i, tpix],
+                                                extent=self.extent,
+                                                origin='lower',
+                                               cmap=self.cmap,
+                                               interpolation=interpolation)]
             
-        Interactive Button
-        ------------------
-        'left' :
-            Show previous time image.
-        'right' :
-            Show next time image.
-        'up' :
-            Increase the angle of the slit by 1.
-        'down' :
-            Increase the angle of the slit by 1.
-        'ctrl++' :
-            Change the central slit position to the right by pixel size.
-        'ctrl+-' :
-            Change the central slit position to the left by pixel size.
-        'ctrl+h' :
-            Change to the orignal setting.
-        """
-        self.cmap = kwargs.pop('cmap', plt.cm.RdBu_r)
-        self._cmap = self.cmap
-        self.clim = kwargs.get('clim', [self.data.min(), self.data.max()])
-        self._clim = self.clim
-        if not rframe:
-            rframe = self.nt//2
-        ts = -0.5*self.dt
-        te = self.nt*self.dt+ts
-        self._tarr = np.arange(0, te+0.5*self.dt, self.dt)
-        self.frame = rframe
-        self.frame0 = rframe
-        self._frame = rframe
-        tdextent = [ts, te, -self.R, self.R]
-        self.tdextent = tdextent
-        figsize = kwargs.pop('figsize', [10,7])
-        self.fig, self.ax = plt.subplots(2, 1, figsize=figsize)
-        self.im = self.ax[0].imshow(self.data[rframe], self.cmap,
-                         origin='lower',
-                         extent=self.extent, **kwargs)
-        self.slit = self.ax[0].plot([self.x1, self.x2],
-                        [self.y1, self.y2], color='k')
-        self.center = self.ax[0].scatter(self.xc, self.yc, 100,
-                             marker='+', c='k')
-        self.top = self.ax[0].scatter(self.x2, self.y2, 100,
-                             marker='+', c='b', label='%.1f'%self.R)
-        self.bottom = self.ax[0].scatter(self.x1, self.y1, 100,
-                             marker='+', c='r', label='-%.1f'%self.R)
-        self.tdMap = self.ax[1].imshow(self.td, self.cmap,
-                            origin='lower',
-                            extent=tdextent, **kwargs)
-        self.tSlit = self.ax[1].axvline(self.frame*self.dt,
-                            ls='dashed',
-                            c='lime')
-        self.ax[0].set_xlim(self.xc-self.R-1, self.xc+self.R+1)
-        self.ax[0].set_ylim(self.yc-self.R-1, self.yc+self.R+1)
-        self.ax[0].set_xlabel('X')
-        self.ax[0].set_ylabel('Y')
-        self.ax[0].set_title('Image')
-        self.ax[1].set_xlabel('Time')
-        self.ax[1].set_ylabel('Distance')
-        self.ax[1].set_title('Time-Distance Map')
-        self.ax[1].set_xlim(tdextent[0], tdextent[1])
-        self.ax[1].set_aspect(adjustable='box', aspect='auto')
-        self.ax[1].set_ylim(-self.R, self.R)
-        self.ax[0].legend()
+        self.slit = self.axRaster[filterNum-1].plot([self.x1, self.x2],
+                                                    [self.y1, self.y2],
+                                                    color='k')[0]
+        self.center = self.axRaster[filterNum-1].scatter(self.xc, self.yc,
+                                                         100, marker='+',
+                                                         c='k')
+        self.top = self.axRaster[filterNum-1].scatter(self.x2, self.y2, 100,
+                                marker='+', c='b', label='%.1f'%self.R)
+        self.bottom = self.axRaster[filterNum-1].scatter(self.x1, self.y1, 100,
+                                   marker='+', c='r',
+                                   label='-%.1f'%self.R)
+        self.tslit = self.axTD.axvline(self.t, ls='dashed', c='lime')
+        self.leg = self.axRaster[filterNum-1].legend()
+        self.axTD.set_aspect(adjustable='box', aspect='auto')
+        self.imTD.set_clim(self.fdata[filterNum-1,0].min(),
+                           self.fdata[filterNum-1,0].max())
         self.fig.tight_layout()
-        self.fig.canvas.mpl_connect('key_press_event', self._on_key)
+        self.fig.canvas.mpl_connect('key_press_event', self._onKey)
+        plt.show()
         
-    def changeSlit(self, R, angle, xc=0, yc=0):
-        """
-        Change the slit of time-distance map
-        
-        Parameters
-        ----------
-        R : `float`
-            The half length of the slit.
-        angle : `float`
-            The angle of the slit in degree.
-        xc : `float`, optional
-            Center of the slit position in x-axis
-        yc : `float`, optional
-            Center of the slit position in y-axis
-        
-        Examples
-        --------
-        >>> td.chageSlit(50, td.angle)
-        """
-        self.R = R
-        self.angle = angle
-        self.ang = np.deg2rad(angle)
-        self.xc = xc
-        self.yc = yc
-        self.x1 = -R*np.cos(self.ang) + xc
-        self.x2 = R*np.cos(self.ang) + xc
-        self.y1 = -R*np.sin(self.ang) + yc
-        self.y2 = R*np.sin(self.ang) + yc
-        
-        smin = [self.extent[2], self.extent[0]]
-        smax = [self.extent[3], self.extent[1]]
-        order = [self.ny, self.nx]
-        nl = int(np.ceil(2*R/(self.extent[1]-self.extent[0])*(self.nx-1)))
-        x = np.linspace(self.x1, self.x2, nl)
-        y = np.linspace(self.y1, self.y2, nl)
-        td = np.empty([nl, self.nt])
-        for i, ta in enumerate(self.data):
-            interp = LinearSpline(smin, smax, order, ta)
-            iarr = np.array([y,x]).T
-            td[:,i] = interp(iarr).T
-        
-        self.tdextent[2] = -R
-        self.tdextent[3] = R
-        self.td = td
-        
-        self.slit.pop(0).remove()
-        self.bottom.remove()
-        self.top.remove()
-        self.slit = self.ax[0].plot([self.x1, self.x2],
-                             [self.y1, self.y2], color='k')
-        self.bottom = self.ax[0].scatter(self.x1, self.y1, 100,
-                             marker='+', c='r', label='-%.1f'%self.R)
-        self.top = self.ax[0].scatter(self.x2, self.y2, 100,
-                             marker='+', c='b', label='%.1f'%self.R)
-        self.tdMap.set_data(self.td)
-        if self._mark_switch:
-            self._rmMark()
-            self.Mark(self.pos)
-        if self.R != self._R0:
-            self.tdMap.set_extent(self.tdextent)
-            self.ax[1].set_ylim(-self.R, self.R)
-            self.ax[0].set_xlim(self.xc-self.R-1, self.xc+self.R+1)
-            self.ax[0].set_ylim(self.yc-self.R-1, self.yc+self.R+1)
-            self.ax[0].legend()
-#            self.ax[1].set_aspect(adjustable='box', aspect=0.8*self.R/80)
-            self.fig.tight_layout()
-            self.tSlit.set_xdata(self.frame*self.dt)
-        if self.xc != self._xc0 or self.yc != self._yc0:
-            self.center.remove()
-            self.center = self.ax[0].scatter(self.xc, self.yc, 100,
-                                 marker='+', c='k')
-            self.ax[0].set_xlim(self.xc-self.R-1, self.xc+self.R+1)
-            self.ax[0].set_ylim(self.yc-self.R-1, self.yc+self.R+1)
-            
-            
-    def Mark(self, position):
-        """
-        Mark the region of interest on the slit
-        
-        Parameters
-        ----------
-        position : `float` or `list`
-            Distance from the centeral position of the slit.
-            * Note : This position can note be higher than the half length of the slit.
-            
-        Examples
-        --------
-        >>> td.Mark(20)
-        """
-        
-        self._mark_switch = True
-        self.pos = np.array(position).flatten()
-        self.np = len(self.pos)
-        
-        self.xp = self.pos*np.cos(self.ang) + self.xc
-        self.yp = self.pos*np.sin(self.ang) + self.yc
-        self.mark = self.ax[0].scatter(self.xp, self.yp, 100,
-                           marker='x', c='k')
-        self.hlines = self.ax[1].hlines(self.pos,
-                             self.tdextent[0], self.tdextent[1],
-                             linestyles='dashed')
-    
-    def chRegion(self, position):
-        """
-        Change the marked region
-        Remove all set region and mark the new region
-        
-        Parameters
-        ----------
-        position : `float` or `list`
-            Distance from the centeral position of the slit.
-            * Note : This position can note be higher than the half length of the slit.
-            
-        Examples
-        --------
-        >>> td.chRegion([15, 30])
-        """
-        self._rmMark()
-        self.Mark(position)
-        
-    def _rmMark(self):
-        self.mark.remove()
-        self.hlines.remove()
-            
-    def _on_key(self, event):
+    def _onKey(self, event):
         if event.key == 'up':
             if self.angle < 360:
                 self.angle += 1
             else:
                 self.angle = 1
-
         elif event.key == 'down':
             if self.angle > 0:
                 self.angle -=1
             else:
                 self.angle = 359
-                
         elif event.key == 'right':
-            if self.frame < self.nt-1:
-                self.frame += 1
+            if self.t < self._tarr[-1]:
+                self.t += self.dt
             else:
-                self.frame = 0
-
+                self.t = self._tarr[0]
         elif event.key == 'left':
-            if self.frame > 0:
-                self.frame -=1
+            if self.t > self._tarr[0]:
+                self.t -= self.dt
             else:
-                self.frame = self.nt-1
-        
+                self.t = self._tarr[-1]
         elif event.key == 'ctrl+right':
-            if self.xc <= self.extent[1]:
+            if self.xc < self._xarr[-1]:
                 self.xc += self.dx
             else:
-                self.xc = self.extent[0]
+                self.xc = self._xarr[0]
         elif event.key == 'ctrl+left':
-            if self.xc >= self.extent[0]:
+            if self.xc > self._xarr[0]:
                 self.xc -= self.dx
             else:
-                self.xc = self.extent[1]
+                self.xc = self._xarr[-1]
         elif event.key == 'ctrl+up':
-            if self.yc <= self.extent[3]:
-                self.yc += self.dx
+            if self.yc < self._yarr[-1]:
+                self.yc += self.dy
             else:
-                self.yc = self.extent[2]
+                self.yc = self._yarr[0]
         elif event.key == 'ctrl+down':
-            if self.yc >= self.extent[2]:
-                self.yc -= self.dx
+            if self.yc > self._yarr[0]:
+                self.yc -= self.dy
             else:
-                self.yc = self.extent[3]
+                self.yc = self._yarr[-1]
         elif event.key == 'ctrl++':
             self.R += self.dx
         elif event.key == 'ctrl+-':
             self.R -= self.dx
-        elif event.key == 'ctrl+h':
-            self.R = self._R
-            self.xc = self._xc
-            self.yc = self._yc
-            self.angle = self._angle
-            self.frame = self._frame
-            self.chclim(self._clim[0], self._clim[1])
-            self.chcmap(self._cmap)
-        elif event.key == ' ' and event.inaxes == self.ax[0]:
+        elif event.key == ' ' and event.inaxes in self.axRaster:
             self.xc = event.xdata
             self.yc = event.ydata
-        elif event.key == ' ' and event.inaxes == self.ax[1]:
-            self.frame = np.abs(self._tarr-event.xdata).argmin()
+        elif event.key == ' ' and event.inaxes == self.axTD:
+            self.t = event.xdata
+        elif event.key == 'x' and event.inaxes == self.axTD:
+            self.pos += [event.ydata]
+            ang = np.deg2rad(self.angle)
+            xp = self.pos[-1]*np.cos(ang) + self.xc
+            yp = self.pos[-1]*np.sin(ang) + self.yc
+            self.mark += [self.axRaster[self.filterNum-1].scatter(xp, yp, 100,
+                                                                  marker='+',
+                                                                  c='lime')]
+            self.hlines += [self.axTD.axhline(self.pos[-1], ls='dashed', c='lime')]
+        elif event.key == 'enter':
+            if self.pause == 'ini':
+                self.ani = FuncAnimation(self.fig, self._chTime,
+                                         frames=self._tarr,
+                                         blit=False,
+                                         interval=1e3/self.fps,
+                                         repeat=True)
+#                                         cache_frame_data=False)
+                self.pause = False
+            else:
+                self.pause ^= True
+                if self.pause:
+                    self.ani.event_source.stop()
+                else:
+                    self.ani.event_source.start(1e3/self.fps)
+        for iid in range(self.nfilter):
+            if event.key == 'ctrl+%i'%(iid+1):
+                self.filterNum = iid+1
+                tpix = np.abs(self._tarr-self.t).argmin()
+                self.changeSlit(self.R, self.xc, self.yc, self.angle)
+                self.axTD.set_title('%i: %s,  '
+                            'Time: %s, '
+                            'tpix: %i'%(self.filterNum, self._tname[self.filterNum-1],
+                                        self.Time[tpix].value,
+                                        tpix))
+                self._filterNum0 = self.filterNum
+                self.imTD.set_clim(self.im[self.filterNum-1].get_clim())
         
-        if self.angle != self._angle0 or self.xc != self._xc0 or self.yc != self._yc0 or self.R != self._R0:
-            self.changeSlit(self.R, self.angle, xc=self.xc, yc=self.yc)
-            self._angle0 = self.angle
-            self._xc0 = self.xc
-            self._yc0 = self.yc
-            self._R0 = self.R
-        if self.frame != self.frame0:
-            self.im.set_data(self.data[self.frame])
-            self.tSlit.set_xdata(self.frame*self.dt)
-            self.frame0 = self.frame
+        if self.xc != self._xc0 or self.yc != self._yc0 or \
+            self.angle != self._angle0 or self.R != self._R0:
+                self.changeSlit(self.R, self.xc, self.yc, self.angle)
+                self._R0 = self.R
+                self._xc0 = self.xc
+                self._yc0 = self.yc
+                self._angle0 = self.angle
+        if self.t != self._t0:
+            self._chTime(self.t)
+            self._t0 = self.t
         self.fig.canvas.draw_idle()
+        
+    def changeSlit(self, R, xc, yc, angle):
+        td = self.get_TD(R, xc, yc, angle)
+        self.tdextent[2] = -R
+        self.tdextent[3] = R
+        self.axTD.set_ylim(-R, R)       
+        ang = np.deg2rad(self.angle)
+        if self.filterNum != self._filterNum0:
+            self.leg.remove()
+            self.slit.remove()
+            self.bottom.remove()
+            self.center.remove()
+            self.top.remove()
+            self.slit = self.axRaster[self.filterNum-1].plot([self.x1, self.x2],
+                                                             [self.y1, self.y2],
+                                                             color='k')[0]
+            self.center = self.axRaster[self.filterNum-1].scatter(self.xc,
+                                   self.yc, 100, marker='+', c='k')
+            self.top = self.axRaster[self.filterNum-1].scatter(self.x2,
+                                    self.y2, 100,
+                                    marker='+', c='b', label='%.1f'%self.R)
+            self.bottom = self.axRaster[self.filterNum-1].scatter(self.x1,
+                                       self.y1, 100,
+                                       marker='+', c='r',
+                                       label='-%.1f'%self.R)
+            for n, pos in enumerate(self.pos):
+                self.mark[n].remove()
+                xp = pos*np.cos(ang) + self.xc
+                yp = pos*np.sin(ang) + self.yc
+                self.mark[n] = self.axRaster[self.filterNum-1].scatter(xp, yp, 100,
+                                                                  marker='+',
+                                                                  c='lime')
+        else:
+            self.slit.set_xdata([self.x1, self.x2])
+            self.slit.set_ydata([self.y1, self.y2])
+            self.bottom.set_offsets([self.x1, self.y1])
+            self.top.set_offsets([self.x2, self.y2])
+            self.center.set_offsets([self.xc, self.yc])
+            # change marker
+            for n, pos in enumerate(self.pos):
+                xp = pos*np.cos(ang) + self.xc
+                yp = pos*np.sin(ang) + self.yc
+                self.mark[n].set_offsets([xp, yp])
+                self.hlines[n].set_ydata(pos)
+        self.top.set_label('%.1f'%self.R)
+        self.bottom.set_label('-%.1f'%self.R)
+        self.imTD.set_data(td)
+        self.leg = self.axRaster[self.filterNum-1].legend()
+        
+    def _chTime(self, t):
+        self.t = t
+        tpix = np.abs(self._tarr-t).argmin()
+        self.axTD.set_title('%i: %s,  '
+                            'Time: %s, '
+                            'tpix: %i'%(self.filterNum, self._tname[self.filterNum-1],
+                                        self.Time[tpix].value,
+                                        tpix))
+        self.tslit.set_xdata(self.t)
+        for n, im in enumerate(self.im):
+            im.set_data(self.fdata[n, tpix])
     
-    def chclim(self, cmin=None, cmax=None):
-        """
-        Change the colorbar limit
-        
-        Parameters
-        ----------
-        cmin : `float`
-            Minimum range of the colorbar
-        cmax : `float`
-            Maximum range of the colorbar
+    def chclim(self, cmin, cmax, frame):
+        self.im[frame-1].set_clim(cmin, cmax)
+        if self.filterNum == frame:
+            self.imTD.set_clim(cmin, cmax)
             
-        Examples
-        --------
-        >>> td.chclim(-3, 3)
-        """
-        self.im.set_clim(cmin, cmax)
-        self.tdMap.set_clim(cmin, cmax)
-        self.clim = [cmin, cmax]
+    def rmMark(self):
+        for n in range(len(self.pos)):
+            self.mark[n].remove()
+            self.hlines[n].remove()
+        self.pos = []
+        self.mark = []
+        self.hlines = []
+
+    def save_figure(self, filename, **kwargs):
+        self.fig.save(filename, **kwargs)
         
-    def chcmap(self, cmap):
-        """
-        Change the colormap of the image and time-distance map
-        
-        Parameters
-        ----------
-        cmap : `~matplotlib.colors.Colormap`
-            A Colormap  instance.
-            
-        Examples
-        --------
-        >>> td.chcmap(plt.cm.jet)
-        """
-        self.cmap=cmap
-        self.im.set_cmap(cmap)
-        self.tdMap.set_cmap(cmap)
+    def save_animation(self, filename, **kwargs):
+        fps = kwargs.pop('fps', self.fps)
+        self.ani.save(filename, fps=fps, **kwargs)

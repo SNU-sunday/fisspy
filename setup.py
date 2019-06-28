@@ -11,7 +11,7 @@ setup(
     python_requires='>=3.6',
     packages=find_package(exclue=['docs', 'logo']),
     install_requires=["numba", "numpy", "scipy", "astropy>=3.0",
-                      "sunpy>=0.9.6", "pandas", "matplotlib>=2.0",
+                      "sunpy>=1.0.0", "pandas", "matplotlib>=3.0",
 		      "interpolation>=2.0", "statsmodels",
 		      "suds-jurko", "pillow", "ffmpeg"],
     zip_safe=False

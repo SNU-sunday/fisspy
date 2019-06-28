@@ -4,14 +4,13 @@ Basic image process tool.
 
 from __future__ import absolute_import, division
 
-from sunpy.image.rescale import resample as rescale
 import numpy as np
 from interpolation.splines import LinearSpline
 from scipy.fftpack import ifft2, fft2
 
 __author__ = "Juhyeong Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
-__all__ = ['alignoffset', 'rescale', 'rot_trans', 'img_interpol',
+__all__ = ['alignoffset', 'rot_trans', 'img_interpol',
            'rotation', 'rot', 'shift', 'shift3d']
 
 def alignoffset(image0, template0, cor= None):

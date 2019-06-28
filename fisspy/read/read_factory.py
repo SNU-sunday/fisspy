@@ -15,6 +15,7 @@ import astropy.units as u
 from matplotlib import gridspec
 from fisspy.analysis.wavelet import Wavelet
 from matplotlib import ticker
+from fisspy.analysis.tdmap import TDmap
 #from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 __author__= "Juhyung Kang"
@@ -458,13 +459,13 @@ class FD:
         self._timeAvg = timeAvg
         self.ftype = 'FD'
         self.data = fits.getdata(fdFile).astype(float)
-        self.odata = self.data.copy()
+        self.fdFile = fdFile
         self.header = fits.getheader(fdFile)
         self.time = fits.getdata(timeFile)
         self.reftpix = np.abs(self.time-0).argmin()
         self.xDelt = self.yDelt = 0.16
-        self.min = np.min(self.data, axis=(1,2))
-        self.max = np.max(self.data, axis=(1,2))
+        self.min0 = np.min(self.data, axis=(1,2))
+        self.max0 = np.max(self.data, axis=(1,2))
         unit = fits.getheader(timeFile)['unit']
         if unit == 'min':
             self.time *= 60
@@ -475,9 +476,9 @@ class FD:
         
         reftime = self.header['reftime']
         self.reftime = _isoRefTime(reftime)
-        self.isotime = self.reftime + self.time * u.second
+        self.Time = self.reftime + self.time * u.second
         self.timei = self.time-self.time[0]
-        
+        self.header['sttime'] = self.Time[0].value
         wid = self.header['ID1'][:2]
         if wid == 'HI':
             self.cmap = [cm.ha]*self.nid
@@ -489,18 +490,18 @@ class FD:
         elif wid == 'Fe':
             self.cmap = [cm.fe]*self.nid
         
-        xpos = self.header.get('xpos', False)
-        if xpos:
+        try:
+            xpos = self.header['xpos']
             ypos = self.header['ypos']
-            xm = xpos - self.nx/2*self.xDelt
-            xM = xpos + self.nx/2*self.xDelt
-            ym = ypos - self.ny/2*self.yDelt
-            yM = ypos + self.ny/2*self.yDelt
-        else:
-            xm = -self.nx/2*self.xDelt
-            xM = self.nx/2*self.xDelt
-            ym = -self.ny/2*self.yDelt
-            yM = self.ny/2*self.yDelt
+        except:
+            xpos = self.header.get('crval1', 0)
+            ypos = self.header.get('crval2', 0)
+        self.xpos = xpos
+        self.ypos = ypos
+        xm = xpos - self.nx/2*self.xDelt
+        xM = xpos + self.nx/2*self.xDelt
+        ym = ypos - self.ny/2*self.yDelt
+        yM = ypos + self.ny/2*self.yDelt
         self.extent = [xm, xM, ym, yM]
         self._xar = np.linspace(xm+self.xDelt/2,
                                 xM-self.xDelt/2, self.nx)
@@ -512,8 +513,8 @@ class FD:
             self.spatialAverage()
         if timeAvg:
             self.timeAverage()
-        self.min = self.min[self.reftpix]
-        self.max = self.max[self.reftpix]
+        self.min = self.min0[self.reftpix]
+        self.max = self.max0[self.reftpix]
         self.idh = self.header['ID*']
         for i in range(self.nid):
             if self.idh[i][-1] == 'V':
@@ -531,17 +532,19 @@ class FD:
         for i in range(self.nt):
             med = np.median(self.data[i,self.mask[i]], 0)
             self.data[i] -= med
-            self.min[i] -= med
-            self.max[i] -= med
+            self.min0[i] -= med
+            self.max0[i] -= med
             
     def timeAverage(self):
         med = np.median(self.data, 0)
         self.data -= med
-        self.min -= np.median(med, (0,1))
-        self.max -= np.median(med, (0,1))
+        self.min0 -= np.median(med, (0,1))
+        self.max0 -= np.median(med, (0,1))
         
     def originalData(self, maskValue=-1, spatialAvg=False, timeAvg=False):
-        self.data = self.odata
+        self.data = fits.getdata(self.fdFile).astype(float)
+        self.min0 = np.min(self.data, axis=(1,2))
+        self.max0 = np.max(self.data, axis=(1,2))
         if maskValue != -1:
             self.maskValue = maskValue
             self._mask(maskValue)
@@ -549,10 +552,9 @@ class FD:
             self.spatialAverage()
         if timeAvg:
             self.timeAverage()
-        self.min = np.min(self.data, axis=(1,2))
-        self.max = np.max(self.data, axis=(1,2))
-        self.min = self.min[self.reftpix]
-        self.max = self.max[self.reftpix]
+        
+        self.min = self.min0[self.reftpix]
+        self.max = self.max0[self.reftpix]
         for i in range(self.nid):
             if self.idh[i][-1] == 'V':
                 self.cmap[i] = plt.cm.RdBu_r
@@ -569,10 +571,10 @@ class FD:
         if self.maskValue != -1:
             self._mask(self.maskValue)
         self._PowerSpectrum()
-        self.min = np.min(self.data, axis=(1,2))
-        self.max = np.max(self.data, axis=(1,2))
-        self.min = self.min[self.reftpix]
-        self.max = self.max[self.reftpix]
+        self.min0 = np.min(self.data, axis=(1,2))
+        self.max0 = np.max(self.data, axis=(1,2))
+        self.min = self.min0[self.reftpix]
+        self.max = self.max0[self.reftpix]
         for i in range(self.nid):
             if self.idh[i][-1] == 'V':
                 self.cmap[i] = plt.cm.RdBu_r
@@ -595,14 +597,14 @@ class FD:
         
         # transpose to pixel position.
         xpix, ypix, tpix = self._pixelPosition(x, y, t)
-        self.x0 = self.x
-        self.y0 = self.y
-        self.t0 = self.t
-        self.xh = self.x
-        self.yh = self.y
-        self.th = self.t
+        self._x0 = self.x
+        self._y0 = self.y
+        self._t0 = self.t
+        self._xh = self.x
+        self._yh = self.y
+        self._th = self.t
         self.cid = cid
-        self.cidh = cid
+        self._cidh = cid
         self.maxPeriod = maxPeriod
         
         
@@ -720,7 +722,7 @@ class FD:
         self.axInfo = self.fig.add_subplot(gs[0, 2:])
         self.axInfo.set_axis_off()
         self.isotInfo = self.axInfo.text(0.05, 0.8,
-                                    '%s'%self.isotime[self.tpix].value,
+                                    '%s'%self.Time[self.tpix].value,
                                     fontsize=12)
         self.tInfo = self.axInfo.text(0.05, 0.55,
                                  't=%i sec (tpix=%i)'%(self.t, self.tpix),
@@ -753,82 +755,82 @@ class FD:
                 self.x += self.xDelt
             else:
                 self.x = self._xar[0]
-            self.xb = self.x0
-            self.yb = self.y0
-            self.tb = self.t0
+            self._xb = self._x0
+            self._yb = self._y0
+            self._tb = self._t0
         elif event.key == 'ctrl+left':
             if self.x > self._xar[0]:
                 self.x -= self.xDelt
             else:
                 self.x = self._xar[-1]
-            self.xb = self.x0
-            self.yb = self.y0
-            self.tb = self.t0
+            self._xb = self._x0
+            self._yb = self._y0
+            self._tb = self._t0
         elif event.key == 'ctrl+up':
             if self.y < self._yar[-1]:
                 self.y += self.yDelt
             else:
                 self.y = self._yar[0]
-            self.xb = self.x0
-            self.yb = self.y0
-            self.tb = self.t0
+            self._xb = self._x0
+            self._yb = self._y0
+            self._tb = self._t0
         elif event.key == 'ctrl+down':
             if self.y > self._yar[0]:
                 self.y -= self.yDelt
             else:
                 self.y = self._yar[-1]
-            self.xb = self.x0
-            self.yb = self.y0
-            self.tb = self.t0
+            self._xb = self._x0
+            self._yb = self._y0
+            self._tb = self._t0
         elif event.key == 'right':
             if self.tpix < self.nt-1:
                 self.tpix += 1
             else:
                 self.tpix = 0
             self.t = self.timei[self.tpix]
-            self.xb = self.x0
-            self.yb = self.y0
-            self.tb = self.t0
+            self._xb = self._x0
+            self._yb = self._y0
+            self._tb = self._t0
         elif event.key == 'left':
             if self.tpix > 0:
                 self.tpix -= 1
             else:
                 self.tpix = self.nt-1
             self.t = self.timei[self.tpix]
-            self.xb = self.x0
-            self.yb = self.y0
-            self.tb = self.t0
+            self._xb = self._x0
+            self._yb = self._y0
+            self._tb = self._t0
         elif event.key == ' ' and event.inaxes == self.axRaster:
-            self.xb = self.x0
-            self.yb = self.y0
-            self.tb = self.t0
+            self._xb = self._x0
+            self._yb = self._y0
+            self._tb = self._t0
             self.x = event.xdata
             self.y = event.ydata
         elif event.key == ' ' and (event.inaxes == self.axTS or
                                    event.inaxes == self.axWavelet):
             self.t = event.xdata
-            self.xb = self.x0
-            self.yb = self.y0
-            self.tb = self.t0
+            self._xb = self._x0
+            self._yb = self._y0
+            self._tb = self._t0
             self.tpix = np.abs(self.timei-self.t).argmin()
             self.t = self.timei[self.tpix]
         elif event.key == 'ctrl+b':
             x = self.x 
             y = self.y
             t = self.t
-            self.x = self.xb
-            self.y = self.yb
-            self.t = self.tb
-            self.xb = x
-            self.yb = y
-            self.tb = t
+            self.x = self._xb
+            self.y = self._yb
+            self.t = self._tb
+            self._xb = x
+            self._yb = y
+            self._tb = t
             self.tpix = np.abs(self.timei-self.t).argmin()
         elif event.key == 'ctrl+h':
-            self.x = self.xh
-            self.y = self.yh
-            self.t = self.th
+            self.x = self._xh
+            self.y = self._yh
+            self.t = self._th
             self.tpix = np.abs(self.timei-self.t).argmin()
-            self.cid = self.cidh
+            self.cid = self._cidh
             self._changeID()
             self.axRaster.set_title(self.idh[self.cid])
             self.imRaster.set_cmap(self.cmap[self.cid])
@@ -843,19 +845,19 @@ class FD:
                 else:
                     self.axTS.set_ylabel('Intensity (Count)')
                 
-        if self.x != self.x0 or self.y != self.y0:
+        if self.x != self._x0 or self.y != self._y0:
             xpix, ypix, tpix = self._pixelPosition(self.x, self.y,
                                                    self.t)
             self._changeWavelet(xpix, ypix)
             self._changePlot(xpix, ypix)
-            self.x0 = self.x
-            self.y0 = self.y
+            self._x0 = self.x
+            self._y0 = self.y
             self.posiInfo.set_text(
                     "X=%.1f'', Y=%.1f'' (xpix=%i, ypix=%i)"%(self.x,
                                                              self.y,
                                                              xpix,
                                                              ypix))
-        if self.t != self.t0:
+        if self.t != self._t0:
             self._changeRaster()
             self.lws = self.wavelet.power[:, self.tpix]
             self.powerLWS.set_xdata(self.lws)
@@ -863,8 +865,8 @@ class FD:
             self.vlineWavelet.set_xdata(self.t)
             peakPLWS = self.period[self.lws.argmax()]
             self.hlineLWS.set_ydata(peakPLWS)
-            self.t0 = self.t
-            self.isotInfo.set_text('%s'%self.isotime[self.tpix].value)
+            self._t0 = self.t
+            self.isotInfo.set_text('%s'%self.Time[self.tpix].value)
             self.tInfo.set_text('t=%i sec (tpix=%i)'%(self.t, self.tpix))
             self.peakPeriodLWS.set_text(
                     r'P$_{peak, LWS}$=%.2f min'%peakPLWS)
@@ -972,8 +974,8 @@ class FD:
         """
         self.x = x
         self.y = y
-        self.x0 = x
-        self.y0 =y
+        self._x0 = x
+        self._y0 =y
         xpix, ypix, tpix = self._pixelPosition(x, y, self.t)
         self._changeWavelet(xpix, ypix)
         self._changePlot(xpix, ypix)
@@ -987,7 +989,7 @@ class FD:
         """
         """
         self.t = t
-        self.t0 = t
+        self._t0 = t
         self._changeRaster()
         self.lws = self.wavelet.power[:, self.tpix]
         self.LWS.set_xdata(self.lws)
@@ -995,12 +997,25 @@ class FD:
         self.vlineWavelet.set_xdata(self.t)
         peakPLWS = self.period[self.lws.argmax()]
         self.hlineLWS.set_ydata(peakPLWS)
-        self.t0 = self.t
-        self.isotInfo.set_text('%s'%self.isotime[self.tpix].value)
+        self._t0 = self.t
+        self.isotInfo.set_text('%s'%self.Time[self.tpix].value)
         self.tInfo.set_text('t=%i sec (tpix=%i)'%(self.t, self.tpix))
         self.peakPeriodLWS.set_text(
                 r'P$_{peak, LWS}$=%.2f min'%peakPLWS)
 
+    def TD(self, ID=0, filterRange=None):
+        hdu = fits.PrimaryHDU(self.data[:,:,:,ID])
+        h= hdu.header
+        h['cdelt1'] = self.xDelt
+        h['cdelt2'] = self.yDelt
+        h['cdelt3'] = self.dt
+        h['crval1'] = self.xpos
+        h['crval2'] = self.ypos
+        h['sttime'] = self.Time[0].value
+        
+        return TDmap(self.data[:,:,:,ID], h, self.time,
+                     filterRange=filterRange, cmap=self.cmap[ID])
+        
 class calibData:
     """
     
