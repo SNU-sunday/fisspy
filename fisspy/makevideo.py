@@ -7,6 +7,7 @@ from __future__ import absolute_import
 import numpy as np
 from matplotlib.pyplot import imread
 import os
+from PIL import Image
 __author__="Juhyeong Kang"
 __email__="jhkang@astro.snu.ac.kr"
 __date__="Nov 08 2016"
@@ -59,9 +60,18 @@ def ffmpeg(imglist,fpsi,output='video.mp4'):
     size=img.shape
     xsize=size[0]
     ysize=size[1]
-    
-    if bool(np.mod(xsize,2)+np.mod(ysize,2)):
-        raise ValueError("The size of the image shuld be even numbers.")
+    if bool(np.mod(xsize,2) + np.mod(ysize,2)):
+        if np.mod(xsize,2):
+            xsize -= 1
+        if np.mod(ysize,2):
+            ysize -=1
+        for i in imglist:
+            img = Image.open(i)
+            img = img.resize([ysize,xsize])
+            img.save(i)
+        
+#    if bool(np.mod(xsize,2)+np.mod(ysize,2)):
+#        raise ValueError("The size of the image shuld be even numbers.")
     
     newname=np.arange(n)
     newname=np.char.add('_',newname.astype(str))

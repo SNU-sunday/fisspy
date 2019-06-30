@@ -4,14 +4,13 @@ Basic image process tool.
 
 from __future__ import absolute_import, division
 
-from sunpy.image.rescale import resample as rescale
 import numpy as np
 from interpolation.splines import LinearSpline
 from scipy.fftpack import ifft2, fft2
 
 __author__ = "Juhyeong Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
-__all__ = ['alignoffset', 'rescale', 'rot_trans', 'img_interpol',
+__all__ = ['alignoffset', 'rot_trans', 'img_interpol',
            'rotation', 'rot', 'shift', 'shift3d']
 
 def alignoffset(image0, template0, cor= None):
@@ -29,10 +28,9 @@ def alignoffset(image0, template0, cor= None):
            
     Returns
     -------
-    x : float or ~numpy.ndarray
-        The single value or array of the offset values.
-    y : float or ~numpy.ndarray
-        The single value or array of the offset values.
+    sh : `~numpy.ndarray`
+        Shifted value of the image0
+        np.array([yshift, xshift])
     
     Notes
     -----
@@ -44,7 +42,7 @@ def alignoffset(image0, template0, cor= None):
         
     Example
     -------
-    >>> y, x = alignoffset(image,template)
+    >>> sh = alignoffset(image,template)
     """
     st=template0.shape
     si=image0.shape
@@ -122,7 +120,7 @@ def alignoffset(image0, template0, cor= None):
         cor = (img * template * roi).sum((1,2)) / np.sqrt(
                         (img **2 * roi).sum((1,2)) *
                         (template **2 * roi).sum((1,2)))
-        return y, x, cor
+        return np.array([y, x]), cor
     elif cor and ndim == 2:
         img = shift(image, [-y, -x])
         xx = np.arange(nx) + x
@@ -132,9 +130,9 @@ def alignoffset(image0, template0, cor= None):
         roi = np.logical_and(kx, ky[:,None])
         cor = (img*template)[roi].sum()/np.sqrt((img[roi]**2).sum() *
                       (template[roi]**2).sum())
-        return y, x, cor
+        return np.array([y, x]), cor
     else:
-        return y, x
+        return np.array([y, x])
 
 def rot_trans(x,y,xc,yc,angle,dx=0,dy=0,inv=False):
     """
@@ -414,14 +412,11 @@ def shift3d(img, sh):
     """
     nt, ny, nx =img.shape
     
-    if nt != len(sh[0]) and nt != len(sh[1]):
-        ValueError('The number of elements of the shift should be ' + 
-                   'same with the size of the 0-axis of the input image')
     t = np.arange(nt)[:,None,None]
     y = np.arange(ny)[None,:,None]
     x = np.arange(nx)
-    tt = t.copy() + y*0 + x*0
-    yt = y - sh[0][:,None,None] + t*0 + x*0
-    xt = x - sh[1][:,None,None] + t*0 + y*0
+    tt = t + y*0 + x*0
+    yt = y - sh[0] + t*0 + x*0
+    xt = x - sh[1] + t*0 + y*0
     
     return img_interpol3d(img, t, y, x, tt, yt, xt, missing=0)

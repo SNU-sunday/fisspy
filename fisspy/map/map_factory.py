@@ -3,20 +3,19 @@ from __future__ import absolute_import, division
 import numpy as np
 from fisspy.image.base import rot
 from fisspy import cm
-#import astropy.units as u
 import sunpy.map
-#from .solar_rotation import rot_hpc
 from sunpy.coordinates import frames
 from astropy.coordinates import SkyCoord
 from sunpy.coordinates.ephemeris import get_earth
 from sunpy.physics.differential_rotation import solar_rotate_coordinate
+from interpolation.splines import LinearSpline
 
 __author__="Juhyeong Kang"
 __email__="jhkang@astro.snu.ac.kr"
 
-__all__=["fissmap", "map_header", "align", "map_rot_correct"]
+__all__=["fissMap", "map_header", "align", "map_rot_correct"]
 
-def fissmap(data0,header0,pre_align=False,**kwargs):
+def fissMap(data0,header0,pre_align=False,**kwargs):
     """
     Make sunpy.map.Map for given data and header.
     
@@ -199,37 +198,6 @@ def align(data0,header0,missing=0):
     
     return img, mheader
     
-#def map_rot_correct(mmap,refx,refy,reftime):
-#    """
-#    Correct the solar rotation.
-#    
-#    Parameters
-#    ----------
-#    mmap : sunpy.map.GenericMap
-#        Single map class.
-#    refx : astropy.units.Quantity
-#        Horizontal wcs information of reference frame.
-#    refy : astropy.units.Quantity
-#        Vertical wcs information of reference frame.
-#    reftime : astropy.time.Time
-#        Time for the reference frame.
-#    
-#    Returns
-#    -------
-#    smap : sunpy.map.GenericMap
-#        Solar rotation corrected map class.
-#    
-#    """
-#    t=mmap.date
-#    if type(refx) == float:
-#        refx*=u.arcsec
-#    if type(refy) == float:
-#        refy*=u.arcsec
-#    x,y=rot_hpc(refx,refy,reftime,t)
-#    sx=x-refx
-#    sy=y-refy
-#    smap=mmap.shift(-sx,-sy)
-#    return smap
 
 def map_rot_correct(mmap,refx,refy,reftime):
     """
@@ -264,5 +232,41 @@ def map_rot_correct(mmap,refx,refy,reftime):
     
     sx = x - refx.value
     sy = y - refy.value
-    smap = mmap.shift(-sx,-sy)
+    mmap.shift
+    smap = _mapShift(mmap, sx, sy)
     return smap
+
+def _mapShift(map1, sx, sy):
+    
+    new_meta = map1.meta.copy()
+    new_meta['crval1'] = ((map1.meta['crval1']*
+                           map1.spatial_units[0] +
+                           sx * map1.spatial_units[0]).to(map1.spatial_units[0])).value
+    new_meta['crval2'] = ((map1.meta['crval2']*
+                           map1.spatial_units[0] +
+                           sy * map1.spatial_units[0]).to(map1.spatial_units[0])).value
+    delx = sx/map1.meta['cdelt1']
+    dely = sy/map1.meta['cdelt2']
+    
+    smin = [0, 0]
+    smax = [new_meta['naxis2']-1, new_meta['naxis1']-1]
+    order = map1.data.shape
+    interp = LinearSpline(smin, smax, order, map1.data)
+    
+    x = np.arange(new_meta['naxis1'], dtype=float)
+    xx0 = x * np.ones([new_meta['naxis2'],1])
+    xx = xx0 + delx
+    y = np.arange(new_meta['naxis2'], dtype=float)
+    yy0 = y[:,None] + np.ones(new_meta['naxis1'])
+    yy = yy0 + dely
+    size = new_meta['naxis1']*new_meta['naxis2']
+    inp = np.array([yy.reshape(size), xx.reshape(size)])
+    out = interp(inp.T)
+    
+    out = out.reshape(new_meta['naxis2'], new_meta['naxis1'])
+    mask = np.invert((xx<=xx0.max())*(xx>=xx0.min())*(yy<=yy0.max())*(yy>=yy0.min()))
+    out[mask] = 0
+    newMap = map1._new_instance(out, new_meta, map1.plot_settings)
+    
+    return newMap
+    

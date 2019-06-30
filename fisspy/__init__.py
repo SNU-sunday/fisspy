@@ -12,9 +12,8 @@ Documentation : http://fisspy.readthedocs.io/en/stable/
 
 from __future__ import absolute_import
 __author__="SNU Solar Group"
-__version__="0.9.0"
+__version__="0.9.6"
 
 
 from fisspy import cm
 from fisspy.makevideo import ffmpeg
-#from .image.interactive import IFDV
