@@ -1,0 +1,11 @@
+Metadata-Version: 1.2
+Name: fisspy
+Version: 0.9.6
+Summary: fisspy: Python analysis tools for GST/FISS
+Home-page: http://fiss.snu.ac.kr
+Author: Juhyung Kang
+Author-email: jhkang@astro.snu.ac.kr
+License: BSD-2
+Description: UNKNOWN
+Platform: UNKNOWN
+Requires-Python: >=3.6

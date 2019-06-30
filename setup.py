@@ -9,7 +9,6 @@ setup(
     author_email='jhkang@astro.snu.ac.kr',
     license='BSD-2',
     python_requires='>=3.6',
-    packages=find_package(exclue=['docs', 'logo']),
     install_requires=["numba", "numpy", "scipy", "astropy>=3.0",
                       "sunpy>=1.0.0", "pandas", "matplotlib>=3.0",
 		      "interpolation>=2.0", "statsmodels",
