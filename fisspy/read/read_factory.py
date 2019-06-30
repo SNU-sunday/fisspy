@@ -39,6 +39,7 @@ class rawData:
     def __init__(self, file, scale=0.16):
         if file.find('A.fts') != -1 or  file.find('B.fts') != -1:
             self.ftype = 'raw'
+        scale = 0.16
         self.filename = file
         self.xDelt = scale
         self.yDelt = scale
