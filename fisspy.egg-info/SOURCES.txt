@@ -1,8 +1,0 @@
-README.md
-setup.py
-fisspy.egg-info/PKG-INFO
-fisspy.egg-info/SOURCES.txt
-fisspy.egg-info/dependency_links.txt
-fisspy.egg-info/not-zip-safe
-fisspy.egg-info/requires.txt
-fisspy.egg-info/top_level.txt
