@@ -9,32 +9,25 @@ Installation
 
 Requirement Package:
 
-* [Python](http://www.python.org) v2.7 or 3.5 or 3.6
-* [NumPy](http://numpy.scipy.org/) v1.7.1+
-* [Matplotlib](http://matplotlib.sourceforge.net/) v2.0+
-* [SciPy](http://www.scipy.org/) v0.18.0+
-* [sunpy](http://sunpy.org/) v0.9.0+
-* [Astropy](http://astropy.org) v1.3+
-* [Interpolation](https://github.com/EconForge/interpolation.py) +v0.1.8
+* [Python](http://www.python.org) >=3.6
+* [NumPy](http://numpy.scipy.org/)
+* [Matplotlib](http://matplotlib.sourceforge.net/) >=3.0
+* [SciPy](http://www.scipy.org/) 
+* [sunpy](http://sunpy.org/) >=1.0.0
+* [Astropy](http://astropy.org)
+* [Interpolation](https://github.com/EconForge/interpolation.py) >=2.0.0
 
-Recommand to install the python package manager [Anaconda](https://www.continuum.io/why-anaconda).
+Recommand to install the Python from the [Anaconda](https://www.continuum.io/why-anaconda).
 
+To install this packages, first set the conda-forge server:
 
+    conda config --append channels conda-forge
+    
 The easy way to install the FISSPy is:
 
-    conda install -c kailia0209 fisspy
+    conda install fisspy
 
-FISSPy package can be installed by grabing the latest version of FISSPy on the GitHub website.
 
-    git clone https://github.com/SNU-sunday/fisspy.git
-    cd fisspy
-    python setup.py install
-
-Example
--------
-See the [Documents](http://fisspy.readthedocs.io/en/latest/)
-
-# Github Manual
-If you don't know how to use github, See this [simple manual](https://guides.github.com/activities/hello-world/).
-
-The more detail imformation can be seen on the [Sunpy Developer's Guide](http://docs.sunpy.org/en/stable/dev.html).
+Tutorials
+---------
+You can see the tutorials for the Python and the FISSPy in [here](http://astro.snu.ac.kr/~jhkang/tutorial/).
