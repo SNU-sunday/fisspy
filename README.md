@@ -1,4 +1,4 @@
-# FISSpy
+# FISSPy
 
 [![Latest Version](https://img.shields.io/pypi/v/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Anaconda-Server Badge](https://anaconda.org/conda-forge/fisspy/badges/version.svg)](https://anaconda.org/conda-forge/fisspy) [![Anaconda-Server Badge](https://anaconda.org/conda-forge/fisspy/badges/downloads.svg)](https://anaconda.org/conda-forge/fisspy)
 
