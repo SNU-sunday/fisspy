@@ -366,12 +366,12 @@ class TDmap:
         for n, im in enumerate(self.im):
             im.set_data(self.fdata[n, tpix])
     
-    def chclim(self, cmin, cmax, frame):
+    def set_clim(self, cmin, cmax, frame):
         self.im[frame-1].set_clim(cmin, cmax)
         if self.filterNum == frame:
             self.imTD.set_clim(cmin, cmax)
             
-    def rmMark(self):
+    def remove_Mark(self):
         for n in range(len(self.pos)):
             self.mark[n].remove()
             self.hlines[n].remove()
@@ -379,9 +379,9 @@ class TDmap:
         self.mark = []
         self.hlines = []
 
-    def save_figure(self, filename, **kwargs):
+    def savefig(self, filename, **kwargs):
         self.fig.save(filename, **kwargs)
         
-    def save_animation(self, filename, **kwargs):
+    def saveani(self, filename, **kwargs):
         fps = kwargs.pop('fps', self.fps)
         self.ani.save(filename, fps=fps, **kwargs)

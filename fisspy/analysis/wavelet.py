@@ -81,7 +81,7 @@ class Wavelet:
     >>> coi = res.coi
     """
     
-    def __init__(self, data, dt, axis=0, dj=0.25, s0=False, j=False,
+    def __init__(self, data, dt, axis=0, dj=0.25, s0=None, j=None,
                  mother='MORLET', param=False, pad=True):
         
         shape0 = np.array(data.shape)
