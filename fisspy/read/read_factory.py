@@ -292,6 +292,7 @@ class FISS(object):
         """
         method = kwargs.pop('method', True)
         if simpleWaveCalib:
+            self.lamb0 = self.header['crval1']
             if absScale:
                 self.centralWavelength = self.header['crval1']
                 return (np.arange(self.nwv) -
@@ -375,7 +376,7 @@ class FISS(object):
                                            wvinput= wvinput)
         
         if shift2velocity:
-            LOSvelocity = lineShift * c.to('km/s').value/self.centralWavelength
+            LOSvelocity = (lineShift-self.centralWavelength) * c.to('km/s').value/self.lamb0
             return LOSvelocity, intensity
         else:
             return lineShift, intensity

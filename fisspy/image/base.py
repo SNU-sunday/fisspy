@@ -425,8 +425,8 @@ def shift3d(img, sh):
     y = np.arange(ny)[None,:,None]
     x = np.arange(nx)
     tt = t + y*0 + x*0
-    yt = y - sh[0] + t*0 + x*0
-    xt = x - sh[1] + t*0 + y*0
+    yt = y - sh[0][:, None, None] + t*0 + x*0
+    xt = x - sh[1][:, None, None] + t*0 + y*0
     
     return img_interpol3d(img, t, y, x, tt, yt, xt, missing=0)
 
