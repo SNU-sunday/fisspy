@@ -89,7 +89,7 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
         data = data2d * np.ones((4, 1, 1))
 #        data[:,:,:2] = data[:,:,-2:] = 0
         dataT = data.transpose((1, 0, 2))
-        yoff, xoff, cor = alignoffset(dataT, refSpec, cor= True)
+        [yoff, xoff], cor = alignoffset(dataT, refSpec, cor= True)
         wvoffset = (xoff*(wv[1]-wv[0])) * (cor > 0.7)
     elif not rspec and ndim == 3:
         wvoffset = np.zeros(shape[1])

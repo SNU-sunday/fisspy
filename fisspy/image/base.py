@@ -379,7 +379,7 @@ def rot(img, angle, xc=False, yc=False,
     xt, yt=rot_trans(xa,ya,xc,yc,angle,dx=dx,dy=dy)
     return img_interpol(img,x,y,xt,yt,missing=missing)
     
-def shift(image, sh):
+def shift(image, sh, missing=0):
     """
     Shift the given image.
     
@@ -401,7 +401,7 @@ def shift(image, sh):
     xt=x-sh[1]+y*0
     yt=y-sh[0]+x*0
     
-    return img_interpol(image,x,y,xt,yt,missing=0)
+    return img_interpol(image,x,y,xt,yt,missing=missing)
 
 def shift3d(img, sh):
     """
