@@ -24,7 +24,7 @@ __all__ = ["rawData", "FISS", "FD"]
 
 class rawData:
     """
-    Read a raw data of the FISS.
+    Read a raw file of the FISS.
     
     Parameters
     ----------
@@ -33,10 +33,13 @@ class rawData:
     
     Examples
     --------
-    
+    >>> from fisspy.read import rawData
+    >>> f = 'D:/fisspy_examples/raw_A.fts'
+    >>> raw = rawData(f)
+    >>> raw.imshow()
     """
     
-    def __init__(self, file, scale=0.16):
+    def __init__(self, file):
         if file.find('A.fts') != -1 or  file.find('B.fts') != -1:
             self.ftype = 'raw'
         scale = 0.16
@@ -87,9 +90,8 @@ class rawData:
             
         Example
         -------
-        >>> from fisspy.read import rawData
-        >>> raw = rawData(file)
         >>> raster = raw.getRaster(0.5)
+        
         """
         self.wv = wv
         return getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
@@ -290,6 +292,7 @@ class FISS(object):
         """
         method = kwargs.pop('method', True)
         if simpleWaveCalib:
+            self.lamb0 = self.header['crval1']
             if absScale:
                 self.centralWavelength = self.header['crval1']
                 return (np.arange(self.nwv) -
@@ -373,7 +376,7 @@ class FISS(object):
                                            wvinput= wvinput)
         
         if shift2velocity:
-            LOSvelocity = lineShift * c.to('km/s').value/self.centralWavelength
+            LOSvelocity = (lineShift-self.centralWavelength) * c.to('km/s').value/self.lamb0
             return LOSvelocity, intensity
         else:
             return lineShift, intensity
@@ -571,7 +574,6 @@ class FD:
         self.data = FourierFilter(self.data, self.nt, self.dt, filterRange)
         if self.maskValue != -1:
             self._mask(self.maskValue)
-        self._PowerSpectrum()
         self.min0 = np.min(self.data, axis=(1,2))
         self.max0 = np.max(self.data, axis=(1,2))
         self.min = self.min0[self.reftpix]
@@ -1016,6 +1018,9 @@ class FD:
         
         return TDmap(self.data[:,:,:,ID], h, self.time,
                      filterRange=filterRange, cmap=self.cmap[ID])
+        
+    def set_clim(self, cmin, cmax):
+        self.imRaster.set_clim(cmin, cmax)
         
 class calibData:
     """
