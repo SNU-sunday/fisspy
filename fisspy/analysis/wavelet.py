@@ -460,7 +460,7 @@ class Wavelet:
             fft_theor*=var
     
     
-        self.signif = fft_theor.copy()
+        signif = fft_theor.copy()
         
         if sigtest == 0:
             dof = self.dofmin
