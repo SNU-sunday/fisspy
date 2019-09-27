@@ -1,6 +1,3 @@
-"""
-"""
-
 from __future__ import absolute_import, division
 import numpy as np
 from astropy.io import fits
@@ -285,18 +282,23 @@ class readOFE:
         
         Parameters
         ----------
+        t: int
+            Default is 1.
         div: bool
             If True, display divergence map.
         curl: bool
             If True, display curl map.
         """
-        self._onDiv = div
-        self._onCurl = curl
+
         try:
             plt.rcParams['keymap.back'].remove('left')
             plt.rcParams['keymap.forward'].remove('right')
         except:
             pass
+        
+        self.t = t
+        self._onDiv = div
+        self._onCurl = curl
         kwargs['extent'] = kwargs.pop('extent', self.extent)
         kwargs['origin'] = kwargs.pop('origin', 'lower')
         width = kwargs.pop('width', 0.004)

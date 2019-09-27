@@ -654,7 +654,7 @@ class FD:
         self.axWavelet.set_xlabel('Time (sec)')
         self.axWavelet.set_ylabel('Period (minute)')
         self.axWavelet.set_xlim(self.timei[0], self.timei[-1])
-        self.axWavelet.set_yscale('log', basey=2)
+        self.axWavelet.set_yscale('symlog', basey=2)
         self.axWavelet.yaxis.set_major_formatter(ticker.ScalarFormatter())
         self.axWavelet.ticklabel_format(axis='y',style='plain')
         self.axWavelet.set_ylim(self.maxPeriod, 0.5)
@@ -664,7 +664,7 @@ class FD:
         
         self.axPower.set_ylabel('Period (minute)')
         self.axPower.set_ylim(self.maxPeriod, 0.5)
-        self.axPower.set_yscale('log', basey=2)
+        self.axPower.set_yscale('symlog', basey=2)
         self.axPower.yaxis.set_major_formatter(ticker.ScalarFormatter())
         self.axPower.ticklabel_format(axis='x',style='sci', scilimits=(0,1))
         self.axPower.minorticks_on()
@@ -939,7 +939,7 @@ class FD:
         self.axWavelet.set_xlabel('Time (sec)')
         self.axWavelet.set_ylabel('Period (minute)')
         self.axWavelet.set_xlim(self.timei[0], self.timei[-1])
-        self.axWavelet.set_yscale('log', basey=2)
+        self.axWavelet.set_yscale('symlog', basey=2)
         self.axWavelet.yaxis.set_major_formatter(ticker.ScalarFormatter())
         self.axWavelet.ticklabel_format(axis='y',style='plain')
         self.vlineWavelet = self.axWavelet.axvline(self.t,
