@@ -25,12 +25,12 @@ __all__ = ["rawData", "FISS", "FD"]
 class rawData:
     """
     Read a raw file of the FISS.
-    
+
     Parameters
     ----------
     file : `str`
         File name of the raw fts data file of the FISS.
-    
+
     Examples
     --------
     >>> from fisspy.read import rawData
@@ -38,7 +38,7 @@ class rawData:
     >>> raw = rawData(f)
     >>> raw.imshow()
     """
-    
+
     def __init__(self, file):
         if file.find('A.fts') != -1 or  file.find('B.fts') != -1:
             self.ftype = 'raw'
@@ -46,7 +46,7 @@ class rawData:
         self.filename = file
         self.xDelt = scale
         self.yDelt = scale
-        
+
         self.header = fits.getheader(file)
         self.data = fits.getdata(file)
         self.data = self.data.transpose([1, 0, 2])
@@ -69,17 +69,17 @@ class rawData:
         self.extentSpectro = [self.wave.min()-self.wvDelt/2,
                               self.wave.max()+self.wvDelt/2,
                               0, self.ny*self.yDelt]
-        
+
         if self.band == '6562' or self.band =='8542':
             self.set = '1'
         elif self.band == '5889' or self.band == '5434':
             self.set = '2'
         self.cmap = plt.cm.gray
-    
+
     def getRaster(self, wv, hw=0.05):
         """
         Make a raster image for a given wavelength with in width 2*hw
-        
+
         Parameters
         ----------
         wv : float
@@ -87,27 +87,27 @@ class rawData:
         hw : float
             A half-width of wavelength to be integrated
             Default is 0.05
-            
+
         Example
         -------
         >>> raster = raw.getRaster(0.5)
-        
+
         """
         self.wv = wv
         return getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
-    
+
     def imshow(self, x=None, y=None, wv=None, scale='minMax',
                sigFactor=3, helpBox=True, **kwargs):
         """
         Draw the interactive image for single band FISS raw data.
-        
+
         Parameters
         ----------
         x : `float`
             X position that you draw a spectral profile.
             Default is image center.
         y : `float`
-            Y position that you draw a spectral profile.            
+            Y position that you draw a spectral profile.
             Default is image center.
         wv : `float`
             Wavelength positin that you draw a raster images.
@@ -122,7 +122,7 @@ class rawData:
         helpBox : `bool`
             Show the interacitve key and simple explanation.
             Default is True
-        
+
         Other Parameters
         ----------------
         **kwargs : `~matplotlib.pyplot` properties
@@ -132,7 +132,7 @@ class rawData:
             plt.rcParams['keymap.forward'].remove('right')
         except:
             pass
-        
+
         if not x:
             x = self.nx//2*self.xDelt
         if not y:
@@ -148,29 +148,29 @@ class rawData:
                                   scale=scale, sigFactor=sigFactor,
                                   helpBox=helpBox, **kwargs)  # Basic resource to make interactive image is `~fisspy.image.tdmap.TDmap`
         plt.show()
-    
+
     def chRasterClim(self, cmin, cmax):
         self.iIm.chRasterClim(cmin, cmax)
-    
+
     def chSpectroClim(self, cmin, cmax):
         self.iIm.chSpectroClim(cmin, cmax)
-    
+
     def chcmap(self, cmap):
-        self.iIm.chcmap(cmap)    
-        
+        self.iIm.chcmap(cmap)
+
     def chRaster(self, wv):
         self.iIm.wv = wv
         self.iIm._chRaster()
-    
+
     def chSpect(self, x, y):
         self.iIm.x = x
         self.iIm.y = y
         self.iIm._chSpect()
-    
+
 class FISS(object):
     """
     Read a FISS data file (proc or comp).
-    
+
     Parameters
     ----------
     file : `str`
@@ -186,36 +186,36 @@ class FISS(object):
         If True the central wavelength is set to be wavelength at lab frame.
         It works if simpleWvCalibration is True.
         Default is True
-    
+
     Other Parameters
     ----------------
     **kwargs : `~scipy.signal.svagol_filter` properties
-    
+
     See also
     --------
     `~scipy.signal.savgol_filter`
-    
+
     Examples
     --------
     >>> from fisspy import read
     >>> import fisspy.data.sample
     >>> fiss = read.FISS(fisspy.data.sample.FISS_IMAGE)
     """
-    
+
     def __init__(self, file, ncoeff=False, noiseSuppression=False,
                  simpleWaveCalib=True, absScale=True, **kwargs):
         if file.find('1.fts') != -1:
             self.ftype = 'proc'
         elif file.find('c.fts') != -1:
             self.ftype = 'comp'
-        
+
         if self.ftype != 'proc' and self.ftype != 'comp':
             raise ValueError("Input file is neither proc nor comp data")
-            
+
         self.filename = file
         self.xDelt = 0.16
         self.yDelt = 0.16
-        
+
         self.header = getHeader(file)
         self.pfile = self.header.pop('pfile',False)
         self.data = readFrame(file, self.pfile, ncoeff=ncoeff)
@@ -226,15 +226,15 @@ class FISS(object):
         self.wvDelt = self.header['cdelt1']
         self.date = self.header['date']
         self.band = self.header['wavelen'][:4]
-        
+
         self.refProfile = self.data.mean((0,1))
         self.wave = self._waveCalibration(simpleWaveCalib= simpleWaveCalib,
                                         absScale= absScale, **kwargs)
-        
+
         self.noiseSuppression = noiseSuppression
         if noiseSuppression:
             self._noiseSuppression()
-        
+
         if self.band == '6562':
             self.cam = 'A'
             self.set = '1'
@@ -251,17 +251,17 @@ class FISS(object):
             self.cam = 'B'
             self.set = '2'
             self.cmap = cm.fe
-            
+
         self.extentRaster = [0, self.nx*self.xDelt,
                              0, self.ny*self.yDelt]
         self.extentSpectro = [self.wave.min()-self.wvDelt/2,
                               self.wave.max()+self.wvDelt/2,
                               0, self.ny*self.yDelt]
-            
+
     def getRaster(self, wv, hw=0.05):
         """
         Make a raster image for a given wavelength with in width 2*hw
-        
+
         Parameters
         ----------
         wv : float
@@ -269,25 +269,25 @@ class FISS(object):
         hw : float
             A half-width of wavelength to be integrated
             Default is 0.05
-            
+
         Example
         -------
         >>> from fisspy.read import FISS
         >>> fiss = FISS(file)
         >>> raster = fiss.getRaster(0.5)
         """
-        
+
         self.wv = wv
         return getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
 
-    
+
     def _waveCalibration(self, simpleWaveCalib= True, absScale= True,
                          **kwargs):
         """
         Wavelength calibration
-        
+
         If SimpleWvCalib is True, the wavelength is calibrated by using information in header.
-        If absScale is True, the central wavelength is set to be wavelength in the lab frame, 
+        If absScale is True, the central wavelength is set to be wavelength in the lab frame,
         but if absScale is False, the central wavelength is set to be zero.
         """
         method = kwargs.pop('method', True)
@@ -328,12 +328,12 @@ class FISS(object):
                     line=np.array([8542.089,8537.930])
                     lamb0=8542.090
                     dldw=-0.026252
-        
+
         w = np.arange(self.nwv)
         wl = np.zeros(2)
         wc = self.refProfile[20:self.nwv-20].argmin() + 20
         lamb = (w - wc) * dldw + lamb0
-        
+
         for i in range(2):
             mask = np.abs(lamb - line[i]) <= 0.3
             wtmp = w[mask]
@@ -347,11 +347,11 @@ class FISS(object):
                 'please change the method %s to %s' %(repr(method), repr(not method)))
             c = np.polyfit(wtmp - np.median(wtmp), ptmp, 2)
             wl[i] = np.median(wtmp) - c[1]/(2*c[0])
-            
+
         dldw = (line[1] - line[0])/(wl[1] - wl[0])
         wc = wl[0] - (line[0] - lamb0)/dldw
         return (w - wc) * dldw
-    
+
     def _noiseSuppression(self, **kwargs):
         window_length = kwargs.pop('window_length', 7)
         polyorder = kwargs.pop('polyorder', 2)
@@ -359,13 +359,13 @@ class FISS(object):
         delta = kwargs.pop('delta', 1.0)
         mode = kwargs.pop('mode', 'interp')
         cval = kwargs.pop('cval', 0.0)
-        
+
         self.data = savgol_filter(self.data, window_length, polyorder,
                                    deriv= deriv, delta= delta, cval= cval,
                                    mode= mode)
         self.noiseSuppression = True
-    
-        
+
+
     def lambdaMeter(self, hw= 0.03, sp= 5e3, wvRange= False,
                     wvinput= True, shift2velocity= True):
         """
@@ -374,25 +374,25 @@ class FISS(object):
                                            ref_spectrum= self.refProfile,
                                            wvRange= wvRange, hw= hw,
                                            wvinput= wvinput)
-        
+
         if shift2velocity:
             LOSvelocity = (lineShift-self.centralWavelength) * c.to('km/s').value/self.lamb0
             return LOSvelocity, intensity
         else:
             return lineShift, intensity
-        
+
     def imshow(self, x=None, y=None, wv=None, scale='minMax',
                sigFactor=3, helpBox=True, **kwargs):
         """
         Draw interactive FISS raster, spectrogram and profile for single band.
-        
+
         Parameters
         ----------
         x : `float`
             X position that you draw a spectral profile.
             Default is image center.
         y : `float`
-            Y position that you draw a spectral profile.            
+            Y position that you draw a spectral profile.
             Default is image center.
         wv : `float`
             Wavelength positin that you draw a raster images.
@@ -407,7 +407,7 @@ class FISS(object):
         helpBox : `bool`
             Show the interacitve key and simple explanation.
             Default is True
-        
+
         Other Parameters
         ----------------
         **kwargs : `~matplotlib.pyplot` properties
@@ -417,7 +417,7 @@ class FISS(object):
             plt.rcParams['keymap.forward'].remove('right')
         except:
             pass
-        
+
         if not x:
             x = self.nx//2*self.xDelt
         if not y:
@@ -433,25 +433,25 @@ class FISS(object):
         self.iIm = IAI.singleBand(self, x, y, wv,
                                   scale=scale, sigFactor=sigFactor,
                                   helpBox=helpBox, **kwargs)  # Basic resource to make interactive image is `~fisspy.image.tdmap.TDmap`
-        
+
     def chRasterClim(self, cmin, cmax):
         self.iIm.chRasterClim(cmin, cmax)
-    
+
     def chSpectroClim(self, cmin, cmax):
         self.iIm.chSpectroClim(cmin, cmax)
-    
+
     def chcmap(self, cmap):
-        self.iIm.chcmap(cmap)    
-        
+        self.iIm.chcmap(cmap)
+
     def chRaster(self, wv):
         self.iIm.wv = wv
         self.iIm._chRaster()
-    
+
     def chSpect(self, x, y):
         self.iIm.x = x
         self.iIm.y = y
         self.iIm._chSpect()
-        
+
 class FD:
     """
     Read the FISS DATA (FD) file.
@@ -473,11 +473,11 @@ class FD:
         unit = fits.getheader(timeFile)['unit']
         if unit == 'min':
             self.time *= 60
-        
+
         self.mask = fits.getdata(maskFile).astype(bool)
         self.dt = np.median(self.time-np.roll(self.time, 1))
         self.nt, self.ny, self.nx, self.nid = self.data.shape
-        
+
         reftime = self.header['reftime']
         self.reftime = _isoRefTime(reftime)
         self.Time = self.reftime + self.time * u.second
@@ -486,14 +486,14 @@ class FD:
         wid = self.header['ID1'][:2]
         if wid == 'HI':
             self.cmap = [cm.ha]*self.nid
-            
+
         elif wid == 'Ca':
             self.cmap = [cm.ca]*self.nid
         elif wid == 'Na':
             self.cmap = [cm.na]*self.nid
         elif wid == 'Fe':
             self.cmap = [cm.fe]*self.nid
-        
+
         try:
             xpos = self.header['xpos']
             ypos = self.header['ypos']
@@ -528,23 +528,23 @@ class FD:
                     tmp = 0.8
                 self.min[i] = -tmp
                 self.max[i] = tmp
-            
+
     def _mask(self, val):
         self.data[np.invert(self.mask),:] = val
-        
+
     def spatialAverage(self):
         for i in range(self.nt):
             med = np.median(self.data[i,self.mask[i]], 0)
             self.data[i] -= med
             self.min0[i] -= med
             self.max0[i] -= med
-            
+
     def timeAverage(self):
         med = np.median(self.data, 0)
         self.data -= med
         self.min0 -= np.median(med, (0,1))
         self.max0 -= np.median(med, (0,1))
-        
+
     def originalData(self, maskValue=-1, spatialAvg=False, timeAvg=False):
         self.data = fits.getdata(self.fdFile).astype(float)
         self.min0 = np.min(self.data, axis=(1,2))
@@ -556,7 +556,7 @@ class FD:
             self.spatialAverage()
         if timeAvg:
             self.timeAverage()
-        
+
         self.min = self.min0[self.reftpix]
         self.max = self.max0[self.reftpix]
         for i in range(self.nid):
@@ -567,7 +567,7 @@ class FD:
                     tmp = 0.8
                 self.min[i] = -tmp
                 self.max[i] = tmp
-            
+
     def bandpassFilter(self, filterRange):
         for n, i in enumerate(filterRange):
             filterRange[n] = i*1e-3
@@ -586,18 +586,18 @@ class FD:
                     tmp = 0.8
                 self.min[i] = -tmp
                 self.max[i] = tmp
-                
-    def imshow(self, x=0, y=0, t=0, cid=0, 
+
+    def imshow(self, x=0, y=0, t=0, cid=0,
                levels=None, maxPeriod=32, helpBox=True, **kwargs):
-        
+
         self.kwargs = kwargs
         try:
             plt.rcParams['keymap.back'].remove('left')
             plt.rcParams['keymap.forward'].remove('right')
         except:
             pass
-        
-        
+
+
         # transpose to pixel position.
         xpix, ypix, tpix = self._pixelPosition(x, y, t)
         self._x0 = self.x
@@ -609,8 +609,8 @@ class FD:
         self.cid = cid
         self._cidh = cid
         self.maxPeriod = maxPeriod
-        
-        
+
+
         #Keyboard helpBox
         if helpBox:
             helpFig = plt.figure('Key Help Box', figsize=[3.5, 3])
@@ -627,20 +627,20 @@ class FD:
             ax.text(0.05, 0.21, 'right: Previous time data')
             ax.text(0.05, 0.11, 'spacebar: change to current mouse point')
             ax.text(0.05, 0.01, 'ctrl+b: back to the previous image')
-        
-        
+
+
         # Figure setting
         figsize = kwargs.pop('figsize', [10, 8])
         self.fig = plt.figure(figsize=figsize)
         self.fig.canvas.set_window_title('FISS Data')
         self.imInterp = kwargs.get('interpolation', 'bilinear')
         gs = gridspec.GridSpec(5,5)
-        
+
         self.axRaster = self.fig.add_subplot(gs[0:3, :2]) # Raster
         self.axRaster.set_xlabel('X (arcsec)')
         self.axRaster.set_ylabel('Y (arcsec)')
         self.axRaster.set_title(self.idh[0])
-        
+
         self.axTS = self.fig.add_subplot(gs[1:3, 2:]) # TimeSeries
         self.axTS.set_xlabel('Time (sec)')
         self.axTS.set_ylabel('Intensity (count)')
@@ -648,7 +648,7 @@ class FD:
         self.axTS.minorticks_on()
         self.axTS.tick_params(which='both', direction='in')
         self.axTS.set_title('Time series')
-        
+
         self.axWavelet = self.fig.add_subplot(gs[3:, 2:])
         self.axWavelet.set_title('Wavelet Power Spectrum')
         self.axWavelet.set_xlabel('Time (sec)')
@@ -658,10 +658,10 @@ class FD:
         self.axWavelet.yaxis.set_major_formatter(ticker.ScalarFormatter())
         self.axWavelet.ticklabel_format(axis='y',style='plain')
         self.axWavelet.set_ylim(self.maxPeriod, 0.5)
-        
+
         self.axPower = self.fig.add_subplot(gs[3:, :2])
         self.axPower.set_title('Power Spectrum')
-        
+
         self.axPower.set_ylabel('Period (minute)')
         self.axPower.set_ylim(self.maxPeriod, 0.5)
         self.axPower.set_yscale('symlog', basey=2)
@@ -669,7 +669,7 @@ class FD:
         self.axPower.ticklabel_format(axis='x',style='sci', scilimits=(0,1))
         self.axPower.minorticks_on()
         self.axPower.tick_params(which='both', direction='in')
-        
+
         # Plot
         data = self.data[:, ypix, xpix, self.cid]
         self.imRaster = self.axRaster.imshow(self.data[tpix,:,:,cid],
@@ -682,17 +682,17 @@ class FD:
         self.timeseries = self.axTS.plot(self.timei,
                                          data,
                                          color='k')[0]
-        
-        #wavelet 
+
+        #wavelet
         if not levels:
-            levels = [0.1, 0.25, 0.4, 
+            levels = [0.1, 0.25, 0.4,
                       0.55, 0.7, 1]
         self.levels = levels
         self._plotWavelet(xpix, ypix)
 #        divider = make_axes_locatable(self.axWavelet)
 #        cax = divider.append_axes('right', size='5%', pad=0.1)
 #        plt.colorbar(self.contourIm, cax=cax)
-        
+
         #gws
         self.powerGWS = self.axPower.plot(self.gws, self.period, color='k',
                                           label='GWS')[0]
@@ -701,7 +701,7 @@ class FD:
         self.powerLWS = self.axPower.plot(self.lws, self.period,
                                           color='r', label='LWS')[0]
         self.axPower.legend()
-        
+
         # marker
         self.point = self.axRaster.scatter(self.x, self.y, 50,
                                            marker='x',
@@ -720,7 +720,7 @@ class FD:
         self.hlineLWS = self.axPower.axhline(peakPLWS,
                                              ls='dotted',
                                              color='r')
-        
+
         #infoBox
         self.axInfo = self.fig.add_subplot(gs[0, 2:])
         self.axInfo.set_axis_off()
@@ -742,16 +742,16 @@ class FD:
         self.peakPeriodLWS = self.axInfo.text(0.05, -0.35,
                                          r'P$_{peak, LWS}$=%.2f min'%peakPLWS,
                                          fontsize=12)
-        
+
         #Axis limit
         self.axTS.set_ylim(data.min(), data.max())
         self.axPower.set_xlim(0, self.lpmax)
         self.axWavelet.set_aspect(adjustable='box', aspect='auto')
         self.fig.tight_layout()
         self.fig.canvas.mpl_connect('key_press_event', self._on_key)
-        
+
         plt.show()
-        
+
     def _on_key(self, event):
         if event.key == 'ctrl+right':
             if self.x < self._xar[-1]:
@@ -818,7 +818,7 @@ class FD:
             self.tpix = np.abs(self.timei-self.t).argmin()
             self.t = self.timei[self.tpix]
         elif event.key == 'ctrl+b':
-            x = self.x 
+            x = self.x
             y = self.y
             t = self.t
             self.x = self._xb
@@ -847,7 +847,7 @@ class FD:
                     self.axTS.set_ylabel('Velocity (km/s)')
                 else:
                     self.axTS.set_ylabel('Intensity (Count)')
-                
+
         if self.x != self._x0 or self.y != self._y0:
             xpix, ypix, tpix = self._pixelPosition(self.x, self.y,
                                                    self.t)
@@ -874,7 +874,7 @@ class FD:
             self.peakPeriodLWS.set_text(
                     r'P$_{peak, LWS}$=%.2f min'%peakPLWS)
         self.fig.canvas.draw_idle()
-        
+
     def _changeID(self):
         xpix, ypix, tpix = self._pixelPosition(self.x, self.y,
                                                    self.t)
@@ -883,7 +883,7 @@ class FD:
         self._changeRaster()
         self.imRaster.set_clim(self.min[self.cid],
                                self.max[self.cid])
-        
+
     def _changePlot(self, xpix, ypix):
         data = self.data[:, ypix, xpix, self.cid]
         self.timeseries.set_ydata(data)
@@ -901,10 +901,10 @@ class FD:
         self.peakPeriodLWS.set_text(
                     r'$P_{peak, LWS}$=%.2f min'%peakPLWS)
         self.axPower.set_xlim(0, self.lpmax)
-        
+
     def _changeRaster(self):
         self.imRaster.set_data(self.data[self.tpix, :, :, self.cid])
-        
+
     def _pixelPosition(self, x, y, t):
         tpix = np.abs(self.timei-t).argmin()
         xpix = np.abs(self._xar-x).argmin()
@@ -914,11 +914,11 @@ class FD:
         self.t = self.timei[tpix]
         self.tpix = tpix
         return xpix, ypix, tpix
-        
+
     def _changeWavelet(self, xpix, ypix):
         self.axWavelet.cla()
         self._plotWavelet(xpix, ypix)
-        
+
     def _plotWavelet(self, xpix, ypix):
         self.wavelet = Wavelet(self.data[:, ypix, xpix, self.cid],
                        self.dt, **self.kwargs)
@@ -946,32 +946,32 @@ class FD:
                                                    ls='dashed',
                                                    color='k')
         self.axWavelet.set_ylim(self.maxPeriod, 0.5)
-    
+
     def chLevels(self, levels):
         """
         """
         self.levels = levels
         xpix, ypix, tpix = self._pixelPosition(self.x, self.y, self.t)
         self._changeWavelet(xpix, ypix)
-    
+
     def chInterp(self, interp):
         """
         """
         self.imInterp = interp
         self.imRaster.set_interpolation(interp)
-    
+
     def chBPFilter(self, filterRange):
         """
         """
         self.originalData(maskValue=self.maskValue, spatialAvg=self._spAvg,
                           timeAvg=self._timeAvg)
         self.bandpassFilter(filterRange)
-        
+
     def chRasterClim(self, cmin, cmax):
         """
         """
         self.imRaster.set_clim(cmin, cmax)
-        
+
     def chPosition(self, x, y):
         """
         """
@@ -987,7 +987,7 @@ class FD:
                                                              self.y,
                                                              xpix,
                                                              ypix))
-        
+
     def chtime(self, t):
         """
         """
@@ -1015,20 +1015,25 @@ class FD:
         h['crval1'] = self.xpos
         h['crval2'] = self.ypos
         h['sttime'] = self.Time[0].value
-        
+
         return TDmap(self.data[:,:,:,ID], h, self.time,
                      filterRange=filterRange, cmap=self.cmap[ID])
-        
+
     def set_clim(self, cmin, cmax):
         self.imRaster.set_clim(cmin, cmax)
-        
+
 class calibData:
     """
-    
-    """
-    
-    def __init__(self, file):
+    Read the calibration file such as 'BiasDark', 'Flat', 'FLAT' and 'SLIT'.
+
+    Parameters
+    ----------
+    file : str
         
+    """
+
+    def __init__(self, file):
+
         if file.find('BiasDark') != -1:
             self.ftype = 'BiasDark'
         elif file.find('Flat') != -1:
@@ -1037,20 +1042,20 @@ class calibData:
             self.ftype = 'FLAT'
         elif file.find('SLIT') != -1:
             self.ftype = 'SLIT'
-        
+
         self.data = fits.getdata(file)
         self.header = fits.getheader(file)
-        
+
         self.nx = self.header['naxis1']
         self.ny = self.header['naxis2']
         if self.ftype == 'Flat':
             self.nf = self.header['naxis3']
-            
+
         if file.find('_A') != -1:
             self.cam = 'A'
         elif file.find('_B') != -1:
             self.cam = 'B'
-            
+
     def imshow(self):
         """
         """
@@ -1059,7 +1064,7 @@ class calibData:
             plt.rcParams['keymap.forward'].remove('right')
         except:
             pass
-        
+
         self.fig, self.ax = plt.subplots(figsize=[10, 6])
         if self.ftype != 'Flat':
             self.image = self.ax.imshow(self.data, origin='lower',
@@ -1072,7 +1077,7 @@ class calibData:
                                         cmap = plt.cm.gray)
             self.fig.tight_layout()
             self.fig.canvas.mpl_connect('key_press_event', self._onKey)
-            
+
     def _onKey(self, event):
         if event.key == 'right':
             if self.num < self.nf-1:
@@ -1088,7 +1093,7 @@ class calibData:
             self.image.set_data(self.data[self.num])
             self.num0 = self.num
         self.fig.canvas.draw_idle()
-        
+
 def _isoRefTime(refTime):
     year = refTime[:4]
     month = refTime[4:6]
@@ -1098,3 +1103,9 @@ def _isoRefTime(refTime):
     sec = refTime[13:15]
     isot = '%s-%s-%sT%s:%s:%s'%(year, month, day, hour, minute, sec)
     return Time(isot)
+
+
+
+class compFISS:
+    def __init__(self):
+        None
