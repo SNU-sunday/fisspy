@@ -167,7 +167,7 @@ class rawData:
         self.iIm.y = y
         self.iIm._chSpect()
 
-class FISS(object):
+class FISS:
     """
     Read a FISS data file (proc or comp).
 
@@ -1029,7 +1029,7 @@ class calibData:
     Parameters
     ----------
     file : str
-        
+
     """
 
     def __init__(self, file):
