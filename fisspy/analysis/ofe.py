@@ -10,13 +10,13 @@ from matplotlib.widgets import Slider
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
-        
+
 def runDAVE(data0, output=False, overwrite=False, fwhm=10, adv=1, source=0,
             noise=1, winFunc='Gaussian', outSig=False):
     """
     Differential Affine Velocity Estimator for all spatial points.
     This is the python function of dave_multi.pro IDL code written by J. Chae (2009).
-    
+
     Parameters
     ----------
     data0: `~numpy.ndarray` or fits file.
@@ -28,7 +28,7 @@ def runDAVE(data0, output=False, overwrite=False, fwhm=10, adv=1, source=0,
         Default is `False`.
     fwhm: `int`, optional
         FWHM of the window function (should be even positive integer)
-    
+
     Returns
     -------
     fits file:
@@ -47,11 +47,11 @@ def runDAVE(data0, output=False, overwrite=False, fwhm=10, adv=1, source=0,
         raise ValueError('data must be 3-D array.')
     if not output:
         output = join(dirn, fname)
-        
+
     dnt, dny, dnx = data.shape
     psw = adv
     qsw = source
-    
+
     # Construncting window function
     winFunc = winFunc.capitalize()
     h = int(fwhm/2)
@@ -63,7 +63,7 @@ def runDAVE(data0, output=False, overwrite=False, fwhm=10, adv=1, source=0,
     ny = 2*h*mf+1
     x = -(np.arange(nx)-nx//2)
     y = -(np.arange(ny)-ny//2)
-    
+
     if winFunc == 'Square':
         w = np.ones((ny, nx))
     elif winFunc == 'Gaussian':
@@ -74,12 +74,12 @@ def runDAVE(data0, output=False, overwrite=False, fwhm=10, adv=1, source=0,
         raise ValueError("winFunc must be one of ('Square', 'Gaussian', "
                          "'Hanning')")
     w /= noise**2
-    
+
     # Construncting coefficent arrays
     im = data
     imT = (np.roll(im, -1, axis=0) - np.roll(im, 1, axis=0))/2
     imY, imX = np.gradient(im, axis=(1, 2))
-    
+
     npar = 6+qsw
     A = np.empty((npar, npar, dnt, dny, dnx))
     A[0,0] = conv(imX*imX, w[None, :, :],
@@ -155,7 +155,7 @@ def runDAVE(data0, output=False, overwrite=False, fwhm=10, adv=1, source=0,
                            'same', axes=(1, 2))                 # Vx, Uy
     A[5,5] = conv(imY*imY, x*x*w[None,:,:],
                   'same', axes=(1, 2))                          #Vx, Vx
-    
+
     if qsw:
         A[6,0] = A[0,6] = -qsw*conv(im*imX, w[None,:,:],
                                     'same', axes=(1, 2))        # mu, U0
@@ -175,7 +175,7 @@ def runDAVE(data0, output=False, overwrite=False, fwhm=10, adv=1, source=0,
                                     'same', axes=(1, 2))        # mu, Vx
         A[6,6] = -qsw**2*conv(im*im, w[None,:,:],
                               'same', axes=(1,2))               # mu, mu
-        
+
     B = np.empty((npar, dnt, dny, dnx))
     B[0] = conv(imT*imX, -w[None,:,:], 'same', axes=(1,2))
     B[1] = conv(imT*imY, -w[None,:,:], 'same', axes=(1,2))
@@ -187,29 +187,29 @@ def runDAVE(data0, output=False, overwrite=False, fwhm=10, adv=1, source=0,
     B[5] = conv(imT*imY, -x*w[None,:,:], 'same', axes=(1,2))
     if qsw:
         B[6] = qsw*conv(imT*(-im), -w[None,:,:], 'same', axes=(1,2))
-        
+
     dave = np.linalg.solve(A.T, B.T).T
-    
-        
+
+
     if not outSig:
         hdu = fits.PrimaryHDU(dave)
         hdu.header['type'] = 'DAVE'
         hdu.writeto(output, overwrite=overwrite)
 #    else: #TODO sigma and chisq calculation
     return output
-        
-        
+
+
 class readOFE:
     def __init__(self, data0, ofeFile, scale=None, dt=None, gMethod=True):
         """
         Read the Optical Flow Estimated File.
-        
+
         Parameters
         ----------
         scale: float
             Spatial pixel scale (arcsec).
         """
-        
+
         if type(data0) == str:
             data = fits.getdata(data0)
             header = fits.getheader(data0)
@@ -226,7 +226,7 @@ class readOFE:
             b = -(cyp+0.5)*dy+cy
             r = (nx-(cxp+0.5))*dx+cx
             t = (ny-(cyp+0.5))*dy+cy
-            
+
             scale = dx
         else:
             data = data0.copy()
@@ -239,14 +239,14 @@ class readOFE:
         self.extent = [l, r, b, t]
         self.data = data
         self.nt, self.ny, self.nx = self.data.shape
-        
+
         self._xarr = np.linspace(self.extent[0]+dx*0.5,
                                  self.extent[1]-dx*0.5,
                                  self.nx)
         self._yarr = np.linspace(self.extent[2]+dy*0.5,
                                  self.extent[3]-dy*0.5,
                                  self.ny)
-        
+
         if self.data.ndim != 3:
             raise ValueError("data must have 3 dimension")
         if not scale or not dt:
@@ -263,23 +263,23 @@ class readOFE:
         self.Uy = self.ofe[4]*unit
         self.Vx = self.ofe[5]*unit
         self.C = np.arctan2(self.V0, self.U0)
-        
+
         if gMethod:
             Uy, Ux = np.gradient(self.U0, axis=(1,2))
-            Vy, Vx = np.gradient(self.U0, axis=(1,2))
+            Vy, Vx = np.gradient(self.V0, axis=(1,2))
         else:
             Ux = self.Ux
             Uy = self.Uy
             Vx = self.Vx
             Vy = self.Vy
-            
+
         self.div = Ux + Vy
         self.curl = Vx - Uy
-        
+
     def imshow(self, t=1, div=True, curl=True, **kwargs):
         """
         Display an data with velocity vector field.
-        
+
         Parameters
         ----------
         t: int
@@ -295,7 +295,7 @@ class readOFE:
             plt.rcParams['keymap.forward'].remove('right')
         except:
             pass
-        
+
         self.t = t
         self._onDiv = div
         self._onCurl = curl
@@ -303,7 +303,7 @@ class readOFE:
         kwargs['origin'] = kwargs.pop('origin', 'lower')
         width = kwargs.pop('width', 0.004)
         scale = kwargs.pop('scale', 200)
-        
+
         if div or curl:
             nw = div + curl + 1
         else:
@@ -311,7 +311,7 @@ class readOFE:
         self.nw = nw
         self.fig = plt.figure(self.otype, figsize=(6*nw,6), clear=True)
         gs = GridSpec(11, nw, wspace=0, hspace=0)
-        
+
         self.axVec = self.fig.add_subplot(gs[:10, 0])
         self.axSlider = self.fig.add_subplot(gs[10, :])
         self.im = self.axVec.imshow(self.data[self.t], **kwargs)
@@ -322,7 +322,7 @@ class readOFE:
                                      cmap=plt.cm.hsv,
                                      width=width,
                                      scale=scale)
-        
+
         self.axVec.set_title(r'$\mathbf{v}$')
         self.axVec.set_xlabel('X')
         self.axVec.set_ylabel('Y')
@@ -336,7 +336,7 @@ class readOFE:
             self.axDiv.tick_params(labelbottom=False, labelleft=False)
             self.axDiv.set_title(r'$\mathbf{\nabla} \cdot$'
                                  r'$\mathbf{v}$')
-            
+
         if curl:
             self.axCurl = self.fig.add_subplot(gs[:10, -1], sharex=self.axVec,
                                                sharey=self.axVec)
@@ -345,13 +345,13 @@ class readOFE:
                                              **kwargs)
             self.axCurl.tick_params(labelbottom=False, labelleft=False)
             self.axCurl.set_title(r'$\mathbf{\nabla} \times \mathbf{V}$')
-            
+
         self.sT = Slider(self.axSlider, 'Time(pix)', 0, self.nt-1,
                          valinit=self.t, valstep=1, valfmt="%i")
         self.sT.on_changed(self._chTime)
         self.fig.tight_layout()
         self.fig.canvas.mpl_connect('key_press_event', self._onKey)
-        
+
     def _chTime(self, val):
         self.t = int(self.sT.val)
         self.im.set_data(self.data[self.t])
@@ -360,7 +360,7 @@ class readOFE:
             self.imDiv.set_data(self.div[self.t])
         if self._onCurl:
             self.imCurl.set_data(self.curl[self.t])
-            
+
     def _onKey(self, event):
         if event.key == 'left':
             if self.t > 0:
@@ -374,8 +374,8 @@ class readOFE:
             else:
                 self.t = 0
             self.sT.set_val(self.t)
-            
-        
-            
-        
+
+
+
+
 #    def runNAVE():
