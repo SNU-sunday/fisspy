@@ -274,7 +274,7 @@ class FISS:
         self.xmax = xmax
         self.x1 = x1
         self.x2 = x2
-        self.data = readFrame(file, self.pfile, x1=x1, x2=x2, ncoeff=ncoeff, xmax=xmax)
+        self.data = readFrame(self.filename, self.pfile, x1=x1, x2=x2, ncoeff=ncoeff, xmax=xmax)
         if noiseSuppression:
             self._noiseSuppression()
 

@@ -11,7 +11,7 @@ __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 __all__ = ["readFrame", "_readPCA", "getHeader", "getRaster"]
 
-def readFrame(file, pfile=False, x1=0, x2=False, ncoeff=False, xmax=False):
+def readFrame(file, pfile=False, x1=0, x2=False, ncoeff=False):
     """
     Read the FISS fts file.
     """
@@ -33,7 +33,7 @@ def readFrame(file, pfile=False, x1=0, x2=False, ncoeff=False, xmax=False):
     return spec
 
 
-def _readPCA(file, pfile, x1=0, x2=False, ncoeff=False, xmax=False):
+def _readPCA(file, pfile, x1=0, x2=False, ncoeff=False):
     """
     Read the PCA compressed FISS fts file.
     """
