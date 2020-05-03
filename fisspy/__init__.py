@@ -16,4 +16,4 @@ __version__="0.9.75"
 
 
 from fisspy import cm
-from fisspy.makevideo import ffmpeg
+from fisspy import makevideo

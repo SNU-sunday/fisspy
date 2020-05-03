@@ -1,7 +1,7 @@
 """
 Doppler
 
-This module calculate line of sight doppler velocities for 
+This module calculate line of sight doppler velocities for
 each pixels of a FISS fts data.
 """
 from __future__ import absolute_import, division
@@ -24,54 +24,54 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
                 hw= 0.03, sp= 5000, wvinput= True):
     """
     Determine the Lambdameter chord center for a given half width or intensity.
-    
+
     Parameters
     ----------
     wv : ~numpy.ndarray
         A Calibrated wavelength.
     data : ~numpy.ndarray
-        n (n=2 or n=3) dimensional spectral profile data, 
+        n (n=2 or n=3) dimensional spectral profile data,
         the last dimension component must be the spectral component,
         and the size is equal to the size of wv.
     wvinput : bool
         There are two cases.
-            
+
     * Case wvinput==True
-        
+
             hw : float
                 A half width of the horizontal line segment.
-                
+
         Returns
         -------
         wc : nd ndarray
             n dimensional array of central wavelength values.
         intc : nd ndarray
             n dimensional array of intensies of the line segment.\\
-        
+
     * Case wvinput==False
-        
+
             sp : float
                 An intensity of the horiznotal segment.
-                
+
         Returns
         -------
         wc : nd ndarray
             n dimensional array of central wavelength values.
         hwc : nd ndarray
             n dimensional array of half widths of the line segment.
-    
+
     Notes
     -----
         This function is based on the IDL code BISECTOR_D.PRO
         written by J. Chae.
-    
+
     Example
     -------
     >>> from fisspy.analysis import doppler
     >>> wc, inten = doppler.labdameter(wv,data,0.2)
-    
+
     """
-    
+
     shape=data0.shape
     nw=shape[-1]
     reshape=shape[:-1]
@@ -80,7 +80,7 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
     ndim = data0.ndim
     wvoffset = 0
     dwv = wv[1]-wv[0]
-    if rspec and data0.ndim == 3:
+    if rspec and ndim == 3:
         refSpec = conv(ref_spectrum , dkern[0],'same')
         refSpec[:2] = refSpec[-2:] = 0
         refSpec = refSpec * np.ones((4,1))
@@ -95,11 +95,11 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
         wvoffset = np.zeros(shape[1])
     elif ndim == 1 or ndim >=4:
         ValueError('The dimension of data0 must be 2 or 3.')
-    
+
     if wv.shape[0] != nw:
         raise ValueError('The number of elements of wv and '
         'the number of elements of last axis for data are not equal.')
-    
+
     if np.any(wvRange):
         ss = np.logical_and(wv >= wvRange[0], wv <= wvRange[1])
         nw = ss.sum()
@@ -108,12 +108,12 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
     na = int(data0.size/nw)
     data = data0.reshape((na,nw))
 
-    
+
     s = data.argmin(axis=-1)
-    
+
     if wvinput and hw == 0.:
         raise ValueError('The half-width value must be greater than 0.')
-        
+
     posi0 = np.arange(na)
     smin = [0,wv[0]]
     smax = [na-1,wv[-1]]
@@ -124,18 +124,18 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
             intc = 0.5*(interp(wl)+interp(wr))
     else:
         intc = np.ones(na)*sp
-    
+
     wc = np.zeros(na)
     hwc = np.zeros(na)
-    ref = 1    
+    ref = 1
     rep = 0
     s0 = s.copy()
     more = data[posi0,s0] > 100
-    
+
     while ref > 0.00001 and rep <6:
         sp1 = data-intc[:,None]
         comp = sp1[:,0:nw-1]*sp1[:,1:nw]
-        
+
         s = comp[more] <=0.
         nsol = s.sum(axis=1)
         j = nsol//2
@@ -149,7 +149,7 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
         wr0 = wv[r]-dwv/(sp1[posi,r+1]-sp1[posi,r])*sp1[posi,r]
         wc[more] = 0.5*(wl0+wr0)
         hwc[more] = 0.5*np.abs(wr0-wl0)
-        
+
         if wvinput:
             wl = np.array((posi,wc[more]-hw)).T; wr=np.array((posi,wc[more]+hw)).T
             intc[more] = 0.5*(interp(wl)+interp(wr))
@@ -159,7 +159,7 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
         else:
             ref = 0
         rep += 1
-    
+
 
     wc = wc.reshape(reshape) - wvoffset
     if wvinput:
@@ -172,13 +172,13 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
 def LOS_velocity(wv,data,hw=0.01,band=False):
     """
     Calculte the Line-of-Sight velocity of given data.
-    
+
     Parameters
     ----------
     wv : ~numpy.ndarray
         A Calibrated wavelength.
     data : ~numpy.ndarray
-        n (n>=2) dimensional spectral profile data, 
+        n (n>=2) dimensional spectral profile data,
         the last dimension component must be the spectral component,
         and the size is equal to the size of wv.
     hw : float
@@ -186,13 +186,13 @@ def LOS_velocity(wv,data,hw=0.01,band=False):
     band : str
         A string of the wavelength band.
         It must be the 4 characters in Angstrom unit. ex) '6562', '8542'
-        
+
     Returns
     -------
     losv : ~numpy.ndarray
         n-1 (n>=2) dimensional Line-of_sight velocity value, where n is the
         dimension of the given data.
-        
+
     Example
     -------
     >>> from fisspy.doppler import LOS_velocity
@@ -201,9 +201,9 @@ def LOS_velocity(wv,data,hw=0.01,band=False):
     """
     if not band :
         raise ValueError("Please insert the parameter band (str)")
-        
+
     wc, intc =  lambdameter(wv,data,hw=hw,wvinput=True)
-    
+
     if band == '6562' :
         return wc*c.to('km/s').value/6562.817
     elif band == '8542' :
@@ -215,4 +215,3 @@ def LOS_velocity(wv,data,hw=0.01,band=False):
     else:
         raise ValueError("Value of band must be one among"
                          "'6562', '8542', '5890', '5434'")
-        

@@ -175,17 +175,19 @@ class FISS:
     ----------
     file : `str`
         File name of the FISS fts data.
-    x1 : `int`
+    x1 : `int`, optional
         A left limit index of the frame along the scan direction
     x2 : `int`, optional
         A right limit index of the frame along the scan direction
-        If False, the only x1 frame is read.
+        If None, read all data from x1 to the end of the scan direction.
+    y1 : `int`, optional
+        A left limit index of the frame along the scan direction
+    y2 : `int`, optional
+        A right limit index of the frame along the scan direction
+        If None, read all data from x1 to the end of the scan direction.
     noceff : `int`, optional
         he number of coefficients to be used for
         the construction of frame in a pca file.
-    xmax : `bool`, optional
-        If True, the x2 value is set as the maximum end point of the frame.
-            * Default is True.
     noiseSuprresion : `bool`, optional
         If True Savitzky-Golay noise filter is applied in the wavelength axis.
         Default is False.
@@ -213,7 +215,7 @@ class FISS:
     >>> fiss = read.FISS(fisspy.data.sample.FISS_IMAGE)
     """
 
-    def __init__(self, file, x1=0, x2=False, ncoeff=False, xmax=True, noiseSuppression=False,
+    def __init__(self, file, x1=0, x2=None, y1=0, y2=None, ncoeff=False, noiseSuppression=False,
                  simpleWaveCalib=True, absScale=True, **kwargs):
         if file.find('1.fts') != -1:
             self.ftype = 'proc'
@@ -223,16 +225,17 @@ class FISS:
         if self.ftype != 'proc' and self.ftype != 'comp':
             raise ValueError("Input file is neither proc nor comp data")
 
-        self.xmax = xmax
         self.x1 = x1
         self.x2 = x2
+        self.y1 = y1
+        self.y2 = y2
         self.filename = file
         self.xDelt = 0.16
         self.yDelt = 0.16
 
         self.header = getHeader(file)
         self.pfile = self.header.pop('pfile', False)
-        self.data = readFrame(file, self.pfile, x1=x1, x2=x2, ncoeff=ncoeff, xmax=xmax)
+        self.data = readFrame(file, self.pfile, x1=x1, x2=x2, y1=y1, y2=y2, ncoeff=ncoeff)
         self.ndim = self.header['naxis']
         self.ny, self.nx, self.nwv = self.data.shape
         self.wvDelt = self.header['cdelt1']
@@ -270,11 +273,19 @@ class FISS:
                               self.wave.max()+self.wvDelt/2,
                               0, self.ny*self.yDelt]
 
-    def reload(self, x1=0, x2=False, ncoeff=False, xmax=False, noiseSuppression=False):
-        self.xmax = xmax
+    def reload(self, x1=0, x2=None, y1=0, y2=None, ncoeff=False, xmax=False, noiseSuppression=False):
+
+        self.data = readFrame(self.filename, self.pfile, x1=x1, x2=x2, y1=y1, y2=y2, ncoeff=ncoeff)
+        self.ny, self.nx, self.nwv = self.data.shape
         self.x1 = x1
         self.x2 = x2
-        self.data = readFrame(self.filename, self.pfile, x1=x1, x2=x2, ncoeff=ncoeff, xmax=xmax)
+        self.y1 = y1
+        self.y2 = y2
+        self.extentRaster = [0, self.nx*self.xDelt,
+                             0, self.ny*self.yDelt]
+        self.extentSpectro = [self.wave.min()-self.wvDelt/2,
+                              self.wave.max()+self.wvDelt/2,
+                              0, self.ny*self.yDelt]
         if noiseSuppression:
             self._noiseSuppression()
 

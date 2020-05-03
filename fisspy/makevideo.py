@@ -26,7 +26,7 @@ class img2video:
         """
         img2video
 
-        Make a video file from the images.
+        Make a video file from the set of images.
         Default output directory is the same as the images, but you can change the output directory from the 'output' parameter.
 
         Parameters
@@ -56,6 +56,9 @@ class img2video:
         >>> imglist = glob('/data/img/*.png')
         >>> makevideo.img2video(imglist, 10, 'video.mp4')
         """
+        print("----Start to make video----")
+        print(f"Frame per seconds: {fps}")
+        
         self.imglist = imglist
         dirn = dirname(output)
         fname = basename(output)
@@ -64,24 +67,29 @@ class img2video:
             if not dirn:
                 dirn = os.getcwd()
         fname = join(dirn, fname)
-
+        print(f"Output: '{fname}'")
+        
         # plot initial figure
         if not show:
             plt.ioff()
         img = plt.imread(imglist[0])
         ny, nx, nc =  img.shape
         self.fig, self.ax = plt.subplots(figsize=(nx/100, ny/100), dpi=100)
-        self.im = self.ax.imshow(img)
+        self.im = self.ax.imshow(img, animated=True)
         self.ax.axis('off')
         self.fig.subplots_adjust(0, 0, 1, 1, 0)
         ani = FuncAnimation(self.fig, self.chImg, len(imglist),
-                            interval=100, blit=False)
+                            interval=1e3/fps, blit=False)
+        if show:
+            plt.pause(0.1)
+            
         ani.save(output, fps=fps, **kwargs)
         if not show:
+            del ani
             plt.close(self.fig)
             plt.ion()
+        print("----Done----")
 
-        return fname
 
     def chImg(self, i):
         img = plt.imread(self.imglist[i])
