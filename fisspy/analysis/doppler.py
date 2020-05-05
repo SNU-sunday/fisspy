@@ -10,7 +10,7 @@ __author__ = "Juhyeong Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
 import numpy as np
-from interpolation.splines import LinearSpline
+from interpolation.splines import LinearSpline, CubicSpline
 from astropy.constants import c
 from scipy.signal import fftconvolve as conv
 from fisspy.image.base import alignoffset
@@ -20,8 +20,8 @@ __all__ = ['lambdameter', 'LOS_velocity']
 
 
 
-def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
-                hw= 0.03, sp= 5000, wvinput= True):
+def lambdameter(wv, data0, ref_spectrum=False, wvRange=False,
+                hw=0.03, sp=5000, wvinput=True, method='linear'):
     """
     Determine the Lambdameter chord center for a given half width or intensity.
 
@@ -72,6 +72,12 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
 
     """
 
+    if np.any(wvRange):
+        ss = np.logical_and(wv >= wvRange[0], wv <= wvRange[1])
+    else:
+        ss = np.logical_and(wv >= wv[0], wv <= wv[1])
+    
+    
     shape=data0.shape
     nw=shape[-1]
     reshape=shape[:-1]
@@ -93,22 +99,24 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
         wvoffset = (xoff*(wv[1]-wv[0])) * (cor > 0.7)
     elif not rspec and ndim == 3:
         wvoffset = np.zeros(shape[1])
-    elif ndim == 1 or ndim >=4:
-        ValueError('The dimension of data0 must be 2 or 3.')
-
+    elif ndim >=4:
+        raise ValueError('The dimension of data0 must be 2 or 3.')
+        
     if wv.shape[0] != nw:
         raise ValueError('The number of elements of wv and '
         'the number of elements of last axis for data are not equal.')
 
-    if np.any(wvRange):
-        ss = np.logical_and(wv >= wvRange[0], wv <= wvRange[1])
-        nw = ss.sum()
-        data0 = data0[:,:,ss].copy()
-        wv = wv[ss].copy()
-    na = int(data0.size/nw)
-    data = data0.reshape((na,nw))
-
-
+    nw = ss.sum()
+    wv = wv[ss].copy()
+    if ndim == 3:
+        data = data0[:,:,ss].copy()
+    elif ndim == 2:
+        data = data0[:,ss].copy()
+    elif ndim == 1:
+        data = data0[ss].copy() * np.ones((5,nw))
+    
+    na = int(data.size/nw)
+    data = data.reshape((na,nw))
     s = data.argmin(axis=-1)
 
     if wvinput and hw == 0.:
@@ -119,9 +127,12 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
     smax = [na-1,wv[-1]]
     order = [na,len(wv)]
     if wvinput:
+        if method.lower() == 'linear':
             interp = LinearSpline(smin,smax,order,data)
-            wl = np.array((posi0,wv[s]-hw)).T; wr = np.array((posi0,wv[s]+hw)).T
-            intc = 0.5*(interp(wl)+interp(wr))
+        elif method.lower() == 'cubic':
+            interp = CubicSpline(smin,smax,order,data)
+        wl = np.array((posi0,wv[s]-hw)).T; wr = np.array((posi0,wv[s]+hw)).T
+        intc = 0.5*(interp(wl)+interp(wr))
     else:
         intc = np.ones(na)*sp
 
@@ -160,13 +171,21 @@ def lambdameter(wv, data0, ref_spectrum= False, wvRange = False,
             ref = 0
         rep += 1
 
-
-    wc = wc.reshape(reshape) - wvoffset
+    if ndim == 1:
+        wc = wc[3] - wvoffset
+    else:
+        wc = wc.reshape(reshape) - wvoffset
     if wvinput:
-        intc = intc.reshape(reshape)
+        if ndim == 1:
+            intc = intc[3]
+        else:
+            intc = intc.reshape(reshape)
         return wc, intc
     else:
-        hwc = hwc.reshape(reshape)
+        if ndim == 1:
+            hwc = hwc[3]
+        else:
+            hwc = hwc.reshape(reshape)
         return wc, hwc
 
 def LOS_velocity(wv,data,hw=0.01,band=False):
