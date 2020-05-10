@@ -13,76 +13,75 @@ __email__ =  "jhkang@astro.snu.ac.kr"
 __all__ = ['Wavelet', 'WaveCoherency']
 
 class Wavelet:
-    """
-    Compute the wavelet transform of the given data
-    with sampling rate dt.
-    
-    By default, the MORLET wavelet (k0=6) is used.
-    The wavelet basis is normalized to have total energy=1
-    at all scales.
-            
-    Parameters
-    ----------
-    data : ~numpy.ndarray
-        The time series N-D array.
-    dt : float
-        The time step between each y values.
-        i.e. the sampling time.
-    axis: int
-        The axis number to apply wavelet, i.e. temporal axis.
-            * Default is 0
-    dj : (optional) float
-        The spacing between discrete scales.
-        The smaller, the better scale resolution.
-            * Default is 0.25
-    s0 : (optional) float
-        The smallest scale of the wavelet.  
-            * Default is :math:`2 \cdot dt`.
-    j : (optional) int
-        The number of scales minus one.
-        Scales range from :math:`s0` up to :math:`s_0\cdot 2^{j\cdot dj}`, to give
-        a total of :math:`j+1` scales.
-            * Default is :math:`j=\log_2{(\\frac{n dt}{s_0 dj})}`.
-    mother : (optional) str
-        The mother wavelet function.
-        The choices are 'MORLET', 'PAUL', or 'DOG'
-            * Default is **'MORLET'**
-    param  : (optional) int
-        The mother wavelet parameter.\n
-        For **'MORLET'** param is k0, default is **6**.\n
-        For **'PAUL'** param is m, default is **4**.\n
-        For **'DOG'** param is m, default is **2**.\n
-    pad : (optional) bool
-        If set True, pad time series with enough zeros to get
-        N up to the next higher power of 2.
-        This prevents wraparound from the end of the time series
-        to the beginning, and also speeds up the FFT's 
-        used to do the wavelet transform.
-        This will not eliminate all edge effects.
-    
-    Notes
-    -----
-        This function based on the IDL code WAVELET.PRO written by C. Torrence, 
-        and Python code waveletFuncitions.py written by E. Predybayalo.
-    
-    References
-    ----------
-    Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
-    *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
-    http://paos.colorado.edu/research/wavelets/
-    
-    Example
-    -------
-    >>> from fisspy.analysis import wavelet
-    >>> res = wavelet.wavelet(data,dt,dj=dj,j=j,mother=mother,pad=True)
-    >>> wavelet = res.wavelet
-    >>> period = res.period
-    >>> scale = res.scale
-    >>> coi = res.coi
-    """
-    
     def __init__(self, data, dt, axis=0, dj=0.25, s0=None, j=None,
                  mother='MORLET', param=False, pad=True):
+        """
+        Compute the wavelet transform of the given data
+        with sampling rate dt.
+        
+        By default, the MORLET wavelet (k0=6) is used.
+        The wavelet basis is normalized to have total energy=1
+        at all scales.
+                
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            The time series N-D array.
+        dt : `float`
+            The time step between each y values.
+            i.e. the sampling time.
+        axis: `int`
+            The axis number to apply wavelet, i.e. temporal axis.
+                * Default is 0
+        dj : `float` (optional)
+            The spacing between discrete scales.
+            The smaller, the better scale resolution.
+                * Default is 0.25
+        s0 : `float` (optional)
+            The smallest scale of the wavelet.  
+                * Default is :math:`2 \cdot dt`.
+        j : `int` (optional)
+            The number of scales minus one.
+            Scales range from :math:`s0` up to :math:`s_0\cdot 2^{j\cdot dj}`, to give
+            a total of :math:`j+1` scales.
+                * Default is :math:`j=\log_2{(\\frac{n dt}{s_0 dj})}`.
+        mother : `str` (optional)
+            The mother wavelet function.
+            The choices are 'MORLET', 'PAUL', or 'DOG'
+                * Default is **'MORLET'**
+        param  : `int` (optional)
+            The mother wavelet parameter.\n
+            For **'MORLET'** param is k0, default is **6**.\n
+            For **'PAUL'** param is m, default is **4**.\n
+            For **'DOG'** param is m, default is **2**.\n
+        pad : `bool` (optional)
+            If set True, pad time series with enough zeros to get
+            N up to the next higher power of 2.
+            This prevents wraparound from the end of the time series
+            to the beginning, and also speeds up the FFT's 
+            used to do the wavelet transform.
+            This will not eliminate all edge effects.
+        
+        Notes
+        -----
+            This function based on the IDL code WAVELET.PRO written by C. Torrence, 
+            and Python code waveletFuncitions.py written by E. Predybayalo.
+        
+        References
+        ----------
+        Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
+        *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
+        http://paos.colorado.edu/research/wavelets/
+        
+        Example
+        -------
+        >>> from fisspy.analysis import wavelet
+        >>> res = wavelet.wavelet(data,dt,dj=dj,j=j,mother=mother,pad=True)
+        >>> wavelet = res.wavelet
+        >>> period = res.period
+        >>> scale = res.scale
+        >>> coi = res.coi
+        """
         
         shape0 = np.array(data.shape)
         self.n0 = shape0[axis]
@@ -102,7 +101,8 @@ class Wavelet:
         self.mother = mother.upper()
         self.param = param
         self.pad = pad
-        self.axis= axis
+        self.axis = axis
+        self.data = data
         
         #padding
         if pad:
@@ -116,13 +116,13 @@ class Wavelet:
         #wavenumber
         k1 = np.arange(1,self.n//2+1)*2.*np.pi/self.n/dt
         k2 = -k1[:int((self.n-1)/2)][::-1]
-        self.k = np.concatenate(([0.],k1,k2))
+        k = np.concatenate(([0.],k1,k2))
         
         #Scale array
         self.scale = self.s0*2**(np.arange(self.j+1,dtype=float)*dj)
         
         #base return
-        self._motherFunc()
+        self._motherFunc(k)
         self.coi *= self.dt*np.append(np.arange((self.n0+1)//2),
                                       np.arange(self.n0//2-1,-1,-1))
         
@@ -216,7 +216,7 @@ class Wavelet:
         iwave=self.dj*self.dt**0.5/(self.cdelta*psi0)*np.dot(scale2, wavelet.real)
         return iwave
     
-    def _motherFunc(self):
+    def _motherFunc(self, k):
         """
         Compute the Fourier factor and period.
         
@@ -254,15 +254,15 @@ class Wavelet:
         http://paos.colorado.edu/research/wavelets/
             
         """
-        kp = self.k > 0.
-        scale2 = self.scale[:,None]
+        kp = k > 0.
+        scale2 = self.scale[:, None]
         pi = np.pi
         
         if self.mother == 'MORLET':
             if not self.param:
                 self.param = 6.
-            expn = -(scale2*self.k-self.param)**2/2.*kp
-            norm = pi**(-0.25)*(self.n*self.k[1]*scale2)**0.5
+            expn = -(scale2*k-self.param)**2/2.*kp
+            norm = pi**(-0.25)*(self.n*k[1]*scale2)**0.5
             self.nowf = norm*np.exp(expn)*kp*(expn > -100.)
             self.fourier_factor = 4*pi/(self.param+(2+self.param**2)**0.5)
             self.coi = self.fourier_factor/2**0.5
@@ -270,18 +270,18 @@ class Wavelet:
         elif self.mother == 'PAUL':
             if not self.param:
                 self.param = 4.
-            expn = -scale2*self.k*kp
-            norm = 2**self.param*(scale2*self.k[1]*self.n/(self.param*gamma(2*self.param)))**0.5
-            self.nowf = norm*np.exp(expn)*((scale2*self.k)**self.param)*kp*(expn > -100.)
+            expn = -scale2*k*kp
+            norm = 2**self.param*(scale2*k[1]*self.n/(self.param*gamma(2*self.param)))**0.5
+            self.nowf = norm*np.exp(expn)*((scale2*k)**self.param)*kp*(expn > -100.)
             self.fourier_factor = 4*pi/(2*self.param+1)
             self.coi = self.fourier_factor*2**0.5
             
         elif self.mother == 'DOG':
             if not self.param:
                 self.param = 2.
-            expn = -(scale2*self.k)**2/2.
-            norm = (scale2*self.k[1]*self.n/gamma(self.param+0.5))**0.5
-            self.nowf = -norm*1j**self.param*(scale2*self.k)**self.param*np.exp(expn)
+            expn = -(scale2*k)**2/2.
+            norm = (scale2*k[1]*self.n/gamma(self.param+0.5))**0.5
+            self.nowf = -norm*1j**self.param*(scale2*k)**self.param*np.exp(expn)
             self.fourier_factor = 2*pi*(2./(2*self.param+1))**0.5
             self.coi = self.fourier_factor/2**0.5
         else:
@@ -572,21 +572,113 @@ class Wavelet:
         if pguess >= 1-1e-4:
             pdiff = xguess
         return pdiff
-
-#%%!TODO
-#make powerSpectrum
-#plot wavelet power spectrum contour
-#plot global wavelet power spectrum
-#%%
-#class PowerMap:
-#    
-#    """
-#    """
-#    def __init__(self, fname):
-#        1111
-
-
-
+    
+    def plot(self, levels=None, time=None, title=[None,None,None,None], figsize=(9,8)):
+        """
+        Plot Time Series, Wavelet Power Spectrum, 
+        Global Power Spectrum and Scale-average Time Series.
+        
+        """
+        import matplotlib.pyplot as plt
+        from matplotlib.gridspec import GridSpec
+        from matplotlib import ticker
+        
+        n = len(self.data)
+        gs = GridSpec(7, 4)
+        self.fig = plt.figure(figsize=figsize)
+        self.axData = self.fig.add_subplot(gs[0:2, :3])
+        self.axWavlet = self.fig.add_subplot(gs[2:5, :3])
+        self.axGlobal = self.fig.add_subplot(gs[2:5, 3])
+        self.axScaleAvg = self.fig.add_subplot(gs[5:7, :3])
+        
+        if time is None:
+            time = self.dt*np.arange(n)
+        if levels is None:
+            levels = [0.1, 0.25, 0.4,
+                      0.55, 0.7, 1]
+        # Plot Time Series
+        if title[0] is None:
+            self.axData.set_title('a) Time Series')
+        else:
+            self.axData.set_title(title)
+        self.axData.set_xlabel('Time')
+        self.axData.set_ylabel('Value')
+        self.axData.minorticks_on()
+        self.axData.tick_params(which='both', direction='in')
+        self.pData = self.axData.plot(time, self.data,
+                                      color='k', lw=1.5)[0]
+        
+        
+        # Contour Plot Wavelet Power Spectrum
+        if title[1] is None:
+            self.axWavelet.set_title('b) Wavelet Power Spectrum')
+        else:
+            self.axWavelet.set_title(title)
+        self.axWavelet.set_xlabel('Time')
+        self.axWavelet.set_ylabel('Period')
+        self.axWavelet.minorticks_on()
+        
+        self.axWavelet.tick_params(which='both', direction='in')
+        self.axWavelet.set_yscale('symlog', basey=2)
+        self.axWavelet.yaxis.set_major_formatter(ticker.ScalarFormatter())
+        self.axWavelet.ticklabel_format(axis='y',style='plain')
+        self.axWavelet.set_ylim(64, 0.5)
+        
+        wpower = self.power/self.power.max()
+        self.contour = self.axWavelet.contourf(time, self.period,
+                                               wpower, len(levels),
+                                               colors=['w'])
+        self.contourIm = self.axWavelet.contourf(self.contour,
+                                                 levels=levels
+                                                 )
+        self.axWavelet.fill_between(time, self.coi/60,
+                                    self.period.max(), color='grey',
+                                    alpha=0.4, hatch='x')
+        
+        # Plot Global Wavelet Spectrum
+        if title[2] is None:
+            self.axGlobal.set_title('c) Global')
+        else:
+            self.axGlobal.set_title(title)
+        self.axGlobal.set_xlabel('Power')
+        self.axGlobal.set_ylabel('')
+        self.axGlobal.set_yscale('symlog', basey=2)
+        self.axGlobal.minorticks_on()
+        self.axGlobal.yaxis.set_major_formatter(ticker.ScalarFormatter())
+        self.axGlobal.ticklabel_format(axis='y',style='plain')
+        self.axGlobal.set_ylim(64, 0.5)
+        self.axGlobal.tick_params(which='both', direction='in')
+        self.pGlobal = self.axGlobal(self.gws, self.period,
+                                     color='k', lw=1.5)[0]
+        
+        var = np.var(self.data, ddof=1)
+        dof = n - self.scale
+        lag1 = 0.72
+        gsig = self.wave_signif(var, sigtest=1, lag1=lag1,
+                           dof=dof, mother=self.mother)
+        self.pSig = self.axGlobal.plot(gsig,
+                                       self.period, 
+                                       'r--',
+                                       lw=1.5)
+        
+        
+        # Plot Scale-average Time Series
+        if title[3] is None:
+            self.axScaleAvg.set_title('d) Scale-average Time Series')
+        else:
+            self.axScaleAvg.set_title(title)
+        self.axScaleAvg.set_xlabel('Time')
+        self.axScaleAvg.set_ylabel('Avg')
+        self.axScaleAvg.minorticks_on()
+        self.axScaleAvg.tick_params(which='both', direction='in')
+        
+        period_mask = (self.period >= 2)*(self.period < 8)
+        power_norm = self.power/self.scale[:,None]
+        power_avg = self.dj*self.dt/self.cdelta*power_norm[period_mask,:].sum(0)
+        self.pScaleAvg = self.axScaleAvg.plot(time,
+                                              power_avg,
+                                              color='k',
+                                              lw=1.5)
 
 
 
