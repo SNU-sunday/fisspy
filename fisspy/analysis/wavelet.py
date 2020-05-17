@@ -13,7 +13,7 @@ __email__ =  "jhkang@astro.snu.ac.kr"
 __all__ = ['Wavelet', 'WaveCoherency']
 
 class Wavelet:
-    def __init__(self, data, dt, axis=0, dj=0.25, s0=None, j=None,
+    def __init__(self, data, dt, axis=0, dj=0.1, s0=None, j=None,
                  mother='MORLET', param=False, pad=True):
         """
         Compute the wavelet transform of the given data
@@ -81,11 +81,15 @@ class Wavelet:
         >>> period = res.period
         >>> scale = res.scale
         >>> coi = res.coi
+        >>> power = res.power
+        >>> gws = res.gws
+        >>> res.plot()
         """
         
         shape0 = np.array(data.shape)
         self.n0 = shape0[axis]
         shape = np.delete(shape0, axis)
+        self.axis = axis
         
         if not s0:
             s0 = 2*dt
@@ -103,6 +107,7 @@ class Wavelet:
         self.pad = pad
         self.axis = axis
         self.data = data
+        self.ndim = data.ndim
         
         #padding
         if pad:
@@ -454,7 +459,7 @@ class Wavelet:
         self._motherParam()
         try:
             len(gws)
-            self.fft_theor = gws.copy()
+            fft_theor = gws.copy()
         except:
             fft_theor = (1-lag1**2)/(1-2*lag1*np.cos(self.freq*2*np.pi)+lag1**2)
             fft_theor*=var
@@ -573,12 +578,16 @@ class Wavelet:
             pdiff = xguess
         return pdiff
     
-    def plot(self, levels=None, time=None, title=[None,None,None,None], figsize=(9,8)):
+    def plot(self, lag1=None, levels=None, time=None, title=[None,None,None,None], figsize=(9,8)):
         """
         Plot Time Series, Wavelet Power Spectrum, 
         Global Power Spectrum and Scale-average Time Series.
         
+        Parameters
+        ---------
+        
         """
+        
         import matplotlib.pyplot as plt
         from matplotlib.gridspec import GridSpec
         from matplotlib import ticker
@@ -587,34 +596,36 @@ class Wavelet:
         gs = GridSpec(7, 4)
         self.fig = plt.figure(figsize=figsize)
         self.axData = self.fig.add_subplot(gs[0:2, :3])
-        self.axWavlet = self.fig.add_subplot(gs[2:5, :3])
-        self.axGlobal = self.fig.add_subplot(gs[2:5, 3])
-        self.axScaleAvg = self.fig.add_subplot(gs[5:7, :3])
+        self.axWavelet = self.fig.add_subplot(gs[2:5, :3], sharex=self.axData)
+        self.axGlobal = self.fig.add_subplot(gs[2:5, 3], sharey=self.axWavelet)
+        self.axScaleAvg = self.fig.add_subplot(gs[5:7, :3], sharex=self.axData)
+        periodMax = self.period.max()
+        periodMax = periodMax if periodMax<64 else 64
         
         if time is None:
             time = self.dt*np.arange(n)
         if levels is None:
             levels = [0.1, 0.25, 0.4,
                       0.55, 0.7, 1]
+        if lag1 is None:
+            lag1 = 0.0
         # Plot Time Series
         if title[0] is None:
             self.axData.set_title('a) Time Series')
         else:
             self.axData.set_title(title)
-        self.axData.set_xlabel('Time')
         self.axData.set_ylabel('Value')
         self.axData.minorticks_on()
         self.axData.tick_params(which='both', direction='in')
         self.pData = self.axData.plot(time, self.data,
                                       color='k', lw=1.5)[0]
-        
+        self.axData.set_xlim(time[0], time[-1])
         
         # Contour Plot Wavelet Power Spectrum
         if title[1] is None:
             self.axWavelet.set_title('b) Wavelet Power Spectrum')
         else:
             self.axWavelet.set_title(title)
-        self.axWavelet.set_xlabel('Time')
         self.axWavelet.set_ylabel('Period')
         self.axWavelet.minorticks_on()
         
@@ -622,16 +633,22 @@ class Wavelet:
         self.axWavelet.set_yscale('symlog', basey=2)
         self.axWavelet.yaxis.set_major_formatter(ticker.ScalarFormatter())
         self.axWavelet.ticklabel_format(axis='y',style='plain')
-        self.axWavelet.set_ylim(64, 0.5)
+        self.axWavelet.set_ylim(periodMax, 0.5)
         
         wpower = self.power/self.power.max()
         self.contour = self.axWavelet.contourf(time, self.period,
                                                wpower, len(levels),
                                                colors=['w'])
         self.contourIm = self.axWavelet.contourf(self.contour,
-                                                 levels=levels
-                                                 )
-        self.axWavelet.fill_between(time, self.coi/60,
+                                                 levels=levels,
+                                                 cmap=plt.cm.jet)
+        signif = self.waveSignif(self.data, sigtest=0, lag1=lag1, siglvl=0.90,
+                                 gws=self.gws)
+        sig95 = signif[:,None]
+        var = np.var(self.data, ddof=1)
+        sig95 = self.power/sig95/var
+        self.axWavelet.contour(time, self.period, sig95, [-99,1] ,colors='r')
+        self.axWavelet.fill_between(time, self.coi,
                                     self.period.max(), color='grey',
                                     alpha=0.4, hatch='x')
         
@@ -646,16 +663,15 @@ class Wavelet:
         self.axGlobal.minorticks_on()
         self.axGlobal.yaxis.set_major_formatter(ticker.ScalarFormatter())
         self.axGlobal.ticklabel_format(axis='y',style='plain')
-        self.axGlobal.set_ylim(64, 0.5)
         self.axGlobal.tick_params(which='both', direction='in')
-        self.pGlobal = self.axGlobal(self.gws, self.period,
-                                     color='k', lw=1.5)[0]
+        self.pGlobal = self.axGlobal.plot(self.gws, self.period,
+                                          color='k', lw=1.5)[0]
         
-        var = np.var(self.data, ddof=1)
+        
         dof = n - self.scale
-        lag1 = 0.72
-        gsig = self.wave_signif(var, sigtest=1, lag1=lag1,
-                           dof=dof, mother=self.mother)
+#        lag1 = 0.72
+        gsig = self.waveSignif(self.data, sigtest=1, lag1=0,
+                               dof=dof)
         self.pSig = self.axGlobal.plot(gsig,
                                        self.period, 
                                        'r--',
@@ -679,6 +695,8 @@ class Wavelet:
                                               power_avg,
                                               color='k',
                                               lw=1.5)
+        
+        self.fig.tight_layout()
 
 
 
@@ -842,7 +860,7 @@ def WaveCoherency(wave1, time1, scale1, wave2, time2, scale2,
                 power1=power1,power2=power2,coi=coi)
     return result
 
-def _fastConv(self, f, g, nt):
+def _fastConv(f, g, nt):
     """
     Fast convolution two given function f and g (method 1)
     """
@@ -859,7 +877,7 @@ def _fastConv(self, f, g, nt):
     result=conv[wh1,wh2.T].T
     return result
 
-def _fastConv2(self, f, g):
+def _fastConv2(f, g):
     """
     Fast convolution two given function f and g (method2)
     """
