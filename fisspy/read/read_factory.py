@@ -273,8 +273,29 @@ class FISS:
                               self.wave.max()+self.wvDelt/2,
                               0, self.ny*self.yDelt]
 
-    def reload(self, x1=0, x2=None, y1=0, y2=None, ncoeff=False, xmax=False, noiseSuppression=False):
-
+    def reload(self, x1=0, x2=None, y1=0, y2=None, ncoeff=False, noiseSuppression=False):
+        """
+        Reload the FISS data.
+        
+        Parameters
+        ----------
+        x1 : `int`, optional
+            A left limit index of the frame along the scan direction
+        x2 : `int`, optional
+            A right limit index of the frame along the scan direction
+            If None, read all data from x1 to the end of the scan direction.
+        y1 : `int`, optional
+            A left limit index of the frame along the scan direction
+        y2 : `int`, optional
+            A right limit index of the frame along the scan direction
+            If None, read all data from x1 to the end of the scan direction.
+        noceff : `int`, optional
+            he number of coefficients to be used for
+            the construction of frame in a pca file.
+        noiseSuprresion : `bool`, optional
+            If True Savitzky-Golay noise filter is applied in the wavelength axis.
+            Default is False.
+        """
         self.data = readFrame(self.filename, self.pfile, x1=x1, x2=x2, y1=y1, y2=y2, ncoeff=ncoeff)
         self.ny, self.nx, self.nwv = self.data.shape
         self.x1 = x1
@@ -400,6 +421,39 @@ class FISS:
     def lambdaMeter(self, hw= 0.03, sp= 5e3, wvRange= False,
                     wvinput= True, shift2velocity= True):
         """
+        Calculate the doppler shift by using lambda-meter (bisector) method.
+        
+        Parameters
+        ----------
+        shift2velocity: `bool`
+            Convert doppler shift value with the velocity (unit: km s^-1)
+        wvinput : bool
+            There are two cases.
+    
+        * Case wvinput==True
+    
+                hw : float
+                    A half width of the horizontal line segment.
+    
+            Returns
+            -------
+            wc : nd ndarray
+                n dimensional array of central wavelength values.
+            intc : nd ndarray
+                n dimensional array of intensies of the line segment.\\
+    
+        * Case wvinput==False
+    
+                sp : float
+                    An intensity of the horiznotal segment.
+    
+            Returns
+            -------
+            wc : nd ndarray
+                n dimensional array of central wavelength values.
+            hwc : nd ndarray
+                n dimensional array of half widths of the line segment.
+        
         """
         lineShift, intensity = lambdameter(self.wave, self.data,
                                            ref_spectrum= self.refProfile,

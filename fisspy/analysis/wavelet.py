@@ -13,78 +13,80 @@ __email__ =  "jhkang@astro.snu.ac.kr"
 __all__ = ['Wavelet', 'WaveCoherency']
 
 class Wavelet:
+    """
+    Compute the wavelet transform of the given data
+    with sampling rate dt.
+    
+    By default, the MORLET wavelet (k0=6) is used.
+    The wavelet basis is normalized to have total energy=1
+    at all scales.
+            
+    Parameters
+    ----------
+    data : `~numpy.ndarray`
+        The time series N-D array.
+    dt : `float`
+        The time step between each y values.
+        i.e. the sampling time.
+    axis: `int`
+        The axis number to apply wavelet, i.e. temporal axis.
+            * Default is 0
+    dj : `float` (optional)
+        The spacing between discrete scales.
+        The smaller, the better scale resolution.
+            * Default is 0.25
+    s0 : `float` (optional)
+        The smallest scale of the wavelet.  
+            * Default is :math:`2 \cdot dt`.
+    j : `int` (optional)
+        The number of scales minus one.
+        Scales range from :math:`s0` up to :math:`s_0\cdot 2^{j\cdot dj}`, to give
+        a total of :math:`j+1` scales.
+            * Default is :math:`j=\log_2{(\\frac{n dt}{s_0 dj})}`.
+    mother : `str` (optional)
+        The mother wavelet function.
+        The choices are 'MORLET', 'PAUL', or 'DOG'
+            * Default is **'MORLET'**
+    param  : `int` (optional)
+        The mother wavelet parameter.\n
+        For **'MORLET'** param is k0, default is **6**.\n
+        For **'PAUL'** param is m, default is **4**.\n
+        For **'DOG'** param is m, default is **2**.\n
+    pad : `bool` (optional)
+        If set True, pad time series with enough zeros to get
+        N up to the next higher power of 2.
+        This prevents wraparound from the end of the time series
+        to the beginning, and also speeds up the FFT's 
+        used to do the wavelet transform.
+        This will not eliminate all edge effects.
+    
+    Notes
+    -----
+        This function based on the IDL code WAVELET.PRO written by C. Torrence, 
+        and Python code waveletFuncitions.py written by E. Predybayalo.
+    
+    References
+    ----------
+    Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
+    *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
+    http://paos.colorado.edu/research/wavelets/
+    
+    Example
+    -------
+    >>> from fisspy.analysis import wavelet
+    >>> res = wavelet.wavelet(data,dt,dj=dj,j=j,mother=mother,pad=True)
+    >>> wavelet = res.wavelet
+    >>> period = res.period
+    >>> scale = res.scale
+    >>> coi = res.coi
+    >>> power = res.power
+    >>> gws = res.gws
+    >>> res.plot()
+    """
+    
     def __init__(self, data, dt, axis=0, dj=0.1, s0=None, j=None,
                  mother='MORLET', param=False, pad=True):
-        """
-        Compute the wavelet transform of the given data
-        with sampling rate dt.
-        
-        By default, the MORLET wavelet (k0=6) is used.
-        The wavelet basis is normalized to have total energy=1
-        at all scales.
-                
-        Parameters
-        ----------
-        data : `~numpy.ndarray`
-            The time series N-D array.
-        dt : `float`
-            The time step between each y values.
-            i.e. the sampling time.
-        axis: `int`
-            The axis number to apply wavelet, i.e. temporal axis.
-                * Default is 0
-        dj : `float` (optional)
-            The spacing between discrete scales.
-            The smaller, the better scale resolution.
-                * Default is 0.25
-        s0 : `float` (optional)
-            The smallest scale of the wavelet.  
-                * Default is :math:`2 \cdot dt`.
-        j : `int` (optional)
-            The number of scales minus one.
-            Scales range from :math:`s0` up to :math:`s_0\cdot 2^{j\cdot dj}`, to give
-            a total of :math:`j+1` scales.
-                * Default is :math:`j=\log_2{(\\frac{n dt}{s_0 dj})}`.
-        mother : `str` (optional)
-            The mother wavelet function.
-            The choices are 'MORLET', 'PAUL', or 'DOG'
-                * Default is **'MORLET'**
-        param  : `int` (optional)
-            The mother wavelet parameter.\n
-            For **'MORLET'** param is k0, default is **6**.\n
-            For **'PAUL'** param is m, default is **4**.\n
-            For **'DOG'** param is m, default is **2**.\n
-        pad : `bool` (optional)
-            If set True, pad time series with enough zeros to get
-            N up to the next higher power of 2.
-            This prevents wraparound from the end of the time series
-            to the beginning, and also speeds up the FFT's 
-            used to do the wavelet transform.
-            This will not eliminate all edge effects.
-        
-        Notes
-        -----
-            This function based on the IDL code WAVELET.PRO written by C. Torrence, 
-            and Python code waveletFuncitions.py written by E. Predybayalo.
-        
-        References
-        ----------
-        Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
-        *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
-        http://paos.colorado.edu/research/wavelets/
-        
-        Example
-        -------
-        >>> from fisspy.analysis import wavelet
-        >>> res = wavelet.wavelet(data,dt,dj=dj,j=j,mother=mother,pad=True)
-        >>> wavelet = res.wavelet
-        >>> period = res.period
-        >>> scale = res.scale
-        >>> coi = res.coi
-        >>> power = res.power
-        >>> gws = res.gws
-        >>> res.plot()
-        """
+
         
         shape0 = np.array(data.shape)
         self.n0 = shape0[axis]
@@ -377,14 +379,24 @@ class Wavelet:
     def saveWavelet(self, savename):
         """
         Save the wavelet spectrum as .npz file.
+        
+        Parameters
+        ----------
+        savename: `str`
+            filename to save the wavelet data.
+        
+        Example
+        -------
+        >>> res.saveWavelet(r'c:\test\wavelet.npz')
         """
+        
         np.savez(savename, wavelet=self.wavelet,
                  period=self.period, scale=self.scale,
                  coi=self.coi, dt=self.dt, dj=self.dj, axis=self.axis,
                  s0=self.s0, j=self.j, mother=self.mother,
                  param=self.param)
         
-    def waveSignif(self, y, sigtest=0, lag1=0.0, siglvl=0.95, dof=-1,
+    def waveSignif(self, y, sigtest=0, lag1=0., siglvl=0.95, dof=-1,
                     gws=False, confidence=False):
         """
         Compute the significance levels for a wavelet transform.
@@ -394,8 +406,6 @@ class Wavelet:
         y : float or ~numpy.ndarray
             The time series, or the variance of the time series.
             If this is a single number, it is assumed to be the variance.
-        dt : float
-            The sampling time.
         sigtest : (optional) int
             Allowable values are 0, 1, or 2
             if 0 (default), then just do a regular chi-square test
@@ -424,7 +434,7 @@ class Wavelet:
                 
         Returns
         -------
-            signif : ~numpy.ndarray
+        signif : ~numpy.ndarray
                 Significance levels as a function of scale.
             
         Notes
@@ -578,14 +588,29 @@ class Wavelet:
             pdiff = xguess
         return pdiff
     
-    def plot(self, lag1=None, levels=None, time=None, title=[None,None,None,None], figsize=(9,8)):
+    def plot(self, lag1=0., levels=None, time=None, title=[None,None,None,None], figsize=(9,8)):
         """
         Plot Time Series, Wavelet Power Spectrum, 
         Global Power Spectrum and Scale-average Time Series.
         
         Parameters
         ---------
+        lag1: (optional) `float`
+            LAG 1 Autocorrelation, used for signif levels.
+                * Default is 0.
+        levels: list
+            Contour levels to plot the wavelet spectrum.
+        time: `~numpy.ndarray`
+            time array.
+        title: list
+            title of the each figure.
+        figsize: tuple
+            figure size
         
+        Example
+        -------
+        >>> ww = Wavelet(data, 0.25, dj=0.1, s0=0.25, j=9/0.1)
+        >>> ww.plot()
         """
         
         import matplotlib.pyplot as plt
@@ -605,10 +630,9 @@ class Wavelet:
         if time is None:
             time = self.dt*np.arange(n)
         if levels is None:
-            levels = [0.1, 0.25, 0.4,
-                      0.55, 0.7, 1]
-        if lag1 is None:
-            lag1 = 0.0
+            levels = [0.05, 0.12,0.229,
+                      0.45]
+            
         # Plot Time Series
         if title[0] is None:
             self.axData.set_title('a) Time Series')
@@ -641,13 +665,13 @@ class Wavelet:
                                                colors=['w'])
         self.contourIm = self.axWavelet.contourf(self.contour,
                                                  levels=levels,
-                                                 cmap=plt.cm.jet)
+                                                 cmap=plt.cm.Spectral_r, extend='max')
         signif = self.waveSignif(self.data, sigtest=0, lag1=lag1, siglvl=0.90,
                                  gws=self.gws)
-        sig95 = signif[:,None]
-        var = np.var(self.data, ddof=1)
-        sig95 = self.power/sig95/var
-        self.axWavelet.contour(time, self.period, sig95, [-99,1] ,colors='r')
+        sig90 = signif[:,None]
+        sig90 = self.power/sig90
+        
+        self.axWavelet.contour(time, self.period, sig90, [-99,1] ,colors='r')
         self.axWavelet.fill_between(time, self.coi,
                                     self.period.max(), color='grey',
                                     alpha=0.4, hatch='x')
@@ -778,7 +802,6 @@ def WaveCoherency(wave1, time1, scale1, wave2, time2, scale2,
     -------
     >>> res=wavelet.wave_coherency(wave1,time1,scale1,wave2,time2,scale2,\
                                    dt,dj,coi=coi)
-    
     """
     if not dt: dt=time1[1]-time1[0]
     if not dj: dj=np.log2(scale1[1]/scale1[0])
