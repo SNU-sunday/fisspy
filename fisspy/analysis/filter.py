@@ -7,6 +7,20 @@ __email__ = "jhkang@astro.snu.ac.kr"
 
 def FourierFilter(data, nt, dt, filterRange, axis=0):
     """
+    Apply the Fourier bandpass filter.
+
+    Parameters
+    ----------
+    data: `~numpy.ndarray`
+        N-dimensional array.
+    nt: `int`
+        The number of the time domain.
+    dt: `float`
+        Bin size of the time domain.
+    filterRange: `list`
+        Bandpass filter range.
+    axis: `int`
+        time axis of the data.
     """
     if data.dtype == '>f8':
         data = data.astype(float)

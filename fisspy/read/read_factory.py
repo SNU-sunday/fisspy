@@ -38,8 +38,9 @@ class rawData:
     >>> raw = rawData(f)
     >>> raw.imshow()
     """
-
     def __init__(self, file):
+
+
         if file.find('A.fts') != -1 or  file.find('B.fts') != -1:
             self.ftype = 'raw'
         scale = 0.16
@@ -276,7 +277,7 @@ class FISS:
     def reload(self, x1=0, x2=None, y1=0, y2=None, ncoeff=False, noiseSuppression=False):
         """
         Reload the FISS data.
-        
+
         Parameters
         ----------
         x1 : `int`, optional
@@ -422,38 +423,38 @@ class FISS:
                     wvinput= True, shift2velocity= True):
         """
         Calculate the doppler shift by using lambda-meter (bisector) method.
-        
+
         Parameters
         ----------
         shift2velocity: `bool`
             Convert doppler shift value with the velocity (unit: km s^-1)
         wvinput : bool
             There are two cases.
-    
+
         * Case wvinput==True
-    
+
                 hw : float
                     A half width of the horizontal line segment.
-    
+
             Returns
             -------
             wc : nd ndarray
                 n dimensional array of central wavelength values.
             intc : nd ndarray
                 n dimensional array of intensies of the line segment.\\
-    
+
         * Case wvinput==False
-    
+
                 sp : float
                     An intensity of the horiznotal segment.
-    
+
             Returns
             -------
             wc : nd ndarray
                 n dimensional array of central wavelength values.
             hwc : nd ndarray
                 n dimensional array of half widths of the line segment.
-        
+
         """
         lineShift, intensity = lambdameter(self.wave, self.data,
                                            ref_spectrum= self.refProfile,
@@ -539,7 +540,22 @@ class FISS:
 
 class FD:
     """
-    Read the FISS DATA (FD) file.
+    Read the FISS Data (FD) file.
+
+    Parameters
+    ----------
+    fdFile: `str`
+        File name of the FISS Data file.
+    maskFile: `str`
+        File name of the mask file.
+    timeFile: `str`
+        File name of the time file.
+    maskValue: `float`
+        Value of the mask pixel.
+    spatialAvg: `bool`
+        Subtract the spatially averaged value to all pixels.
+    timeAvg: `bool`
+        Subtract the temporal averaged value to all pixels.
     """
     def __init__(self, fdFile, maskFile, timeFile, maskValue=-1,
                  spatialAvg=False, timeAvg=False):
@@ -1188,9 +1204,3 @@ def _isoRefTime(refTime):
     sec = refTime[13:15]
     isot = '%s-%s-%sT%s:%s:%s'%(year, month, day, hour, minute, sec)
     return Time(isot)
-
-
-
-class FISS1:
-    def __init__(self):
-        None
