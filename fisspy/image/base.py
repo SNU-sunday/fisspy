@@ -21,22 +21,24 @@ __all__ = ['alignoffset', 'rot_trans', 'img_interpol',
 def alignoffset(image0, template0, cor= None):
     """
     Align the two images
-    
+
     Parameters
     ----------
-    image0 : ~numpy.ndarray
+    image0 : `~numpy.ndarray`
         Images for coalignment with the template
         A 2 or 3 Dimensional array ex) image[t,y,x]
-    template0 : ~numpy.ndarray
+    template0 : `~numpy.ndarray`
         The reference image for coalignment
         2D Dimensional arry ex) template[y,x]
-           
+    cor: `bool`
+        If True, return the correlation between template0 and result.
+
     Returns
     -------
     sh : `~numpy.ndarray`
         Shifted value of the image0
         np.array([yshift, xshift])
-    
+
     Notes
     -----
         This code is based on the IDL code ALIGNOFFSET.PRO
@@ -44,7 +46,7 @@ def alignoffset(image0, template0, cor= None):
         Using for loop is faster than inputing the 3D array as,
             >>> res=np.array([alignoffset(image[i],template) for i in range(nt)])
         where nt is the number of elements for the first axis.
-        
+
     Example
     -------
     >>> sh = alignoffset(image,template)
@@ -52,46 +54,46 @@ def alignoffset(image0, template0, cor= None):
     st=template0.shape
     si=image0.shape
     ndim=image0.ndim
-    
+
     if ndim>3 or ndim==1:
         raise ValueError('Image must be 2 or 3 dimensional array.')
-    
+
     if not st[-1]==si[-1] and st[-2]==si[-2]:
         raise ValueError('Image and template are incompatible\n'
         'The shape of image = %s\n The shape of template = %s.'
         %(repr(si[-2:]),repr(st)))
-    
+
     if not ('float' in str(image0.dtype) and 'float' in str(template0.dtype)):
         image0=image0.astype(float)
         template0=template0.astype(float)
-    
+
     nx=st[-1]
     ny=st[-2]
-    
+
     template=template0.copy()
     image=image0.copy()
-    
+
     image=(image.T-image.mean(axis=(-1,-2))).T
     template-=template.mean()
-    
+
     sigx=nx/6.
     sigy=ny/6.
     gx=np.arange(-nx/2,nx/2,1)
-    gy=np.arange(-ny/2,ny/2,1)[:,np.newaxis]    
+    gy=np.arange(-ny/2,ny/2,1)[:,np.newaxis]
     gauss=np.exp(-0.5*((gx/sigx)**2+(gy/sigy)**2))**0.5
-    
+
     #give the cross-correlation weight on the image center
     #to avoid the fast change the image by the granular motion or strong flow
-    
+
     corr=ifft2(ifft2(template*gauss)*fft2(image*gauss)).real
 
-    # calculate the cross-correlation values by using convolution theorem and 
+    # calculate the cross-correlation values by using convolution theorem and
     # DFT-IDFT relation
-    
+
     s=np.where((corr.T==corr.max(axis=(-1,-2))).T)
     x0=s[-1]-nx*(s[-1]>nx/2)
     y0=s[-2]-ny*(s[-2]>ny/2)
-    
+
     if ndim==2:
         cc=np.empty((3,3))
         cc[0,1]=corr[s[0]-1,s[1]]
@@ -111,10 +113,10 @@ def alignoffset(image0, template0, cor= None):
         x1=0.5*(cc[:,1,0]-cc[:,1,2])/(cc[:,1,2]+cc[:,1,0]-2.*cc[:,1,1])
         y1=0.5*(cc[:,0,1]-cc[:,2,1])/(cc[:,2,1]+cc[:,0,1]-2.*cc[:,1,1])
 
-    
+
     x=x0+x1
     y=y0+y1
-    
+
     if cor and ndim == 3:
         img = shift3d(image, [-y, -x])
         xx = np.arange(nx) + x[:,None,None]
@@ -142,40 +144,40 @@ def alignoffset(image0, template0, cor= None):
 def rot_trans(x, y, xc, yc, angle, dx=0, dy=0, inv=False):
     """
     Rotational transpose for input array of x, y and angle.
-    
+
     Parameters
     ----------
-    x : ~numpy.ndarray
+    x : `~numpy.ndarray`
         Row vector of x.
-    y : ~numpy.ndarray
+    y : `~numpy.ndarray`
         Colomn vector of y.
-    xc : float
+    xc : `float`
         x-axis value of roatation center.
-    yc : float
+    yc : `float`
         y-axis value of rotation center.
-    angle : float
+    angle : `float`
         Roation angle in 'radian' unit.
-    dx : (optional) float
-        The relative displacement along x-axis 
+    dx : (optional) `float`
+        The relative displacement along x-axis
         of the rotated images to the reference image.
-    dy : (optional) float
-        The relative displacement along y-axis 
+    dy : (optional) `float`
+        The relative displacement along y-axis
         of the rotated images to the reference image.
-    inv : (optional) bool
+    inv : (optional) `bool`
         If True, the do inverse roattion transpose.
-    
+
     Returns
     -------
     xt : ~numpy.ndarray
         Transposed coordinates of the positions in the observed frame
     yt : ~numpy.ndarray
         Transposed coordinates of the positions in the observed frame
-        
+
     Notes
     -----
     The input angle must be in radian.
     """
-    
+
     if not inv:
         xt=(x-xc)*np.cos(angle)+(y-yc)*np.sin(angle)+xc+dx
         yt=-(x-xc)*np.sin(angle)+(y-yc)*np.cos(angle)+yc+dy
@@ -187,30 +189,30 @@ def rot_trans(x, y, xc, yc, angle, dx=0, dy=0, inv=False):
 def img_interpol(img, xa, ya, xt, yt, missing=-1):
     """
     Interpolate the image for a given coordinates.
-    
+
     Parameters
     ----------
-    img : ~numpy.ndarray
+    img : `~numpy.ndarray`
         2 dimensional array of image.
-    xa : ~numpy.ndarray
+    xa : `~numpy.ndarray`
         Row vector of x.
-    ya : ~numpy.ndarray
+    ya : `~numpy.ndarray`
         Colomn vector of y.
-    xt : ~numpy.ndarray
+    xt : `~numpy.ndarray`
         Coordinates of the positions in the observed frame.
-    yt : ~numpy.ndarray
+    yt : `~numpy.ndarray`
         Coordinates of the positions in the observed frame.
-    missing : (optional) float
+    missing : (optional) `float`
         The value of extrapolated position.
         Default is -1, and it means the False.
         If False, then extrapolate the given position.
-    
+
     Returns
     -------
     res : ~numpy.ndarray
         2 dimensional interpolated image.
         The size of res is same as input img.
-    
+
     """
     shape=xt.shape
     size=xt.size
@@ -230,34 +232,34 @@ def img_interpol3d(img, ta, ya, xa,
                    tt, yt, xt, missing=-1):
     """
     Interpolate the image for a given coordinates.
-    
+
     Parameters
     ----------
-    img : ~numpy.ndarray
+    img : `~numpy.ndarray`
         3 dimensional array of image.
-    xa : ~numpy.ndarray
+    xa : `~numpy.ndarray`
         Row vector of x.
-    ya : ~numpy.ndarray
+    ya : `~numpy.ndarray`
         Colomn vector of y.
-    ta : ~numpy.ndarray
+    ta : `~numpy.ndarray`
         Frame vector.
-    tt : ~numpy.ndarray
+    tt : `~numpy.ndarray`
         Coordinates of the positions in the observed frame.
-    yt : ~numpy.ndarray
+    yt : `~numpy.ndarray`
         Coordinates of the positions in the observed frame.
-    xt : ~numpy.ndarray
+    xt : `~numpy.ndarray`
         Coordinates of the positions in the observed frame.
-    missing : (optional) float
+    missing : (optional) `float`
         The value of extrapolated position.
         Default is -1, and it means the False.
         If False, then extrapolate the given position.
-    
+
     Returns
     -------
     res : ~numpy.ndarray
         3 dimensional interpolated image.
         The size of res is same as input img.
-    
+
     """
     shape = xt.shape
     size = xt.size
@@ -277,91 +279,91 @@ def rotation(img, angle, x, y, xc, yc,
              dx=0, dy=0, inv=False, missing=-1):
     """
     Rotate the input image with angle and center position.
-    
+
     Parameters
     ----------
-    img : ~numpy.ndarray
+    img : `~numpy.ndarray`
         2 dimensional array of image.
-    x : ~numpy.ndarray
+    x : `~numpy.ndarray`
         Row vector of x.
-    y : ~numpy.ndarray
+    y : `~numpy.ndarray`
         Colomn vector of y.
-    xc : float
+    xc : `float`
         x-axis value of roatation center.
-    yc : float
+    yc : `float`
         y-axis value of rotation center.
-    angle : float
+    angle : `float`
         Roation angle in 'radian' unit.
-    dx : (optional) float
-        The relative displacement along x-axis 
+    dx : (optional) `float`
+        The relative displacement along x-axis
         of the rotated images to the reference image.
-    dy : (optional) float
-        The relative displacement along y-axis 
+    dy : (optional) `float`
+        The relative displacement along y-axis
         of the rotated images to the reference image.
-    inv : (optional) bool
+    inv : (optional) `bool`
         If True, the do inverse roattion transpose.
-    missing : (optional) float
+    missing : (optional) `float`
         The value of extrapolated position.
         Default is -1, and it means the False.
         If False, then extrapolate the given position.
-    
+
     Returns
     -------
-    result : ~numpy.ndarray
+    result : `~numpy.ndarray`
         rotated image.
-        
+
     Notes
     -----
     It is not conventional rotation.
     It is just used for the coalignment module.
-    
+
     """
     xt,yt=rot_trans(x, y, xc, yc, angle,
                     dx, dy, inv)
     return img_interpol(img, x, y, xt, yt,
                         missing=missing)
-    
+
 def rot(img, angle, xc=False, yc=False,
         dx=0, dy=0, xmargin=0, ymargin=0, missing=0):
     """
     Rotate the input image.
-    
+
     Parameters
     ----------
-    img : ~numpy.ndarray
+    img : `~numpy.ndarray`
         2 dimensional array of image.
-    angle : float
+    angle : `float`
         Roation angle in 'radian' unit.
-    xc : (optional) float
+    xc : (optional) `float`
         x-axis value of roatation center.
         Default is the image center.
-    yc : (optional) float
+    yc : (optional) `float`
         y-axis value of rotation center.
         Default is the image center.
-    dx : (optional) float
-        The relative displacement along x-axis 
+    dx : (optional) `float`
+        The relative displacement along x-axis
         of the rotated images to the reference image.
-    dy : (optional) float
-        The relative displacement along y-axis 
+    dy : (optional) `float`
+        The relative displacement along y-axis
         of the rotated images to the reference image.
-    xmargin : (optional) float
+    xmargin : (optional) `float`
         The margin value of x-axis
-    ymargin : (optional) float
+    ymargin : (optional) `float`
         The margin value of y-axis
-    missing : (optional) float
+    missing : (optional) `float`
         The value of extrapolated position.
         Default is -1, and it means the False.
         If False, then extrapolate the given position.
-    
+
     Returns
     -------
-    result : ~numpy.ndarray
+    result : `~numpy.ndarray`
         rotated image.
-    
+
     Notes
     -----
     The input angle must be in radian unit.
-    
+
     """
     ny,nx=img.shape
     nx1=int(nx+2*xmargin)
@@ -370,7 +372,7 @@ def rot(img, angle, xc=False, yc=False,
     y=np.arange(ny)[:,None]
     xa=np.arange(nx1)-xmargin
     ya=(np.arange(ny1)-ymargin)[:,None]
-    
+
 
     if not xc:
         xc=nx/2
@@ -378,18 +380,22 @@ def rot(img, angle, xc=False, yc=False,
         yc=ny/2
     xt, yt=rot_trans(xa,ya,xc,yc,angle,dx=dx,dy=dy)
     return img_interpol(img,x,y,xt,yt,missing=missing)
-    
+
 def shift(image, sh, missing=0):
     """
     Shift the given image.
-    
+
     Parameters
     ----------
-    image :  ~numpy.ndarray
+    image :  `~numpy.ndarray`
         2 dimensional array.
     sh : tuple, list or ndarray
         tuple, list or ndarray of shifting value set (y,x)
-    
+    missing: `float`
+        The value of extrapolated position.
+        Default is -1, and it means the False.
+        If False, then extrapolate the given position.
+
     Returns
     -------
     simage : ~numpy.ndarray
@@ -400,41 +406,41 @@ def shift(image, sh, missing=0):
     y=np.arange(ny)[:,None]
     xt=x-sh[1]+y*0
     yt=y-sh[0]+x*0
-    
+
     return img_interpol(image,x,y,xt,yt,missing=missing)
 
 def shift3d(img, sh):
     """
     Shift the given image.
-    
+
     Parameters
     ----------
-    image :  ~numpy.ndarray
+    image :  `~numpy.ndarray`
         3 dimensional array.
     sh : tuple, list or ndarray
         tuple, list or ndarray of shifting value set (y,x)
-    
+
     Returns
     -------
     simage : ~numpy.ndarray
         shifted image.
     """
     nt, ny, nx =img.shape
-    
+
     t = np.arange(nt)[:,None,None]
     y = np.arange(ny)[None,:,None]
     x = np.arange(nx)
     tt = t + y*0 + x*0
     yt = y - sh[0][:, None, None] + t*0 + x*0
     xt = x - sh[1][:, None, None] + t*0 + y*0
-    
+
     return img_interpol3d(img, t, y, x, tt, yt, xt, missing=0)
 
 
-def diff_rot_correct(mmap,refx,refy,reftime):
+def diff_rot_correct(mmap, refx, refy, reftime):
     """
     Correct the solar rotation.
-    
+
     Parameters
     ----------
     mmap : sunpy.map.GenericMap
@@ -445,23 +451,23 @@ def diff_rot_correct(mmap,refx,refy,reftime):
         Vertical wcs information of reference frame.
     reftime : astropy.time.Time
         Time for the reference frame.
-    
+
     Returns
     -------
     smap : sunpy.map.GenericMap
         Solar rotation corrected map class.
-    
+
     """
-    
+
     refc = SkyCoord(refx, refy, obstime= reftime,
                     observer= get_earth(reftime),
                     frame= frames.Helioprojective)
-    
+
     date = mmap.date
     res = solar_rotate_coordinate(refc, time=date ,frame_time='synodic')
     x = res.Tx.value
     y = res.Ty.value
-    
+
     sx = x - refx.value
     sy = y - refy.value
     mmap.shift
@@ -469,7 +475,7 @@ def diff_rot_correct(mmap,refx,refy,reftime):
     return smap
 
 def _mapShift(map1, sx, sy):
-    
+
     new_meta = map1.meta.copy()
     new_meta['crval1'] = ((map1.meta['crval1']*
                            map1.spatial_units[0] +
@@ -479,12 +485,12 @@ def _mapShift(map1, sx, sy):
                            sy * map1.spatial_units[0]).to(map1.spatial_units[0])).value
     delx = sx/map1.meta['cdelt1']
     dely = sy/map1.meta['cdelt2']
-    
+
     smin = [0, 0]
     smax = [new_meta['naxis2']-1, new_meta['naxis1']-1]
     order = map1.data.shape
     interp = LinearSpline(smin, smax, order, map1.data)
-    
+
     x = np.arange(new_meta['naxis1'], dtype=float)
     xx0 = x * np.ones([new_meta['naxis2'],1])
     xx = xx0 + delx
@@ -494,10 +500,10 @@ def _mapShift(map1, sx, sy):
     size = new_meta['naxis1']*new_meta['naxis2']
     inp = np.array([yy.reshape(size), xx.reshape(size)])
     out = interp(inp.T)
-    
+
     out = out.reshape(new_meta['naxis2'], new_meta['naxis1'])
     mask = np.invert((xx<=xx0.max())*(xx>=xx0.min())*(yy<=yy0.max())*(yy>=yy0.min()))
     out[mask] = 0
     newMap = map1._new_instance(out, new_meta, map1.plot_settings)
-    
+
     return newMap

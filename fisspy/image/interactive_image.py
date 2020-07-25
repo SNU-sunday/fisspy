@@ -12,14 +12,16 @@ __email__ = "jhkang@astro.snu.ac.kr"
 class singleBand:
     """
     Draw interactive FISS raster, spectrogram and profile for single band.
-    
+
     Parameters
     ----------
+    fiss: `fisspy.read.FISS`
+        FISS class.
     x : `float`
         X position that you draw a spectral profile.
         Default is image center.
     y : `float`
-        Y position that you draw a spectral profile.            
+        Y position that you draw a spectral profile.
         Default is image center.
     wv : `float`
         Wavelength positin that you draw a raster images.
@@ -34,20 +36,21 @@ class singleBand:
     helpBox : `bool`
         Show the interacitve key and simple explanation.
         Default is True
-    
+
     Other Parameters
     ----------------
     **kwargs : `~matplotlib.pyplot` properties
     """
-    
-    def __init__(self, fiss, x=None, y=None, wv=None, scale='minMax', 
+
+    def __init__(self, fiss, x=None, y=None, wv=None, scale='minMax',
                  sigFactor=3, helpBox=True, **kwargs):
+
         try:
             plt.rcParams['keymap.back'].remove('left')
             plt.rcParams['keymap.forward'].remove('right')
         except:
             pass
-        
+
         if not x:
             x = fiss.nx//2*fiss.xDelt
         if not y:
@@ -84,8 +87,8 @@ class singleBand:
         self._yMax = self.extentRaster[3]
         self._wvMin = self.extentSpectro[0]
         self._wvMax = self.extentSpectro[1]
-        
-            
+
+
         #Keyboard helpBox
         if helpBox:
             helpFig = plt.figure('Keyboard Help Box', figsize=[3.5,3])
@@ -100,8 +103,8 @@ class singleBand:
             ax.text(0.05,0.4,'right: Increase the wavelength')
             ax.text(0.05,0.3,'left: Decrease the wavelength')
             ax.text(0.05,0.2,'spacebar: Change to current mouse point')
-            
-            
+
+
         #figure setting
         figsize = kwargs.pop('figsize', [10, 6])
         self.cmap = kwargs.pop('cmap', fiss.cmap)
@@ -133,12 +136,12 @@ class singleBand:
                                 self.data[self.ypix, self.xpix].max()+100)
         self.axProfile.minorticks_on()
         self.axProfile.tick_params(which='both', direction='in')
-        
-        
+
+
         # Draw
         raster = _getRaster(self.data, self.wave, self.wv, self.wvDelt,
                             hw=self.hw)
-            
+
         if self.cam == 'A':
             spectro = self.data[:, self.xpix]
         elif self.cam == 'B':
@@ -159,7 +162,7 @@ class singleBand:
         self.plotProfile = self.axProfile.plot(self.wave,
                                                self.data[self.ypix, self.xpix],
                                                color='k')[0]
-        
+
         if self.scale == 'std':
             self.imRaster.set_clim(np.median(raster)-raster.std()*self.sigFactor,
                                    np.median(raster)+raster.std()*self.sigFactor)
@@ -168,7 +171,7 @@ class singleBand:
         else:
             self.imRaster.set_clim(raster.min(), raster.max())
             self.imSpectro.set_clim(spectro.min(), spectro.max())
-        
+
         # Reference
         self.vlineRaster = self.axRaster.axvline(self.x,
                                                  linestyle='dashed',
@@ -188,11 +191,11 @@ class singleBand:
         self.axSpectro.set_aspect(adjustable='box', aspect='auto')
         self.fig.tight_layout()
         self.fig.canvas.mpl_connect('key_press_event', self._on_key)
-        
+
         plt.show()
-        
+
     def _on_key(self, event):
-        
+
         ### Interactive keyboard input
         # Position
         if event.key == 'ctrl+right':
@@ -281,8 +284,8 @@ class singleBand:
         if self.wv != self.wv0:
             self._chRaster()
         self.fig.canvas.draw_idle()
-        
-        
+
+
     def _chRaster(self):
         self.wv0 = self.wv
         raster = _getRaster(self.data, self.wave, self.wv, self.wvDelt,
@@ -298,11 +301,11 @@ class singleBand:
                                    np.median(raster)+raster.std()*self.sigFactor)
         else:
             self.imRaster.set_clim(raster.min(), raster.max())
-            
+
     def _chSpect(self):
         self.x0 = self.x
         self.y0 = self.y
-        
+
         if self.cam == 'A':
             spectro = self.data[:, self.xpix]
         elif self.cam == 'B':
@@ -314,7 +317,7 @@ class singleBand:
         self.hlineSpectro.set_ydata(self.y)
         self.vlineRaster.set_xdata(self.x)
         self.pointRaster.set_offsets([self.x, self.y])
-        
+
         self.axProfile.set_ylim(self.data[self.ypix, self.xpix].min()-100,
                                 self.data[self.ypix, self.xpix].max()+100)
         self.axSpectro.set_title(r"X = %.2f'', Y = %.2f'' (X$_{pix}$ = %i, Y$_{pix}$ = %i)"%(self.x, self.y, self.xpix, self.ypix))
@@ -326,30 +329,60 @@ class singleBand:
 
     def chRasterClim(self, cmin, cmax):
         self.imRaster.set_clim(cmin, cmax)
-    
+
     def chSpectroClim(self, cmin, cmax):
         self.imSpectro.set_clim(cmin, cmax)
-        
+
     def chcmap(self, cmap):
         self.imRaster.set_cmap(cmap)
         self.imSpectro.set_cmap(cmap)
-        
+
 class dualBand:
     """
     Draw interactive FISS raster, spectrogram and profile for dual band.
-    
+
     Parameters
     ----------
-    
+    fissA: `fisspy.read.FISS`
+        FISS class.
+    fissB: `fisspy.read.FISS`
+        FISS class.
+    x : `float`
+        X position that you draw a spectral profile.
+        Default is image center.
+    y : `float`
+        Y position that you draw a spectral profile.
+        Default is image center.
+    wvA : `float`
+        Wavelength positin that you draw a raster images.
+        Default is central wavelength.
+    wvB : `float`
+        Wavelength positin that you draw a raster images.
+        Default is central wavelength.
+    scale : `string`
+        Scale method of colarbar limit.
+        Default is minMax.
+        option: 'minMax', 'std', 'log'
+    sigFactor : `float`
+        Factor of standard deviation.
+        This is worked if scale is set to be 'std'
+    helpBox : `bool`
+        Show the interacitve key and simple explanation.
+        Default is True
+
+    Other Parameters
+    ----------------
+    **kwargs : `~matplotlib.pyplot` properties
     """
     def __init__(self, fissA, fissB, x=None, y=None, wvA=None, wvB=None,
                  scale='minMax', sigFactor=3, helpBox=True, **kwargs):
+
         try:
             plt.rcParams['keymap.back'].remove('left')
             plt.rcParams['keymap.forward'].remove('right')
         except:
             pass
-        
+
         kwargs['interpolation'] = kwargs.pop('interpolation', 'bilinear')
         self.fissA = fissA
         self.fissB = fissB
@@ -368,13 +401,13 @@ class dualBand:
         self._xMax = self.extentRaster[1]
         self._yMin = self.extentRaster[2]
         self._yMax = self.extentRaster[3]
-        
+
         sh = alignoffset(self.fissB.data[:,:,50], self.fissA.data[:,:,-50])
         tmp = shift3d(fissB.data.transpose(2, 0, 1), -sh).transpose(1,2,0)
         self.fissB.data = tmp
         tmp[tmp<10]=1
         del tmp
-        
+
         if not x:
             x = self.nx//2*self.xDelt
         if not y:
@@ -400,7 +433,7 @@ class dualBand:
         self.yH = self.y
         self.wvAH = self.wvA
         self.wvBH = self.wvB
-        
+
         #Keyboard helpBox
         if helpBox:
             helpFig = plt.figure('Keyboard Help Box', figsize=[3.5,3])
@@ -417,7 +450,7 @@ class dualBand:
             ax.text(0.05,0.22,'up: Increase the wavelength of the fissB')
             ax.text(0.05,0.12,'down: Decrease the wavelength of the fissB')
             ax.text(0.05,0.02,'spacebar: Change to current mouse point')
-        
+
         #figure setting
         figsize = kwargs.pop('figsize', [12, 6])
         self.fig = plt.figure(figsize=figsize)
@@ -456,13 +489,13 @@ class dualBand:
         self.axProfileA.tick_params(which='both', direction='in')
         self.axProfileB.minorticks_on()
         self.axProfileB.tick_params(which='both', direction='in')
-        
+
         #Draw
         rasterA = _getRaster(self.fissA.data, self.fissA.wave, self.wvA,
                              self.fissA.wvDelt, hw=self.hw)
         rasterB = _getRaster(self.fissB.data, self.fissB.wave, self.wvB,
                              self.fissB.wvDelt, hw=self.hw)
-        
+
         whA = rasterA > 5
         whB = rasterB > 5
         if self.scale == 'log':
@@ -486,7 +519,7 @@ class dualBand:
         self.plotProfileB = self.axProfileB.plot(self.fissB.wave,
                                                  self.fissB.data[ypix, xpix],
                                                  color='k')[0]
-        
+
         if self.scale == 'std':
             self.imRasterA.set_clim(np.median(rasterA)-rasterA.std()*self.sigFactor,
                                     np.median(rasterA)+rasterA.std()*self.sigFactor)
@@ -495,7 +528,7 @@ class dualBand:
         else:
             self.imRasterA.set_clim(cminA, rasterA.max())
             self.imRasterB.set_clim(cminB, rasterB.max())
-            
+
         #Reference
         self.vlineRasterA = self.axRasterA.axvline(self.x,
                                                    linestyle='dashed',
@@ -517,11 +550,11 @@ class dualBand:
                                                    color='r')
         self.fig.tight_layout()
         self.fig.canvas.mpl_connect('key_press_event', self._on_key)
-        
-        
+
+
         plt.show()
     def _on_key(self, event):
-        
+
         if event.key == 'ctrl+right':
             if self.x < self._xMax:
                 self.x += self.xDelt
@@ -594,7 +627,7 @@ class dualBand:
             self.yb = self.y0
             self.wvAb = self.wvA0
             self.wvBb = self.wvB0
-        elif event.key == ' ' and (event.inaxes == self.axRasterA or 
+        elif event.key == ' ' and (event.inaxes == self.axRasterA or
                                         event.inaxes == self.axRasterB) :
             self.x = event.xdata
             self.y = event.ydata
@@ -632,7 +665,7 @@ class dualBand:
             self.yb = y
             self.wvAb = wvA
             self.wvBb = wvB
-            
+
         if self.x != self.x0 or self.y != self.y0:
             self._chSpect()
         if self.wvA != self.wvA0:
@@ -640,25 +673,25 @@ class dualBand:
         if self.wvB != self.wvB0:
             self._chRasterB()
         self.fig.canvas.draw_idle()
-        
+
     def _chSpect(self):
         self.x0 = self.x
         self.y0 = self.y
         xpix = int(round((self.x-self.xDelt/2)/self.xDelt))
         ypix = int(round((self.y-self.yDelt/2)/self.yDelt))
-        
+
         self.plotProfileA.set_ydata(self.fissA.data[ypix, xpix])
         self.plotProfileB.set_ydata(self.fissB.data[ypix, xpix])
         self.pointRasterA.set_offsets([self.x, self.y])
         self.pointRasterB.set_offsets([self.x, self.y])
         self.vlineRasterA.set_xdata(self.x)
         self.vlineRasterB.set_xdata(self.x)
-        
+
         self.axProfileA.set_ylim(self.fissA.data[ypix, xpix].min()-100,
                                  self.fissA.data[ypix, xpix].max()+100)
         self.axProfileB.set_ylim(self.fissB.data[ypix, xpix].min()-100,
                                  self.fissB.data[ypix, xpix].max()+100)
-        
+
     def _chRasterA(self):
         self.wvA0 = self.wvA
         rasterA = _getRaster(self.fissA.data, self.fissA.wave, self.wvA,
@@ -677,7 +710,7 @@ class dualBand:
                                     np.median(rasterA)+rasterA.std()*self.sigFactor)
         else:
             self.imRasterA.set_clim(cmin, rasterA.max())
-        
+
     def _chRasterB(self):
         self.wvB0 = self.wvB
         rasterB = _getRaster(self.fissB.data, self.fissB.wave, self.wvB,
@@ -696,9 +729,3 @@ class dualBand:
                                     np.median(rasterB)+rasterB.std()*self.sigFactor)
         else:
             self.imRasterB.set_clim(cmin, rasterB.max())
-            
-#class showWavelet:
-#    """
-#    """
-#    def __init__(self, wavelet):
-#        self
