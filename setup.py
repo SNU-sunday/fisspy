@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='fisspy',
-    version='0.9.75',
+    version='0.9.80',
     description='fisspy: Python analysis tools for GST/FISS',
     url='http://fiss.snu.ac.kr',
     author='Juhyung Kang',
@@ -13,7 +13,6 @@ setup(
     install_requires=["numba", "numpy", "scipy", "astropy>=3.0",
                       "sunpy>=1.0.0", "pandas", "matplotlib>=3.0",
 		      "interpolation>=2.0", "statsmodels",
-		      "suds-jurko", "pillow", "ffmpeg"],
+		      "suds-jurko", "pillow"],
     zip_safe=False
     )
-
