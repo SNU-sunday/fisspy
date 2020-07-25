@@ -727,42 +727,42 @@ class Wavelet:
 
 
 
-def WaveCoherency(wave1, time1, scale1, wave2, time2, scale2,
-                   dt=False, dj=False, coi=False, nosmooth=False):
-    """
-    Compute the wavelet coherency between two time series.
-    
-    Parameters
-    ----------
-    wave1 : ~numpy.ndarray
-        Wavelet power spectrum for time series 1.
-    time1 : ~numpy.ndarray
-        A vector of times for time series 1.
-    scale1 : ~numpy.ndarray
-        A vector of scales for time series 1.
-    wave2 : ~numpy.ndarray
-        Wavelet power spectrum for time series 2.
-    time2 : ~numpy.ndarray
-        A vector of times for time series 2.
-    scale2 : ~numpy.ndarray
-        A vector of scales for time series 2.
-    dt : (optional) float
-        Amount of time between each Y value, i.e. the sampling time.
-            If not input, then calculated from time1[1]-time1[0]
-    dj : (optional) float
-        The spacing between discrete scales.
-            If not input, then calculated from scale1
-    coi : (optional) ~numpy.ndarray
-        The array of the cone-of influence.
-    nosmooth : (optional) bool
-        If True, then just compute the global_coher, global_phase, and
-        the unsmoothed cross_wavelet and return.
-    
-    Returns
-    -------
-    result : dict
-        The result is dictionary has these information.
+
+class WaveCoherency:
+    def __init__(self, wave1, time1, scale1, wave2, time2, scale2,
+                 dt=False, dj=False, coi=False, nosmooth=False):
+        """
+        Compute the wavelet coherency between two time series.
         
+        Parameters
+        ----------
+        wave1 : ~numpy.ndarray
+            Wavelet power spectrum for time series 1.
+        time1 : ~numpy.ndarray
+            A vector of times for time series 1.
+        scale1 : ~numpy.ndarray
+            A vector of scales for time series 1.
+        wave2 : ~numpy.ndarray
+            Wavelet power spectrum for time series 2.
+        time2 : ~numpy.ndarray
+            A vector of times for time series 2.
+        scale2 : ~numpy.ndarray
+            A vector of scales for time series 2.
+        dt : (optional) float
+            Amount of time between each Y value, i.e. the sampling time.
+                If not input, then calculated from time1[1]-time1[0]
+        dj : (optional) float
+            The spacing between discrete scales.
+                If not input, then calculated from scale1
+        coi : (optional) ~numpy.ndarray
+            The array of the cone-of influence.
+        nosmooth : (optional) bool
+            If True, then just compute the global_coher, global_phase, and
+            the unsmoothed cross_wavelet and return.
+        
+        Returns
+        -------
+            
         cross_wavelet : ~numpy.ndarray
             The cross wavelet between the time series.
         time : ~numpy.ndarray
@@ -787,101 +787,103 @@ def WaveCoherency(wave1, time1, scale1, wave2, time2, scale2,
             same as power 1 but for time series 2.
         coi : ~numpy.ndarray
             The array of the cone-of influence.
+            
+        Notes
+        -----
+            This function based on the IDL code WAVE_COHERENCY.PRO written by C. Torrence, 
         
-    Notes
-    -----
-        This function based on the IDL code WAVE_COHERENCY.PRO written by C. Torrence, 
+        References
+        ----------
+        Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
+        *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
+        http://paos.colorado.edu/research/wavelets/
+        
+        Example
+        -------
+        >>> res = wavelet.WaveCoherency(wave1,time1,scale1,wave2,time2,scale2,\
+                                       dt,dj,coi=coi)
+        >>> cross_wave = res.cross_wavelet
+        >>> phase = res.wave_phase
+        >>> coher = res.wave_coher
+        >>> gCoher = res.global_coher
+        >>> gCross = res.global_cross
+        >>> gPhase = res.global_phase
+        >>> power1 = res.power1
+        >>> power2 = res.power2
+        >>> time_out = res.time
+        >>> scale_out = res.scale
+        """
+        if not dt: dt = time1[1]-time1[0]
+        if not dj: dj = np.log2(scale1[1]/scale1[0])
+        if time1 is time2:
+            t1s = 0
+            t1e = len(time1)
+            t2s = t1s
+            t2e = t1e
+        else:
+            otime_start = min([time1.min(),time2.min()])
+            otime_end = max([time1.max(),time2.max()])
+            t1 = np.where((time1 >= otime_start)*(time1 <= otime_end))[0]
+            t1s = t1[0]
+            t1e = t1[-1]+1
+            t2 = np.where((time2 >= otime_start)*(time2 <= otime_end))[0]
+            t2s = t2[0]
+            t2e = t2[-1]+1
+        
+        oscale_start = min([scale1.min(),scale2.min()])
+        oscale_end = max([scale1.max(),scale2.max()])
+        s1 = np.where((scale1 >= oscale_start)*(scale1 <= oscale_end))[0]
+        s2 = np.where((scale2 >= oscale_start)*(scale2 <= oscale_end))[0]
+        s1s = s1[0]
+        s1e = s1[-1]+1
+        s2s = s2[0]
+        s2e = s2[-1]+1
+        
+        self.cross_wavelet = wave1[s1s:s1e,t1s:t1e]*wave2[s2s:s2e,t2s:t2e].conj()
+        self.power1 = np.abs(wave1[s1s:s1e,t1s:t1e])**2
+        self.power2 = np.abs(wave2[s2s:s2e,t2s:t2e])**2
+        
+        self.time = time1[t1s:t1e]
+        self.scale = scale1[s1s:s1e]
+        nj = s1e-s1s
+        
+        global1 = self.power1.sum(1)
+        global2 = self.power2.sum(1)
+        self.global_cross = self.cross_wavelet.sum(1)
+        self.global_coher = np.abs(self.global_cross)**2/(global1*global2)
+        self.global_phase = np.arctan(self.global_cross.imag/self.global_cross.real)*180./np.pi
+        
+        if not nosmooth:
+            nt = (4*self.scale/dt)//2*4+1
+            nt2 = nt[:,None]
+            ntmax = nt.max()
+            g = np.arange(ntmax) * np.ones((nj,1))
+            wh = g >= nt2
+            time_wavelet = (g-nt2//2)*dt/self.scale[:,None]
+            wave_func = np.exp(-time_wavelet**2/2)
+            wave_func[wh] = 0
+            wave_func = (wave_func/wave_func.sum(1)[:,None]).real
+            self.cross_wavelet = _fastConv(self.cross_wavelet, wave_func, nt2)
+            self.power1 = _fastConv(self.power1, wave_func, nt2)
+            self.power2 = _fastConv(self.power2, wave_func, nt2)
+            scales = self.scale[:, None]
+            self.cross_wavelet /= scales
+            self.power1 /= scales
+            self.power2 /= scales
+            
+            nw = int(0.6/dj/2 + 0.5)*2-1
+            weight = np.ones(nw)/nw
+            self.cross_wavelet = _fastConv2(self.cross_wavelet, weight)
+            self.power1 = _fastConv2(self.power1,weight)
+            self.power2 = _fastConv2(self.power2,weight)
+            
+            self.wave_phase = 180./np.pi*np.arctan(self.cross_wavelet.imag/self.cross_wavelet.real)
+            power3=self.power1*self.power2
+            whp=power3 < 1e-9
+            power3[whp]=1e-9
+            self.wave_coher = (np.abs(self.cross_wavelet)**2/power3).real
     
-    References
-    ----------
-    Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
-    *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
-    http://paos.colorado.edu/research/wavelets/
-    
-    Example
-    -------
-    >>> res=wavelet.wave_coherency(wave1,time1,scale1,wave2,time2,scale2,\
-                                   dt,dj,coi=coi)
-    """
-    if not dt: dt=time1[1]-time1[0]
-    if not dj: dj=np.log2(scale1[1]/scale1[0])
-    if time1 is time2:
-        t1s=0
-        t1e=len(time1)
-        t2s=t1s
-        t2e=t1e
-    else:
-        otime_start=min([time1.min(),time2.min()])
-        otime_end=max([time1.max(),time2.max()])
-        t1=np.where((time1 >= otime_start)*(time1 <= otime_end))[0]
-        t1s=t1[0]
-        t1e=t1[-1]+1
-        t2=np.where((time2 >= otime_start)*(time2 <= otime_end))[0]
-        t2s=t2[0]
-        t2e=t2[-1]+1
-    
-    oscale_start=min([scale1.min(),scale2.min()])
-    oscale_end=max([scale1.max(),scale2.max()])
-    s1=np.where((scale1 >= oscale_start)*(scale1 <= oscale_end))[0]
-    s2=np.where((scale2 >= oscale_start)*(scale2 <= oscale_end))[0]
-    s1s=s1[0]
-    s1e=s1[-1]+1
-    s2s=s2[0]
-    s2e=s2[-1]+1
-    
-    cross_wavelet=wave1[s1s:s1e,t1s:t1e]*wave2[s2s:s2e,t2s:t2e].conj()
-    power1=np.abs(wave1[s1s:s1e,t1s:t1e])**2
-    power2=np.abs(wave2[s2s:s2e,t2s:t2e])**2
-    
-    time=time1[t1s:t1e]
-    scale=scale1[s1s:s1e]
-    nj=s1e-s1s
-    
-    global1=power1.sum(1)
-    global2=power2.sum(1)
-    global_cross = cross_wavelet.sum(1)
-    global_coher = np.abs(global_cross)**2/(global1*global2)
-    global_phase = np.arctan(global_cross.imag/global_cross.real)*180./np.pi
-    
-    if nosmooth:
-        result = dict(global_coherence=global_coher,global_phase=global_phase,
-                      cross_wavelet=cross_wavelet)
-        return result
-    
-    nt=(4*scale/dt)//2*4+1
-    nt2=nt[:,np.newaxis]
-    ntmax=nt.max()
-    g=np.arange(ntmax)*np.ones((nj,1))
-    wh=g >= nt2
-    time_wavelet=(g-nt2//2)*dt/scale[:,np.newaxis]
-    wave_func=np.exp(-time_wavelet**2/2)
-    wave_func[wh]=0
-    wave_func=(wave_func/wave_func.sum(1)[:,np.newaxis]).real
-    cross_wavelet=_fastConv(cross_wavelet,wave_func,nt2)
-    power1=_fastConv(power1,wave_func,nt2)
-    power2=_fastConv(power2,wave_func,nt2)
-    scales=scale[:,np.newaxis]
-    cross_wavelet/=scales
-    power1/=scales
-    power2/=scales
-    
-    nw=int(0.6/dj/2+0.5)*2-1
-    weight=np.ones(nw)/nw
-    cross_wavelet=_fastConv2(cross_wavelet,weight)
-    power1=_fastConv2(power1,weight)
-    power2=_fastConv2(power2,weight)
-    
-    wave_phase=180./np.pi*np.arctan(cross_wavelet.imag/cross_wavelet.real)
-    power3=power1*power2
-    whp=power3 < 1e-9
-    power3[whp]=1e-9
-    wave_coher=(np.abs(cross_wavelet)**2/power3).real
-    
-    result=dict(cross_wavelet=cross_wavelet,time=time,scale=scale,
-                wave_phase=wave_phase,wave_coher=wave_coher,
-                global_phase=global_phase,global_coher=global_coher,
-                power1=power1,power2=power2,coi=coi)
-    return result
+
 
 def _fastConv(f, g, nt):
     """
