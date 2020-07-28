@@ -1,0 +1,43 @@
+{% extends 'template.html' %}
+{% set active_page = "Guide" %}
+
+{% block content %}
+
+<body for="html-export">
+  <div class="container" id="my-style">
+<h1 class="page-header" id="installation">Installation</h1>
+
+<p><a href="https://pypi.python.org/pypi/fisspy/"><img src="https://img.shields.io/pypi/v/fisspy.svg" alt="Latest Version"></a> <a href="https://anaconda.org/conda-forge/fisspy"><img src="https://anaconda.org/conda-forge/fisspy/badges/version.svg" alt="Anaconda-Server Badge"></a> <a href="https://anaconda.org/conda-forge/fisspy"><img src="https://anaconda.org/conda-forge/fisspy/badges/downloads.svg" alt="Anaconda-Server Badge"></a></p>
+<br><br>
+<p>If you are new to Python please see the <a href="fisspy\python">Python Tutorial</a>, and install <a href="https://www.anaconda.com/">Anaconda</a>.</p>
+
+
+<h2 class="page-header" id="requirements">Requirements</h2>
+
+<ul>
+<li><a href="http://www.python.org">Python</a> &gt;= 3.6</li>
+<li><a href="http://astropy.org">Astropy</a> &gt;= 2.0</li>
+<li><a href="https://github.com/EconForge/interpolation.py">Interpolation</a> &gt;= 2.0.0</li>
+</ul>
+<p>These required packages are automatically installed if you install fisspy by using <a href="https://www.anaconda.com/">Anaconda</a>.</p>
+<h2 class="page-header" id="installing-fisspy-using-anaconda">Installing fisspy using Anaconda</h2>
+
+<p>To install fisspy launch a terminal (under linux or OSX) or the &apos;Anaconda command Prompt&apos; (under Windows). First add the conda-forge channels:</p>
+<pre data-role="codeBlock" data-info class="language-"><code>conda config --append channels conda-forge
+</code></pre><p>Then install the fisspy:</p>
+<pre data-role="codeBlock" data-info class="language-"><code>conda install fisspy
+</code></pre><p>You can also install the specific version of fisspy:</p>
+<pre data-role="codeBlock" data-info class="language-"><code>conda install fisspy=0.9.80
+</code></pre><h3 class="page-header" id="updating-fisspy">Updating fisspy</h3>
+
+<p>You can update to the latest version by running:</p>
+<pre data-role="codeBlock" data-info class="language-"><code>conda update fisspy
+</code></pre><h2 class="page-header" id="installing-fisspy-using-pypi">Installing fisspy using PyPI</h2>
+
+<p>You can also install fisspy by using PyPI, but we highly recommand to install fisspy by using Anaconda.</p>
+<pre data-role="codeBlock" data-info class="language-"><code>pip install fisspy
+</code></pre>
+      </div>
+
+    </body>
+{% endblock %}

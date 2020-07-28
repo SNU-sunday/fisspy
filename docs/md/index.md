@@ -22,7 +22,7 @@ Here, we provide user guide and example.
   - [FISSPy](/fisspy/fisspy)
   - [FISSPy read](/fisspy/read)
   - [FISSPy image](/fisspy/image)
-  - [FISSPy data](/fisspy/read)
+  - [FISSPy data](/fisspy/data)
   - [FISSPy analysis](/fisspy/analysis)
 - **Acknowledge**
   - [Acknowledgeing](/fisspy/acknowledge)
