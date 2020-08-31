@@ -75,9 +75,9 @@ def lambdameter(wv, data0, ref_spectrum=False, wvRange=False,
     if np.any(wvRange):
         ss = np.logical_and(wv >= wvRange[0], wv <= wvRange[1])
     else:
-        ss = np.logical_and(wv >= wv[0], wv <= wv[1])
-    
-    
+        ss = np.logical_and(wv >= wv[0], wv <= wv[-1])
+
+
     shape=data0.shape
     nw=shape[-1]
     reshape=shape[:-1]
@@ -101,7 +101,7 @@ def lambdameter(wv, data0, ref_spectrum=False, wvRange=False,
         wvoffset = np.zeros(shape[1])
     elif ndim >=4:
         raise ValueError('The dimension of data0 must be 2 or 3.')
-        
+
     if wv.shape[0] != nw:
         raise ValueError('The number of elements of wv and '
         'the number of elements of last axis for data are not equal.')
@@ -114,7 +114,7 @@ def lambdameter(wv, data0, ref_spectrum=False, wvRange=False,
         data = data0[:,ss].copy()
     elif ndim == 1:
         data = data0[ss].copy() * np.ones((5,nw))
-    
+
     na = int(data.size/nw)
     data = data.reshape((na,nw))
     s = data.argmin(axis=-1)
