@@ -1,0 +1,4668 @@
+{% extends 'template.html' %}
+{% set active_page = "Guide" %}
+
+{% block content %}
+
+
+<style type="text/css">
+
+/*!
+*
+* IPython base
+*
+*/
+.modal.fade .modal-dialog {
+  -webkit-transform: translate(0, 0);
+  -ms-transform: translate(0, 0);
+  -o-transform: translate(0, 0);
+  transform: translate(0, 0);
+}
+code {
+  color: #000;
+}
+pre {
+  font-size: inherit;
+  line-height: inherit;
+}
+label {
+  font-weight: normal;
+}
+/* Make the page background atleast 100% the height of the view port */
+/* Make the page itself atleast 70% the height of the view port */
+.border-box-sizing {
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+}
+.corner-all {
+  border-radius: 2px;
+}
+.no-padding {
+  padding: 0px;
+}
+
+
+/**
+ * Primary styles
+ *
+ * Author: Jupyter Development Team
+ */
+body {
+  background-color: #fff;
+  /* This makes sure that the body covers the entire window and needs to
+       be in a different element than the display: box in wrapper below */
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  top: 0px;
+  bottom: 0px;
+  overflow: visible;
+}
+body > #header {
+  /* Initially hidden to prevent FLOUC */
+  display: none;
+  background-color: #fff;
+  /* Display over codemirror */
+  position: relative;
+  z-index: 100;
+}
+body > #header #header-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 5px;
+  padding-bottom: 5px;
+  padding-top: 5px;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+}
+body > #header .header-bar {
+  width: 100%;
+  height: 1px;
+  background: #e7e7e7;
+  margin-bottom: -1px;
+}
+@media print {
+  body > #header {
+    display: none !important;
+  }
+}
+#header-spacer {
+  width: 100%;
+  visibility: hidden;
+}
+@media print {
+  #header-spacer {
+    display: none;
+  }
+}
+#ipython_notebook {
+  padding-left: 0px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+[dir="rtl"] #ipython_notebook {
+  margin-right: 10px;
+  margin-left: 0;
+}
+[dir="rtl"] #ipython_notebook.pull-left {
+  float: right !important;
+  float: right;
+}
+.flex-spacer {
+  flex: 1;
+}
+#noscript {
+  width: auto;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  text-align: center;
+  font-size: 22px;
+  color: red;
+  font-weight: bold;
+}
+#ipython_notebook img {
+  height: 28px;
+}
+#site {
+  width: 100%;
+  display: none;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  overflow: auto;
+}
+@media print {
+  #site {
+    height: auto !important;
+  }
+}
+/* Smaller buttons */
+.ui-button .ui-button-text {
+  padding: 0.2em 0.8em;
+  font-size: 77%;
+}
+input.ui-button {
+  padding: 0.3em 0.9em;
+}
+span#kernel_logo_widget {
+  margin: 0 10px;
+}
+span#login_widget {
+  float: right;
+}
+[dir="rtl"] span#login_widget {
+  float: left;
+}
+span#login_widget > .button,
+#logout {
+  color: #333;
+  background-color: #fff;
+  border-color: #ccc;
+}
+span#login_widget > .button:focus,
+#logout:focus,
+span#login_widget > .button.focus,
+#logout.focus {
+  color: #333;
+  background-color: #e6e6e6;
+  border-color: #8c8c8c;
+}
+span#login_widget > .button:hover,
+#logout:hover {
+  color: #333;
+  background-color: #e6e6e6;
+  border-color: #adadad;
+}
+span#login_widget > .button:active,
+#logout:active,
+span#login_widget > .button.active,
+#logout.active,
+.open > .dropdown-togglespan#login_widget > .button,
+.open > .dropdown-toggle#logout {
+  color: #333;
+  background-color: #e6e6e6;
+  border-color: #adadad;
+}
+span#login_widget > .button:active:hover,
+#logout:active:hover,
+span#login_widget > .button.active:hover,
+#logout.active:hover,
+.open > .dropdown-togglespan#login_widget > .button:hover,
+.open > .dropdown-toggle#logout:hover,
+span#login_widget > .button:active:focus,
+#logout:active:focus,
+span#login_widget > .button.active:focus,
+#logout.active:focus,
+.open > .dropdown-togglespan#login_widget > .button:focus,
+.open > .dropdown-toggle#logout:focus,
+span#login_widget > .button:active.focus,
+#logout:active.focus,
+span#login_widget > .button.active.focus,
+#logout.active.focus,
+.open > .dropdown-togglespan#login_widget > .button.focus,
+.open > .dropdown-toggle#logout.focus {
+  color: #333;
+  background-color: #d4d4d4;
+  border-color: #8c8c8c;
+}
+span#login_widget > .button:active,
+#logout:active,
+span#login_widget > .button.active,
+#logout.active,
+.open > .dropdown-togglespan#login_widget > .button,
+.open > .dropdown-toggle#logout {
+  background-image: none;
+}
+span#login_widget > .button.disabled:hover,
+#logout.disabled:hover,
+span#login_widget > .button[disabled]:hover,
+#logout[disabled]:hover,
+fieldset[disabled] span#login_widget > .button:hover,
+fieldset[disabled] #logout:hover,
+span#login_widget > .button.disabled:focus,
+#logout.disabled:focus,
+span#login_widget > .button[disabled]:focus,
+#logout[disabled]:focus,
+fieldset[disabled] span#login_widget > .button:focus,
+fieldset[disabled] #logout:focus,
+span#login_widget > .button.disabled.focus,
+#logout.disabled.focus,
+span#login_widget > .button[disabled].focus,
+#logout[disabled].focus,
+fieldset[disabled] span#login_widget > .button.focus,
+fieldset[disabled] #logout.focus {
+  background-color: #fff;
+  border-color: #ccc;
+}
+span#login_widget > .button .badge,
+#logout .badge {
+  color: #fff;
+  background-color: #333;
+}
+.nav-header {
+  text-transform: none;
+}
+#header > span {
+  margin-top: 10px;
+}
+.modal_stretch .modal-dialog {
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: vertical;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: vertical;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 80vh;
+}
+.modal_stretch .modal-dialog .modal-body {
+  max-height: calc(100vh - 200px);
+  overflow: auto;
+  flex: 1;
+}
+.modal-header {
+  cursor: move;
+}
+@media (min-width: 768px) {
+  .modal .modal-dialog {
+    width: 700px;
+  }
+}
+@media (min-width: 768px) {
+  select.form-control {
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+}
+/*!
+*
+* IPython auth
+*
+*/
+.center-nav {
+  display: inline-block;
+  margin-bottom: -4px;
+}
+[dir="rtl"] .center-nav form.pull-left {
+  float: right !important;
+  float: right;
+}
+[dir="rtl"] .center-nav .navbar-text {
+  float: right;
+}
+[dir="rtl"] .navbar-inner {
+  text-align: right;
+}
+[dir="rtl"] div.text-left {
+  text-align: right;
+}
+/*!
+*
+* IPython tree view
+*
+*/
+/* We need an invisible input field on top of the sentense*/
+/* "Drag file onto the list ..." */
+.alternate_upload {
+  background-color: none;
+  display: inline;
+}
+.alternate_upload.form {
+  padding: 0;
+  margin: 0;
+}
+.alternate_upload input.fileinput {
+  position: absolute;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 0;
+  z-index: 2;
+}
+.alternate_upload .btn-xs > input.fileinput {
+  margin: -1px -5px;
+}
+.alternate_upload .btn-upload {
+  position: relative;
+  height: 22px;
+}
+::-webkit-file-upload-button {
+  cursor: pointer;
+}
+/**
+ * Primary styles
+ *
+ * Author: Jupyter Development Team
+ */
+ul#tabs {
+  margin-bottom: 4px;
+}
+ul#tabs a {
+  padding-top: 6px;
+  padding-bottom: 4px;
+}
+[dir="rtl"] ul#tabs.nav-tabs > li {
+  float: right;
+}
+[dir="rtl"] ul#tabs.nav.nav-tabs {
+  padding-right: 0;
+}
+ul.breadcrumb a:focus,
+ul.breadcrumb a:hover {
+  text-decoration: none;
+}
+ul.breadcrumb i.icon-home {
+  font-size: 16px;
+  margin-right: 4px;
+}
+ul.breadcrumb span {
+  color: #5e5e5e;
+}
+.list_toolbar {
+  padding: 4px 0 4px 0;
+  vertical-align: middle;
+}
+.list_toolbar .tree-buttons {
+  padding-top: 1px;
+}
+[dir="rtl"] .list_toolbar .tree-buttons .pull-right {
+  float: left !important;
+  float: left;
+}
+[dir="rtl"] .list_toolbar .col-sm-4,
+[dir="rtl"] .list_toolbar .col-sm-8 {
+  float: right;
+}
+.dynamic-buttons {
+  padding-top: 3px;
+  display: inline-block;
+}
+.list_toolbar [class*="span"] {
+  min-height: 24px;
+}
+.list_header {
+  font-weight: bold;
+  background-color: #EEE;
+}
+.list_placeholder {
+  font-weight: bold;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 7px;
+  padding-right: 7px;
+}
+.list_container {
+  margin-top: 4px;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+}
+.list_container > div {
+  border-bottom: 1px solid #ddd;
+}
+.list_container > div:hover .list-item {
+  background-color: red;
+}
+.list_container > div:last-child {
+  border: none;
+}
+.list_item:hover .list_item {
+  background-color: #ddd;
+}
+.list_item a {
+  text-decoration: none;
+}
+.list_item:hover {
+  background-color: #fafafa;
+}
+.list_header > div,
+.list_item > div {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 7px;
+  padding-right: 7px;
+  line-height: 22px;
+}
+.list_header > div input,
+.list_item > div input {
+  margin-right: 7px;
+  margin-left: 14px;
+  vertical-align: text-bottom;
+  line-height: 22px;
+  position: relative;
+  top: -1px;
+}
+.list_header > div .item_link,
+.list_item > div .item_link {
+  margin-left: -1px;
+  vertical-align: baseline;
+  line-height: 22px;
+}
+[dir="rtl"] .list_item > div input {
+  margin-right: 0;
+}
+.new-file input[type=checkbox] {
+  visibility: hidden;
+}
+.item_name {
+  line-height: 22px;
+  height: 24px;
+}
+.item_icon {
+  font-size: 14px;
+  color: #5e5e5e;
+  margin-right: 7px;
+  margin-left: 7px;
+  line-height: 22px;
+  vertical-align: baseline;
+}
+.item_modified {
+  margin-right: 7px;
+  margin-left: 7px;
+}
+[dir="rtl"] .item_modified.pull-right {
+  float: left !important;
+  float: left;
+}
+.item_buttons {
+  line-height: 1em;
+  margin-left: -5px;
+}
+.item_buttons .btn,
+.item_buttons .btn-group,
+.item_buttons .input-group {
+  float: left;
+}
+.item_buttons > .btn,
+.item_buttons > .btn-group,
+.item_buttons > .input-group {
+  margin-left: 5px;
+}
+.item_buttons .btn {
+  min-width: 13ex;
+}
+.item_buttons .running-indicator {
+  padding-top: 4px;
+  color: #5cb85c;
+}
+.item_buttons .kernel-name {
+  padding-top: 4px;
+  color: #5bc0de;
+  margin-right: 7px;
+  float: left;
+}
+[dir="rtl"] .item_buttons.pull-right {
+  float: left !important;
+  float: left;
+}
+[dir="rtl"] .item_buttons .kernel-name {
+  margin-left: 7px;
+  float: right;
+}
+.toolbar_info {
+  height: 24px;
+  line-height: 24px;
+}
+.list_item input:not([type=checkbox]) {
+  padding-top: 3px;
+  padding-bottom: 3px;
+  height: 22px;
+  line-height: 14px;
+  margin: 0px;
+}
+.highlight_text {
+  color: blue;
+}
+#project_name {
+  display: inline-block;
+  padding-left: 7px;
+  margin-left: -2px;
+}
+#project_name > .breadcrumb {
+  padding: 0px;
+  margin-bottom: 0px;
+  background-color: transparent;
+  font-weight: bold;
+}
+.sort_button {
+  display: inline-block;
+  padding-left: 7px;
+}
+[dir="rtl"] .sort_button.pull-right {
+  float: left !important;
+  float: left;
+}
+#tree-selector {
+  padding-right: 0px;
+}
+#button-select-all {
+  min-width: 50px;
+}
+[dir="rtl"] #button-select-all.btn {
+  float: right ;
+}
+#select-all {
+  margin-left: 7px;
+  margin-right: 2px;
+  margin-top: 2px;
+  height: 16px;
+}
+[dir="rtl"] #select-all.pull-left {
+  float: right !important;
+  float: right;
+}
+.menu_icon {
+  margin-right: 2px;
+}
+.tab-content .row {
+  margin-left: 0px;
+  margin-right: 0px;
+}
+.folder_icon:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: "\f114";
+}
+.folder_icon:before.fa-pull-left {
+  margin-right: .3em;
+}
+.folder_icon:before.fa-pull-right {
+  margin-left: .3em;
+}
+.folder_icon:before.pull-left {
+  margin-right: .3em;
+}
+.folder_icon:before.pull-right {
+  margin-left: .3em;
+}
+.notebook_icon:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: "\f02d";
+  position: relative;
+  top: -1px;
+}
+.notebook_icon:before.fa-pull-left {
+  margin-right: .3em;
+}
+.notebook_icon:before.fa-pull-right {
+  margin-left: .3em;
+}
+.notebook_icon:before.pull-left {
+  margin-right: .3em;
+}
+.notebook_icon:before.pull-right {
+  margin-left: .3em;
+}
+.running_notebook_icon:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: "\f02d";
+  position: relative;
+  top: -1px;
+  color: #5cb85c;
+}
+.running_notebook_icon:before.fa-pull-left {
+  margin-right: .3em;
+}
+.running_notebook_icon:before.fa-pull-right {
+  margin-left: .3em;
+}
+.running_notebook_icon:before.pull-left {
+  margin-right: .3em;
+}
+.running_notebook_icon:before.pull-right {
+  margin-left: .3em;
+}
+.file_icon:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: "\f016";
+  position: relative;
+  top: -2px;
+}
+.file_icon:before.fa-pull-left {
+  margin-right: .3em;
+}
+.file_icon:before.fa-pull-right {
+  margin-left: .3em;
+}
+.file_icon:before.pull-left {
+  margin-right: .3em;
+}
+.file_icon:before.pull-right {
+  margin-left: .3em;
+}
+#notebook_toolbar .pull-right {
+  padding-top: 0px;
+  margin-right: -1px;
+}
+ul#new-menu {
+  left: auto;
+  right: 0;
+}
+#new-menu .dropdown-header {
+  font-size: 10px;
+  border-bottom: 1px solid #e5e5e5;
+  padding: 0 0 3px;
+  margin: -3px 20px 0;
+}
+.kernel-menu-icon {
+  padding-right: 12px;
+  width: 24px;
+  content: "\f096";
+}
+.kernel-menu-icon:before {
+  content: "\f096";
+}
+.kernel-menu-icon-current:before {
+  content: "\f00c";
+}
+#tab_content {
+  padding-top: 20px;
+}
+#running .panel-group .panel {
+  margin-top: 3px;
+  margin-bottom: 1em;
+}
+#running .panel-group .panel .panel-heading {
+  background-color: #EEE;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 7px;
+  padding-right: 7px;
+  line-height: 22px;
+}
+#running .panel-group .panel .panel-heading a:focus,
+#running .panel-group .panel .panel-heading a:hover {
+  text-decoration: none;
+}
+#running .panel-group .panel .panel-body {
+  padding: 0px;
+}
+#running .panel-group .panel .panel-body .list_container {
+  margin-top: 0px;
+  margin-bottom: 0px;
+  border: 0px;
+  border-radius: 0px;
+}
+#running .panel-group .panel .panel-body .list_container .list_item {
+  border-bottom: 1px solid #ddd;
+}
+#running .panel-group .panel .panel-body .list_container .list_item:last-child {
+  border-bottom: 0px;
+}
+.delete-button {
+  display: none;
+}
+.duplicate-button {
+  display: none;
+}
+.rename-button {
+  display: none;
+}
+.move-button {
+  display: none;
+}
+.download-button {
+  display: none;
+}
+.shutdown-button {
+  display: none;
+}
+.dynamic-instructions {
+  display: inline-block;
+  padding-top: 4px;
+}
+/*!
+*
+* IPython text editor webapp
+*
+*/
+.selected-keymap i.fa {
+  padding: 0px 5px;
+}
+.selected-keymap i.fa:before {
+  content: "\f00c";
+}
+#mode-menu {
+  overflow: auto;
+  max-height: 20em;
+}
+.edit_app #header {
+  -webkit-box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+  box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+}
+.edit_app #menubar .navbar {
+  /* Use a negative 1 bottom margin, so the border overlaps the border of the
+    header */
+  margin-bottom: -1px;
+}
+.dirty-indicator {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 20px;
+}
+.dirty-indicator.fa-pull-left {
+  margin-right: .3em;
+}
+.dirty-indicator.fa-pull-right {
+  margin-left: .3em;
+}
+.dirty-indicator.pull-left {
+  margin-right: .3em;
+}
+.dirty-indicator.pull-right {
+  margin-left: .3em;
+}
+.dirty-indicator-dirty {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 20px;
+}
+.dirty-indicator-dirty.fa-pull-left {
+  margin-right: .3em;
+}
+.dirty-indicator-dirty.fa-pull-right {
+  margin-left: .3em;
+}
+.dirty-indicator-dirty.pull-left {
+  margin-right: .3em;
+}
+.dirty-indicator-dirty.pull-right {
+  margin-left: .3em;
+}
+.dirty-indicator-clean {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 20px;
+}
+.dirty-indicator-clean.fa-pull-left {
+  margin-right: .3em;
+}
+.dirty-indicator-clean.fa-pull-right {
+  margin-left: .3em;
+}
+.dirty-indicator-clean.pull-left {
+  margin-right: .3em;
+}
+.dirty-indicator-clean.pull-right {
+  margin-left: .3em;
+}
+.dirty-indicator-clean:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: "\f00c";
+}
+.dirty-indicator-clean:before.fa-pull-left {
+  margin-right: .3em;
+}
+.dirty-indicator-clean:before.fa-pull-right {
+  margin-left: .3em;
+}
+.dirty-indicator-clean:before.pull-left {
+  margin-right: .3em;
+}
+.dirty-indicator-clean:before.pull-right {
+  margin-left: .3em;
+}
+#filename {
+  font-size: 16pt;
+  display: table;
+  padding: 0px 5px;
+}
+#current-mode {
+  padding-left: 5px;
+  padding-right: 5px;
+}
+#texteditor-backdrop {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+@media not print {
+  #texteditor-backdrop {
+    background-color: #EEE;
+  }
+}
+@media print {
+  #texteditor-backdrop #texteditor-container .CodeMirror-gutter,
+  #texteditor-backdrop #texteditor-container .CodeMirror-gutters {
+    background-color: #fff;
+  }
+}
+@media not print {
+  #texteditor-backdrop #texteditor-container .CodeMirror-gutter,
+  #texteditor-backdrop #texteditor-container .CodeMirror-gutters {
+    background-color: #fff;
+  }
+}
+@media not print {
+  #texteditor-backdrop #texteditor-container {
+    padding: 0px;
+    background-color: #fff;
+    -webkit-box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+    box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+  }
+}
+.CodeMirror-dialog {
+  background-color: #fff;
+}
+/*!
+*
+* IPython notebook
+*
+*/
+/* CSS font colors for translated ANSI escape sequences */
+/* The color values are a mix of
+   http://www.xcolors.net/dl/baskerville-ivorylight and
+   http://www.xcolors.net/dl/euphrasia */
+.ansi-black-fg {
+  color: #3E424D;
+}
+.ansi-black-bg {
+  background-color: #3E424D;
+}
+.ansi-black-intense-fg {
+  color: #282C36;
+}
+.ansi-black-intense-bg {
+  background-color: #282C36;
+}
+.ansi-red-fg {
+  color: #E75C58;
+}
+.ansi-red-bg {
+  background-color: #E75C58;
+}
+.ansi-red-intense-fg {
+  color: #B22B31;
+}
+.ansi-red-intense-bg {
+  background-color: #B22B31;
+}
+.ansi-green-fg {
+  color: #00A250;
+}
+.ansi-green-bg {
+  background-color: #00A250;
+}
+.ansi-green-intense-fg {
+  color: #007427;
+}
+.ansi-green-intense-bg {
+  background-color: #007427;
+}
+.ansi-yellow-fg {
+  color: #DDB62B;
+}
+.ansi-yellow-bg {
+  background-color: #DDB62B;
+}
+.ansi-yellow-intense-fg {
+  color: #B27D12;
+}
+.ansi-yellow-intense-bg {
+  background-color: #B27D12;
+}
+.ansi-blue-fg {
+  color: #208FFB;
+}
+.ansi-blue-bg {
+  background-color: #208FFB;
+}
+.ansi-blue-intense-fg {
+  color: #0065CA;
+}
+.ansi-blue-intense-bg {
+  background-color: #0065CA;
+}
+.ansi-magenta-fg {
+  color: #D160C4;
+}
+.ansi-magenta-bg {
+  background-color: #D160C4;
+}
+.ansi-magenta-intense-fg {
+  color: #A03196;
+}
+.ansi-magenta-intense-bg {
+  background-color: #A03196;
+}
+.ansi-cyan-fg {
+  color: #60C6C8;
+}
+.ansi-cyan-bg {
+  background-color: #60C6C8;
+}
+.ansi-cyan-intense-fg {
+  color: #258F8F;
+}
+.ansi-cyan-intense-bg {
+  background-color: #258F8F;
+}
+.ansi-white-fg {
+  color: #C5C1B4;
+}
+.ansi-white-bg {
+  background-color: #C5C1B4;
+}
+.ansi-white-intense-fg {
+  color: #A1A6B2;
+}
+.ansi-white-intense-bg {
+  background-color: #A1A6B2;
+}
+.ansi-default-inverse-fg {
+  color: #FFFFFF;
+}
+.ansi-default-inverse-bg {
+  background-color: #000000;
+}
+.ansi-bold {
+  font-weight: bold;
+}
+.ansi-underline {
+  text-decoration: underline;
+}
+/* The following styles are deprecated an will be removed in a future version */
+.ansibold {
+  font-weight: bold;
+}
+.ansi-inverse {
+  outline: 0.5px dotted;
+}
+/* use dark versions for foreground, to improve visibility */
+.ansiblack {
+  color: black;
+}
+.ansired {
+  color: darkred;
+}
+.ansigreen {
+  color: darkgreen;
+}
+.ansiyellow {
+  color: #c4a000;
+}
+.ansiblue {
+  color: darkblue;
+}
+.ansipurple {
+  color: darkviolet;
+}
+.ansicyan {
+  color: steelblue;
+}
+.ansigray {
+  color: gray;
+}
+/* and light for background, for the same reason */
+.ansibgblack {
+  background-color: black;
+}
+.ansibgred {
+  background-color: red;
+}
+.ansibggreen {
+  background-color: green;
+}
+.ansibgyellow {
+  background-color: yellow;
+}
+.ansibgblue {
+  background-color: blue;
+}
+.ansibgpurple {
+  background-color: magenta;
+}
+.ansibgcyan {
+  background-color: cyan;
+}
+.ansibggray {
+  background-color: gray;
+}
+div.cell {
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: vertical;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: vertical;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: 2px;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+  width: 100%;
+  padding: 5px;
+  /* This acts as a spacer between cells, that is outside the border */
+  margin: 0px;
+  outline: none;
+  position: relative;
+  overflow: visible;
+}
+div.cell:before {
+  position: absolute;
+  display: block;
+  top: -1px;
+  left: -1px;
+  width: 5px;
+  height: calc(100% +  2px);
+  content: '';
+  background: transparent;
+}
+div.cell.jupyter-soft-selected {
+  border-left-color: #E3F2FD;
+  border-left-width: 1px;
+  padding-left: 5px;
+  border-right-color: #E3F2FD;
+  border-right-width: 1px;
+  background: #E3F2FD;
+}
+@media print {
+  div.cell.jupyter-soft-selected {
+    border-color: transparent;
+  }
+}
+div.cell.selected,
+div.cell.selected.jupyter-soft-selected {
+  border-color: #ababab;
+}
+div.cell.selected:before,
+div.cell.selected.jupyter-soft-selected:before {
+  position: absolute;
+  display: block;
+  top: -1px;
+  left: -1px;
+  width: 5px;
+  height: calc(100% +  2px);
+  content: '';
+  background: #42A5F5;
+}
+@media print {
+  div.cell.selected,
+  div.cell.selected.jupyter-soft-selected {
+    border-color: transparent;
+  }
+}
+.edit_mode div.cell.selected {
+  border-color: #66BB6A;
+}
+.edit_mode div.cell.selected:before {
+  position: absolute;
+  display: block;
+  top: -1px;
+  left: -1px;
+  width: 5px;
+  height: calc(100% +  2px);
+  content: '';
+  background: #66BB6A;
+}
+@media print {
+  .edit_mode div.cell.selected {
+    border-color: transparent;
+  }
+}
+.prompt {
+  /* This needs to be wide enough for 3 digit prompt numbers: In[100]: */
+  min-width: 14ex;
+  /* This padding is tuned to match the padding on the CodeMirror editor. */
+  padding: 0.4em;
+  margin: 0px;
+  font-family: monospace;
+  text-align: right;
+  /* This has to match that of the the CodeMirror class line-height below */
+  line-height: 1.21429em;
+  /* Don't highlight prompt number selection */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Use default cursor */
+  cursor: default;
+}
+@media (max-width: 540px) {
+  .prompt {
+    text-align: left;
+  }
+}
+div.inner_cell {
+  min-width: 0;
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: vertical;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: vertical;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  /* Old browsers */
+  -webkit-box-flex: 1;
+  -moz-box-flex: 1;
+  box-flex: 1;
+  /* Modern browsers */
+  flex: 1;
+}
+/* input_area and input_prompt must match in top border and margin for alignment */
+div.input_area {
+  border: 1px solid #cfcfcf;
+  border-radius: 2px;
+  background: #f7f7f7;
+  line-height: 1.21429em;
+}
+/* This is needed so that empty prompt areas can collapse to zero height when there
+   is no content in the output_subarea and the prompt. The main purpose of this is
+   to make sure that empty JavaScript output_subareas have no height. */
+div.prompt:empty {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+div.unrecognized_cell {
+  padding: 5px 5px 5px 0px;
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: horizontal;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: horizontal;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: horizontal;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+div.unrecognized_cell .inner_cell {
+  border-radius: 2px;
+  padding: 5px;
+  font-weight: bold;
+  color: red;
+  border: 1px solid #cfcfcf;
+  background: #eaeaea;
+}
+div.unrecognized_cell .inner_cell a {
+  color: inherit;
+  text-decoration: none;
+}
+div.unrecognized_cell .inner_cell a:hover {
+  color: inherit;
+  text-decoration: none;
+}
+@media (max-width: 540px) {
+  div.unrecognized_cell > div.prompt {
+    display: none;
+  }
+}
+div.code_cell {
+  /* avoid page breaking on code cells when printing */
+}
+@media print {
+  div.code_cell {
+    page-break-inside: avoid;
+  }
+}
+/* any special styling for code cells that are currently running goes here */
+div.input {
+  page-break-inside: avoid;
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: horizontal;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: horizontal;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: horizontal;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+@media (max-width: 540px) {
+  div.input {
+    /* Old browsers */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-box-align: stretch;
+    display: -moz-box;
+    -moz-box-orient: vertical;
+    -moz-box-align: stretch;
+    display: box;
+    box-orient: vertical;
+    box-align: stretch;
+    /* Modern browsers */
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+/* input_area and input_prompt must match in top border and margin for alignment */
+div.input_prompt {
+  color: #303F9F;
+  border-top: 1px solid transparent;
+}
+div.input_area > div.highlight {
+  margin: 0.4em;
+  border: none;
+  padding: 0px;
+  background-color: transparent;
+}
+div.input_area > div.highlight > pre {
+  margin: 0px;
+  border: none;
+  padding: 0px;
+  background-color: transparent;
+}
+/* The following gets added to the <head> if it is detected that the user has a
+ * monospace font with inconsistent normal/bold/italic height.  See
+ * notebookmain.js.  Such fonts will have keywords vertically offset with
+ * respect to the rest of the text.  The user should select a better font.
+ * See: https://github.com/ipython/ipython/issues/1503
+ *
+ * .CodeMirror span {
+ *      vertical-align: bottom;
+ * }
+ */
+.CodeMirror {
+  line-height: 1.21429em;
+  /* Changed from 1em to our global default */
+  font-size: 14px;
+  height: auto;
+  /* Changed to auto to autogrow */
+  background: none;
+  /* Changed from white to allow our bg to show through */
+}
+.CodeMirror-scroll {
+  /*  The CodeMirror docs are a bit fuzzy on if overflow-y should be hidden or visible.*/
+  /*  We have found that if it is visible, vertical scrollbars appear with font size changes.*/
+  overflow-y: hidden;
+  overflow-x: auto;
+}
+.CodeMirror-lines {
+  /* In CM2, this used to be 0.4em, but in CM3 it went to 4px. We need the em value because */
+  /* we have set a different line-height and want this to scale with that. */
+  /* Note that this should set vertical padding only, since CodeMirror assumes
+       that horizontal padding will be set on CodeMirror pre */
+  padding: 0.4em 0;
+}
+.CodeMirror-linenumber {
+  padding: 0 8px 0 4px;
+}
+.CodeMirror-gutters {
+  border-bottom-left-radius: 2px;
+  border-top-left-radius: 2px;
+}
+.CodeMirror pre {
+  /* In CM3 this went to 4px from 0 in CM2. This sets horizontal padding only,
+    use .CodeMirror-lines for vertical */
+  padding: 0 0.4em;
+  border: 0;
+  border-radius: 0;
+}
+.CodeMirror-cursor {
+  border-left: 1.4px solid black;
+}
+@media screen and (min-width: 2138px) and (max-width: 4319px) {
+  .CodeMirror-cursor {
+    border-left: 2px solid black;
+  }
+}
+@media screen and (min-width: 4320px) {
+  .CodeMirror-cursor {
+    border-left: 4px solid black;
+  }
+}
+/*
+
+Original style from softwaremaniacs.org (c) Ivan Sagalaev <Maniac@SoftwareManiacs.Org>
+Adapted from GitHub theme
+
+*/
+.highlight-base {
+  color: #000;
+}
+.highlight-variable {
+  color: #000;
+}
+.highlight-variable-2 {
+  color: #1a1a1a;
+}
+.highlight-variable-3 {
+  color: #333333;
+}
+.highlight-string {
+  color: #BA2121;
+}
+.highlight-comment {
+  color: #408080;
+  font-style: italic;
+}
+.highlight-number {
+  color: #080;
+}
+.highlight-atom {
+  color: #88F;
+}
+.highlight-keyword {
+  color: #008000;
+  font-weight: bold;
+}
+.highlight-builtin {
+  color: #008000;
+}
+.highlight-error {
+  color: #f00;
+}
+.highlight-operator {
+  color: #AA22FF;
+  font-weight: bold;
+}
+.highlight-meta {
+  color: #AA22FF;
+}
+/* previously not defined, copying from default codemirror */
+.highlight-def {
+  color: #00f;
+}
+.highlight-string-2 {
+  color: #f50;
+}
+.highlight-qualifier {
+  color: #555;
+}
+.highlight-bracket {
+  color: #997;
+}
+.highlight-tag {
+  color: #170;
+}
+.highlight-attribute {
+  color: #00c;
+}
+.highlight-header {
+  color: blue;
+}
+.highlight-quote {
+  color: #090;
+}
+.highlight-link {
+  color: #00c;
+}
+/* apply the same style to codemirror */
+.cm-s-ipython span.cm-keyword {
+  color: #008000;
+  font-weight: bold;
+}
+.cm-s-ipython span.cm-atom {
+  color: #88F;
+}
+.cm-s-ipython span.cm-number {
+  color: #080;
+}
+.cm-s-ipython span.cm-def {
+  color: #00f;
+}
+.cm-s-ipython span.cm-variable {
+  color: #000;
+}
+.cm-s-ipython span.cm-operator {
+  color: #AA22FF;
+  font-weight: bold;
+}
+.cm-s-ipython span.cm-variable-2 {
+  color: #1a1a1a;
+}
+.cm-s-ipython span.cm-variable-3 {
+  color: #333333;
+}
+.cm-s-ipython span.cm-comment {
+  color: #408080;
+  font-style: italic;
+}
+.cm-s-ipython span.cm-string {
+  color: #BA2121;
+}
+.cm-s-ipython span.cm-string-2 {
+  color: #f50;
+}
+.cm-s-ipython span.cm-meta {
+  color: #AA22FF;
+}
+.cm-s-ipython span.cm-qualifier {
+  color: #555;
+}
+.cm-s-ipython span.cm-builtin {
+  color: #008000;
+}
+.cm-s-ipython span.cm-bracket {
+  color: #997;
+}
+.cm-s-ipython span.cm-tag {
+  color: #170;
+}
+.cm-s-ipython span.cm-attribute {
+  color: #00c;
+}
+.cm-s-ipython span.cm-header {
+  color: blue;
+}
+.cm-s-ipython span.cm-quote {
+  color: #090;
+}
+.cm-s-ipython span.cm-link {
+  color: #00c;
+}
+.cm-s-ipython span.cm-error {
+  color: #f00;
+}
+.cm-s-ipython span.cm-tab {
+  background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAMCAYAAAAkuj5RAAAAAXNSR0IArs4c6QAAAGFJREFUSMft1LsRQFAQheHPowAKoACx3IgEKtaEHujDjORSgWTH/ZOdnZOcM/sgk/kFFWY0qV8foQwS4MKBCS3qR6ixBJvElOobYAtivseIE120FaowJPN75GMu8j/LfMwNjh4HUpwg4LUAAAAASUVORK5CYII=);
+  background-position: right;
+  background-repeat: no-repeat;
+}
+div.output_wrapper {
+  /* this position must be relative to enable descendents to be absolute within it */
+  position: relative;
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: vertical;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: vertical;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  z-index: 1;
+}
+/* class for the output area when it should be height-limited */
+div.output_scroll {
+  /* ideally, this would be max-height, but FF barfs all over that */
+  height: 24em;
+  /* FF needs this *and the wrapper* to specify full width, or it will shrinkwrap */
+  width: 100%;
+  overflow: auto;
+  border-radius: 2px;
+  -webkit-box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+  display: block;
+}
+/* output div while it is collapsed */
+div.output_collapsed {
+  margin: 0px;
+  padding: 0px;
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: vertical;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: vertical;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+div.out_prompt_overlay {
+  height: 100%;
+  padding: 0px 0.4em;
+  position: absolute;
+  border-radius: 2px;
+}
+div.out_prompt_overlay:hover {
+  /* use inner shadow to get border that is computed the same on WebKit/FF */
+  -webkit-box-shadow: inset 0 0 1px #000;
+  box-shadow: inset 0 0 1px #000;
+  background: rgba(240, 240, 240, 0.5);
+}
+div.output_prompt {
+  color: #D84315;
+}
+/* This class is the outer container of all output sections. */
+div.output_area {
+  padding: 0px;
+  page-break-inside: avoid;
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: horizontal;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: horizontal;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: horizontal;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+div.output_area .MathJax_Display {
+  text-align: left !important;
+}
+div.output_area .rendered_html table {
+  margin-left: 0;
+  margin-right: 0;
+}
+div.output_area .rendered_html img {
+  margin-left: 0;
+  margin-right: 0;
+}
+div.output_area img,
+div.output_area svg {
+  max-width: 100%;
+  height: auto;
+}
+div.output_area img.unconfined,
+div.output_area svg.unconfined {
+  max-width: none;
+}
+div.output_area .mglyph > img {
+  max-width: none;
+}
+/* This is needed to protect the pre formating from global settings such
+   as that of bootstrap */
+.output {
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: vertical;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: vertical;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+@media (max-width: 540px) {
+  div.output_area {
+    /* Old browsers */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-box-align: stretch;
+    display: -moz-box;
+    -moz-box-orient: vertical;
+    -moz-box-align: stretch;
+    display: box;
+    box-orient: vertical;
+    box-align: stretch;
+    /* Modern browsers */
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+div.output_area pre {
+  margin: 0;
+  padding: 1px 0 1px 0;
+  border: 0;
+  vertical-align: baseline;
+  color: black;
+  background-color: transparent;
+  border-radius: 0;
+}
+/* This class is for the output subarea inside the output_area and after
+   the prompt div. */
+div.output_subarea {
+  overflow-x: auto;
+  padding: 0.4em;
+  /* Old browsers */
+  -webkit-box-flex: 1;
+  -moz-box-flex: 1;
+  box-flex: 1;
+  /* Modern browsers */
+  flex: 1;
+  max-width: calc(100% - 14ex);
+}
+div.output_scroll div.output_subarea {
+  overflow-x: visible;
+}
+/* The rest of the output_* classes are for special styling of the different
+   output types */
+/* all text output has this class: */
+div.output_text {
+  text-align: left;
+  color: #000;
+  /* This has to match that of the the CodeMirror class line-height below */
+  line-height: 1.21429em;
+}
+/* stdout/stderr are 'text' as well as 'stream', but execute_result/error are *not* streams */
+div.output_stderr {
+  background: #fdd;
+  /* very light red background for stderr */
+}
+div.output_latex {
+  text-align: left;
+}
+/* Empty output_javascript divs should have no height */
+div.output_javascript:empty {
+  padding: 0;
+}
+.js-error {
+  color: darkred;
+}
+/* raw_input styles */
+div.raw_input_container {
+  line-height: 1.21429em;
+  padding-top: 5px;
+}
+pre.raw_input_prompt {
+  /* nothing needed here. */
+}
+input.raw_input {
+  font-family: monospace;
+  font-size: inherit;
+  color: inherit;
+  width: auto;
+  /* make sure input baseline aligns with prompt */
+  vertical-align: baseline;
+  /* padding + margin = 0.5em between prompt and cursor */
+  padding: 0em 0.25em;
+  margin: 0em 0.25em;
+}
+input.raw_input:focus {
+  box-shadow: none;
+}
+p.p-space {
+  margin-bottom: 10px;
+}
+div.output_unrecognized {
+  padding: 5px;
+  font-weight: bold;
+  color: red;
+}
+div.output_unrecognized a {
+  color: inherit;
+  text-decoration: none;
+}
+div.output_unrecognized a:hover {
+  color: inherit;
+  text-decoration: none;
+}
+.rendered_html {
+  color: #000;
+  /* any extras will just be numbers: */
+}
+.rendered_html em {
+  font-style: italic;
+}
+.rendered_html strong {
+  font-weight: bold;
+}
+.rendered_html u {
+  text-decoration: underline;
+}
+.rendered_html :link {
+  text-decoration: underline;
+}
+.rendered_html :visited {
+  text-decoration: underline;
+}
+.rendered_html h1 {
+  font-size: 185.7%;
+  margin: 1.08em 0 0 0;
+  font-weight: bold;
+  line-height: 1.0;
+}
+.rendered_html h2 {
+  font-size: 157.1%;
+  margin: 1.27em 0 0 0;
+  font-weight: bold;
+  line-height: 1.0;
+}
+.rendered_html h3 {
+  font-size: 128.6%;
+  margin: 1.55em 0 0 0;
+  font-weight: bold;
+  line-height: 1.0;
+}
+.rendered_html h4 {
+  font-size: 100%;
+  margin: 2em 0 0 0;
+  font-weight: bold;
+  line-height: 1.0;
+}
+.rendered_html h5 {
+  font-size: 100%;
+  margin: 2em 0 0 0;
+  font-weight: bold;
+  line-height: 1.0;
+  font-style: italic;
+}
+.rendered_html h6 {
+  font-size: 100%;
+  margin: 2em 0 0 0;
+  font-weight: bold;
+  line-height: 1.0;
+  font-style: italic;
+}
+.rendered_html h1:first-child {
+  margin-top: 0.538em;
+}
+.rendered_html h2:first-child {
+  margin-top: 0.636em;
+}
+.rendered_html h3:first-child {
+  margin-top: 0.777em;
+}
+.rendered_html h4:first-child {
+  margin-top: 1em;
+}
+.rendered_html h5:first-child {
+  margin-top: 1em;
+}
+.rendered_html h6:first-child {
+  margin-top: 1em;
+}
+.rendered_html ul:not(.list-inline),
+.rendered_html ol:not(.list-inline) {
+  padding-left: 2em;
+}
+.rendered_html ul {
+  list-style: disc;
+}
+.rendered_html ul ul {
+  list-style: square;
+  margin-top: 0;
+}
+.rendered_html ul ul ul {
+  list-style: circle;
+}
+.rendered_html ol {
+  list-style: decimal;
+}
+.rendered_html ol ol {
+  list-style: upper-alpha;
+  margin-top: 0;
+}
+.rendered_html ol ol ol {
+  list-style: lower-alpha;
+}
+.rendered_html ol ol ol ol {
+  list-style: lower-roman;
+}
+.rendered_html ol ol ol ol ol {
+  list-style: decimal;
+}
+.rendered_html * + ul {
+  margin-top: 1em;
+}
+.rendered_html * + ol {
+  margin-top: 1em;
+}
+.rendered_html hr {
+  color: black;
+  background-color: black;
+}
+.rendered_html pre {
+  margin: 1em 2em;
+  padding: 0px;
+  background-color: #fff;
+}
+.rendered_html code {
+  background-color: #eff0f1;
+}
+.rendered_html p code {
+  padding: 1px 5px;
+}
+.rendered_html pre code {
+  background-color: #fff;
+}
+.rendered_html pre,
+.rendered_html code {
+  border: 0;
+  color: #000;
+  font-size: 100%;
+}
+.rendered_html blockquote {
+  margin: 1em 2em;
+}
+.rendered_html table {
+  margin-left: auto;
+  margin-right: auto;
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+.rendered_html tr,
+.rendered_html th,
+.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+.rendered_html th {
+  font-weight: bold;
+}
+.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+.rendered_html * + table {
+  margin-top: 1em;
+}
+.rendered_html p {
+  text-align: left;
+}
+.rendered_html * + p {
+  margin-top: 1em;
+}
+.rendered_html img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+.rendered_html * + img {
+  margin-top: 1em;
+}
+.rendered_html img,
+.rendered_html svg {
+  max-width: 100%;
+  height: auto;
+}
+.rendered_html img.unconfined,
+.rendered_html svg.unconfined {
+  max-width: none;
+}
+.rendered_html .alert {
+  margin-bottom: initial;
+}
+.rendered_html * + .alert {
+  margin-top: 1em;
+}
+[dir="rtl"] .rendered_html p {
+  text-align: right;
+}
+div.text_cell {
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: horizontal;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: horizontal;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: horizontal;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+@media (max-width: 540px) {
+  div.text_cell > div.prompt {
+    display: none;
+  }
+}
+div.text_cell_render {
+  /*font-family: "Helvetica Neue", Arial, Helvetica, Geneva, sans-serif;*/
+  outline: none;
+  resize: none;
+  width: inherit;
+  border-style: none;
+  padding: 0.5em 0.5em 0.5em 0.4em;
+  color: #000;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+}
+a.anchor-link:link {
+  text-decoration: none;
+  padding: 0px 20px;
+  visibility: hidden;
+}
+h1:hover .anchor-link,
+h2:hover .anchor-link,
+h3:hover .anchor-link,
+h4:hover .anchor-link,
+h5:hover .anchor-link,
+h6:hover .anchor-link {
+  visibility: visible;
+}
+.text_cell.rendered .input_area {
+  display: none;
+}
+.text_cell.rendered .rendered_html {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.text_cell.rendered .rendered_html tr,
+.text_cell.rendered .rendered_html th,
+.text_cell.rendered .rendered_html td {
+  max-width: none;
+}
+.text_cell.unrendered .text_cell_render {
+  display: none;
+}
+.text_cell .dropzone .input_area {
+  border: 2px dashed #bababa;
+  margin: -1px;
+}
+.cm-header-1,
+.cm-header-2,
+.cm-header-3,
+.cm-header-4,
+.cm-header-5,
+.cm-header-6 {
+  font-weight: bold;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.cm-header-1 {
+  font-size: 185.7%;
+}
+.cm-header-2 {
+  font-size: 157.1%;
+}
+.cm-header-3 {
+  font-size: 128.6%;
+}
+.cm-header-4 {
+  font-size: 110%;
+}
+.cm-header-5 {
+  font-size: 100%;
+  font-style: italic;
+}
+.cm-header-6 {
+  font-size: 100%;
+  font-style: italic;
+}
+/*!
+*
+* IPython notebook webapp
+*
+*/
+@media (max-width: 767px) {
+  .notebook_app {
+    padding-left: 0px;
+    padding-right: 0px;
+  }
+}
+#ipython-main-app {
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  height: 100%;
+}
+div#notebook_panel {
+  margin: 0px;
+  padding: 0px;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  height: 100%;
+}
+div#notebook {
+  font-size: 14px;
+  line-height: 20px;
+  overflow-y: hidden;
+  overflow-x: auto;
+  width: 100%;
+  /* This spaces the page away from the edge of the notebook area */
+  padding-top: 20px;
+  margin: 0px;
+  outline: none;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  min-height: 100%;
+}
+@media not print {
+  #notebook-container {
+    padding: 15px;
+    background-color: #fff;
+    min-height: 0;
+    -webkit-box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+    box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+  }
+}
+@media print {
+  #notebook-container {
+    width: 100%;
+  }
+}
+div.ui-widget-content {
+  border: 1px solid #ababab;
+  outline: none;
+}
+pre.dialog {
+  background-color: #f7f7f7;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+  padding: 0.4em;
+  padding-left: 2em;
+}
+p.dialog {
+  padding: 0.2em;
+}
+/* Word-wrap output correctly.  This is the CSS3 spelling, though Firefox seems
+   to not honor it correctly.  Webkit browsers (Chrome, rekonq, Safari) do.
+ */
+pre,
+code,
+kbd,
+samp {
+  white-space: pre-wrap;
+}
+#fonttest {
+  font-family: monospace;
+}
+p {
+  margin-bottom: 0;
+}
+.end_space {
+  min-height: 100px;
+  transition: height .2s ease;
+}
+.notebook_app > #header {
+  -webkit-box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+  box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+}
+@media not print {
+  .notebook_app {
+    background-color: #EEE;
+  }
+}
+kbd {
+  border-style: solid;
+  border-width: 1px;
+  box-shadow: none;
+  margin: 2px;
+  padding-left: 2px;
+  padding-right: 2px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+.jupyter-keybindings {
+  padding: 1px;
+  line-height: 24px;
+  border-bottom: 1px solid gray;
+}
+.jupyter-keybindings input {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.jupyter-keybindings i {
+  padding: 6px;
+}
+.well code {
+  background-color: #ffffff;
+  border-color: #ababab;
+  border-width: 1px;
+  border-style: solid;
+  padding: 2px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+/* CSS for the cell toolbar */
+.celltoolbar {
+  border: thin solid #CFCFCF;
+  border-bottom: none;
+  background: #EEE;
+  border-radius: 2px 2px 0px 0px;
+  width: 100%;
+  height: 29px;
+  padding-right: 4px;
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: horizontal;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: horizontal;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: horizontal;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  /* Old browsers */
+  -webkit-box-pack: end;
+  -moz-box-pack: end;
+  box-pack: end;
+  /* Modern browsers */
+  justify-content: flex-end;
+  display: -webkit-flex;
+}
+@media print {
+  .celltoolbar {
+    display: none;
+  }
+}
+.ctb_hideshow {
+  display: none;
+  vertical-align: bottom;
+}
+/* ctb_show is added to the ctb_hideshow div to show the cell toolbar.
+   Cell toolbars are only shown when the ctb_global_show class is also set.
+*/
+.ctb_global_show .ctb_show.ctb_hideshow {
+  display: block;
+}
+.ctb_global_show .ctb_show + .input_area,
+.ctb_global_show .ctb_show + div.text_cell_input,
+.ctb_global_show .ctb_show ~ div.text_cell_render {
+  border-top-right-radius: 0px;
+  border-top-left-radius: 0px;
+}
+.ctb_global_show .ctb_show ~ div.text_cell_render {
+  border: 1px solid #cfcfcf;
+}
+.celltoolbar {
+  font-size: 87%;
+  padding-top: 3px;
+}
+.celltoolbar select {
+  display: block;
+  width: 100%;
+  height: 32px;
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.42857143;
+  color: #555555;
+  background-color: #fff;
+  background-image: none;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  -webkit-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+  -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+  transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+  height: 30px;
+  padding: 5px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  border-radius: 1px;
+  width: inherit;
+  font-size: inherit;
+  height: 22px;
+  padding: 0px;
+  display: inline-block;
+}
+.celltoolbar select:focus {
+  border-color: #66afe9;
+  outline: 0;
+  -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, 0.6);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, 0.6);
+}
+.celltoolbar select::-moz-placeholder {
+  color: #999;
+  opacity: 1;
+}
+.celltoolbar select:-ms-input-placeholder {
+  color: #999;
+}
+.celltoolbar select::-webkit-input-placeholder {
+  color: #999;
+}
+.celltoolbar select::-ms-expand {
+  border: 0;
+  background-color: transparent;
+}
+.celltoolbar select[disabled],
+.celltoolbar select[readonly],
+fieldset[disabled] .celltoolbar select {
+  background-color: #eeeeee;
+  opacity: 1;
+}
+.celltoolbar select[disabled],
+fieldset[disabled] .celltoolbar select {
+  cursor: not-allowed;
+}
+textarea.celltoolbar select {
+  height: auto;
+}
+select.celltoolbar select {
+  height: 30px;
+  line-height: 30px;
+}
+textarea.celltoolbar select,
+select[multiple].celltoolbar select {
+  height: auto;
+}
+.celltoolbar label {
+  margin-left: 5px;
+  margin-right: 5px;
+}
+.tags_button_container {
+  width: 100%;
+  display: flex;
+}
+.tag-container {
+  display: flex;
+  flex-direction: row;
+  flex-grow: 1;
+  overflow: hidden;
+  position: relative;
+}
+.tag-container > * {
+  margin: 0 4px;
+}
+.remove-tag-btn {
+  margin-left: 4px;
+}
+.tags-input {
+  display: flex;
+}
+.cell-tag:last-child:after {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  /* Fade to background color of cell toolbar */
+  background: linear-gradient(to right, rgba(0, 0, 0, 0), #EEE);
+}
+.tags-input > * {
+  margin-left: 4px;
+}
+.cell-tag,
+.tags-input input,
+.tags-input button {
+  display: block;
+  width: 100%;
+  height: 32px;
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.42857143;
+  color: #555555;
+  background-color: #fff;
+  background-image: none;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  -webkit-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+  -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+  transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+  height: 30px;
+  padding: 5px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  border-radius: 1px;
+  box-shadow: none;
+  width: inherit;
+  font-size: inherit;
+  height: 22px;
+  line-height: 22px;
+  padding: 0px 4px;
+  display: inline-block;
+}
+.cell-tag:focus,
+.tags-input input:focus,
+.tags-input button:focus {
+  border-color: #66afe9;
+  outline: 0;
+  -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, 0.6);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, 0.6);
+}
+.cell-tag::-moz-placeholder,
+.tags-input input::-moz-placeholder,
+.tags-input button::-moz-placeholder {
+  color: #999;
+  opacity: 1;
+}
+.cell-tag:-ms-input-placeholder,
+.tags-input input:-ms-input-placeholder,
+.tags-input button:-ms-input-placeholder {
+  color: #999;
+}
+.cell-tag::-webkit-input-placeholder,
+.tags-input input::-webkit-input-placeholder,
+.tags-input button::-webkit-input-placeholder {
+  color: #999;
+}
+.cell-tag::-ms-expand,
+.tags-input input::-ms-expand,
+.tags-input button::-ms-expand {
+  border: 0;
+  background-color: transparent;
+}
+.cell-tag[disabled],
+.tags-input input[disabled],
+.tags-input button[disabled],
+.cell-tag[readonly],
+.tags-input input[readonly],
+.tags-input button[readonly],
+fieldset[disabled] .cell-tag,
+fieldset[disabled] .tags-input input,
+fieldset[disabled] .tags-input button {
+  background-color: #eeeeee;
+  opacity: 1;
+}
+.cell-tag[disabled],
+.tags-input input[disabled],
+.tags-input button[disabled],
+fieldset[disabled] .cell-tag,
+fieldset[disabled] .tags-input input,
+fieldset[disabled] .tags-input button {
+  cursor: not-allowed;
+}
+textarea.cell-tag,
+textarea.tags-input input,
+textarea.tags-input button {
+  height: auto;
+}
+select.cell-tag,
+select.tags-input input,
+select.tags-input button {
+  height: 30px;
+  line-height: 30px;
+}
+textarea.cell-tag,
+textarea.tags-input input,
+textarea.tags-input button,
+select[multiple].cell-tag,
+select[multiple].tags-input input,
+select[multiple].tags-input button {
+  height: auto;
+}
+.cell-tag,
+.tags-input button {
+  padding: 0px 4px;
+}
+.cell-tag {
+  background-color: #fff;
+  white-space: nowrap;
+}
+.tags-input input[type=text]:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: #ccc;
+}
+.completions {
+  position: absolute;
+  z-index: 110;
+  overflow: hidden;
+  border: 1px solid #ababab;
+  border-radius: 2px;
+  -webkit-box-shadow: 0px 6px 10px -1px #adadad;
+  box-shadow: 0px 6px 10px -1px #adadad;
+  line-height: 1;
+}
+.completions select {
+  background: white;
+  outline: none;
+  border: none;
+  padding: 0px;
+  margin: 0px;
+  overflow: auto;
+  font-family: monospace;
+  font-size: 110%;
+  color: #000;
+  width: auto;
+}
+.completions select option.context {
+  color: #286090;
+}
+#kernel_logo_widget .current_kernel_logo {
+  display: none;
+  margin-top: -1px;
+  margin-bottom: -1px;
+  width: 32px;
+  height: 32px;
+}
+[dir="rtl"] #kernel_logo_widget {
+  float: left !important;
+  float: left;
+}
+.modal .modal-body .move-path {
+  display: flex;
+  flex-direction: row;
+  justify-content: space;
+  align-items: center;
+}
+.modal .modal-body .move-path .server-root {
+  padding-right: 20px;
+}
+.modal .modal-body .move-path .path-input {
+  flex: 1;
+}
+#menubar {
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  margin-top: 1px;
+}
+#menubar .navbar {
+  border-top: 1px;
+  border-radius: 0px 0px 2px 2px;
+  margin-bottom: 0px;
+}
+#menubar .navbar-toggle {
+  float: left;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  border: none;
+}
+#menubar .navbar-collapse {
+  clear: left;
+}
+[dir="rtl"] #menubar .navbar-toggle {
+  float: right;
+}
+[dir="rtl"] #menubar .navbar-collapse {
+  clear: right;
+}
+[dir="rtl"] #menubar .navbar-nav {
+  float: right;
+}
+[dir="rtl"] #menubar .nav {
+  padding-right: 0px;
+}
+[dir="rtl"] #menubar .navbar-nav > li {
+  float: right;
+}
+[dir="rtl"] #menubar .navbar-right {
+  float: left !important;
+}
+[dir="rtl"] ul.dropdown-menu {
+  text-align: right;
+  left: auto;
+}
+[dir="rtl"] ul#new-menu.dropdown-menu {
+  right: auto;
+  left: 0;
+}
+.nav-wrapper {
+  border-bottom: 1px solid #e7e7e7;
+}
+i.menu-icon {
+  padding-top: 4px;
+}
+[dir="rtl"] i.menu-icon.pull-right {
+  float: left !important;
+  float: left;
+}
+ul#help_menu li a {
+  overflow: hidden;
+  padding-right: 2.2em;
+}
+ul#help_menu li a i {
+  margin-right: -1.2em;
+}
+[dir="rtl"] ul#help_menu li a {
+  padding-left: 2.2em;
+}
+[dir="rtl"] ul#help_menu li a i {
+  margin-right: 0;
+  margin-left: -1.2em;
+}
+[dir="rtl"] ul#help_menu li a i.pull-right {
+  float: left !important;
+  float: left;
+}
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu > .dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+}
+[dir="rtl"] .dropdown-submenu > .dropdown-menu {
+  right: 100%;
+  margin-right: -1px;
+}
+.dropdown-submenu:hover > .dropdown-menu {
+  display: block;
+}
+.dropdown-submenu > a:after {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: block;
+  content: "\f0da";
+  float: right;
+  color: #333333;
+  margin-top: 2px;
+  margin-right: -10px;
+}
+.dropdown-submenu > a:after.fa-pull-left {
+  margin-right: .3em;
+}
+.dropdown-submenu > a:after.fa-pull-right {
+  margin-left: .3em;
+}
+.dropdown-submenu > a:after.pull-left {
+  margin-right: .3em;
+}
+.dropdown-submenu > a:after.pull-right {
+  margin-left: .3em;
+}
+[dir="rtl"] .dropdown-submenu > a:after {
+  float: left;
+  content: "\f0d9";
+  margin-right: 0;
+  margin-left: -10px;
+}
+.dropdown-submenu:hover > a:after {
+  color: #262626;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left > .dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+}
+#notification_area {
+  float: right !important;
+  float: right;
+  z-index: 10;
+}
+[dir="rtl"] #notification_area {
+  float: left !important;
+  float: left;
+}
+.indicator_area {
+  float: right !important;
+  float: right;
+  color: #777;
+  margin-left: 5px;
+  margin-right: 5px;
+  width: 11px;
+  z-index: 10;
+  text-align: center;
+  width: auto;
+}
+[dir="rtl"] .indicator_area {
+  float: left !important;
+  float: left;
+}
+#kernel_indicator {
+  float: right !important;
+  float: right;
+  color: #777;
+  margin-left: 5px;
+  margin-right: 5px;
+  width: 11px;
+  z-index: 10;
+  text-align: center;
+  width: auto;
+  border-left: 1px solid;
+}
+#kernel_indicator .kernel_indicator_name {
+  padding-left: 5px;
+  padding-right: 5px;
+}
+[dir="rtl"] #kernel_indicator {
+  float: left !important;
+  float: left;
+  border-left: 0;
+  border-right: 1px solid;
+}
+#modal_indicator {
+  float: right !important;
+  float: right;
+  color: #777;
+  margin-left: 5px;
+  margin-right: 5px;
+  width: 11px;
+  z-index: 10;
+  text-align: center;
+  width: auto;
+}
+[dir="rtl"] #modal_indicator {
+  float: left !important;
+  float: left;
+}
+#readonly-indicator {
+  float: right !important;
+  float: right;
+  color: #777;
+  margin-left: 5px;
+  margin-right: 5px;
+  width: 11px;
+  z-index: 10;
+  text-align: center;
+  width: auto;
+  margin-top: 2px;
+  margin-bottom: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
+  display: none;
+}
+.modal_indicator:before {
+  width: 1.28571429em;
+  text-align: center;
+}
+.edit_mode .modal_indicator:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: "\f040";
+}
+.edit_mode .modal_indicator:before.fa-pull-left {
+  margin-right: .3em;
+}
+.edit_mode .modal_indicator:before.fa-pull-right {
+  margin-left: .3em;
+}
+.edit_mode .modal_indicator:before.pull-left {
+  margin-right: .3em;
+}
+.edit_mode .modal_indicator:before.pull-right {
+  margin-left: .3em;
+}
+.command_mode .modal_indicator:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: ' ';
+}
+.command_mode .modal_indicator:before.fa-pull-left {
+  margin-right: .3em;
+}
+.command_mode .modal_indicator:before.fa-pull-right {
+  margin-left: .3em;
+}
+.command_mode .modal_indicator:before.pull-left {
+  margin-right: .3em;
+}
+.command_mode .modal_indicator:before.pull-right {
+  margin-left: .3em;
+}
+.kernel_idle_icon:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: "\f10c";
+}
+.kernel_idle_icon:before.fa-pull-left {
+  margin-right: .3em;
+}
+.kernel_idle_icon:before.fa-pull-right {
+  margin-left: .3em;
+}
+.kernel_idle_icon:before.pull-left {
+  margin-right: .3em;
+}
+.kernel_idle_icon:before.pull-right {
+  margin-left: .3em;
+}
+.kernel_busy_icon:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: "\f111";
+}
+.kernel_busy_icon:before.fa-pull-left {
+  margin-right: .3em;
+}
+.kernel_busy_icon:before.fa-pull-right {
+  margin-left: .3em;
+}
+.kernel_busy_icon:before.pull-left {
+  margin-right: .3em;
+}
+.kernel_busy_icon:before.pull-right {
+  margin-left: .3em;
+}
+.kernel_dead_icon:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: "\f1e2";
+}
+.kernel_dead_icon:before.fa-pull-left {
+  margin-right: .3em;
+}
+.kernel_dead_icon:before.fa-pull-right {
+  margin-left: .3em;
+}
+.kernel_dead_icon:before.pull-left {
+  margin-right: .3em;
+}
+.kernel_dead_icon:before.pull-right {
+  margin-left: .3em;
+}
+.kernel_disconnected_icon:before {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: "\f127";
+}
+.kernel_disconnected_icon:before.fa-pull-left {
+  margin-right: .3em;
+}
+.kernel_disconnected_icon:before.fa-pull-right {
+  margin-left: .3em;
+}
+.kernel_disconnected_icon:before.pull-left {
+  margin-right: .3em;
+}
+.kernel_disconnected_icon:before.pull-right {
+  margin-left: .3em;
+}
+.notification_widget {
+  color: #777;
+  z-index: 10;
+  background: rgba(240, 240, 240, 0.5);
+  margin-right: 4px;
+  color: #333;
+  background-color: #fff;
+  border-color: #ccc;
+}
+.notification_widget:focus,
+.notification_widget.focus {
+  color: #333;
+  background-color: #e6e6e6;
+  border-color: #8c8c8c;
+}
+.notification_widget:hover {
+  color: #333;
+  background-color: #e6e6e6;
+  border-color: #adadad;
+}
+.notification_widget:active,
+.notification_widget.active,
+.open > .dropdown-toggle.notification_widget {
+  color: #333;
+  background-color: #e6e6e6;
+  border-color: #adadad;
+}
+.notification_widget:active:hover,
+.notification_widget.active:hover,
+.open > .dropdown-toggle.notification_widget:hover,
+.notification_widget:active:focus,
+.notification_widget.active:focus,
+.open > .dropdown-toggle.notification_widget:focus,
+.notification_widget:active.focus,
+.notification_widget.active.focus,
+.open > .dropdown-toggle.notification_widget.focus {
+  color: #333;
+  background-color: #d4d4d4;
+  border-color: #8c8c8c;
+}
+.notification_widget:active,
+.notification_widget.active,
+.open > .dropdown-toggle.notification_widget {
+  background-image: none;
+}
+.notification_widget.disabled:hover,
+.notification_widget[disabled]:hover,
+fieldset[disabled] .notification_widget:hover,
+.notification_widget.disabled:focus,
+.notification_widget[disabled]:focus,
+fieldset[disabled] .notification_widget:focus,
+.notification_widget.disabled.focus,
+.notification_widget[disabled].focus,
+fieldset[disabled] .notification_widget.focus {
+  background-color: #fff;
+  border-color: #ccc;
+}
+.notification_widget .badge {
+  color: #fff;
+  background-color: #333;
+}
+.notification_widget.warning {
+  color: #fff;
+  background-color: #f0ad4e;
+  border-color: #eea236;
+}
+.notification_widget.warning:focus,
+.notification_widget.warning.focus {
+  color: #fff;
+  background-color: #ec971f;
+  border-color: #985f0d;
+}
+.notification_widget.warning:hover {
+  color: #fff;
+  background-color: #ec971f;
+  border-color: #d58512;
+}
+.notification_widget.warning:active,
+.notification_widget.warning.active,
+.open > .dropdown-toggle.notification_widget.warning {
+  color: #fff;
+  background-color: #ec971f;
+  border-color: #d58512;
+}
+.notification_widget.warning:active:hover,
+.notification_widget.warning.active:hover,
+.open > .dropdown-toggle.notification_widget.warning:hover,
+.notification_widget.warning:active:focus,
+.notification_widget.warning.active:focus,
+.open > .dropdown-toggle.notification_widget.warning:focus,
+.notification_widget.warning:active.focus,
+.notification_widget.warning.active.focus,
+.open > .dropdown-toggle.notification_widget.warning.focus {
+  color: #fff;
+  background-color: #d58512;
+  border-color: #985f0d;
+}
+.notification_widget.warning:active,
+.notification_widget.warning.active,
+.open > .dropdown-toggle.notification_widget.warning {
+  background-image: none;
+}
+.notification_widget.warning.disabled:hover,
+.notification_widget.warning[disabled]:hover,
+fieldset[disabled] .notification_widget.warning:hover,
+.notification_widget.warning.disabled:focus,
+.notification_widget.warning[disabled]:focus,
+fieldset[disabled] .notification_widget.warning:focus,
+.notification_widget.warning.disabled.focus,
+.notification_widget.warning[disabled].focus,
+fieldset[disabled] .notification_widget.warning.focus {
+  background-color: #f0ad4e;
+  border-color: #eea236;
+}
+.notification_widget.warning .badge {
+  color: #f0ad4e;
+  background-color: #fff;
+}
+.notification_widget.success {
+  color: #fff;
+  background-color: #5cb85c;
+  border-color: #4cae4c;
+}
+.notification_widget.success:focus,
+.notification_widget.success.focus {
+  color: #fff;
+  background-color: #449d44;
+  border-color: #255625;
+}
+.notification_widget.success:hover {
+  color: #fff;
+  background-color: #449d44;
+  border-color: #398439;
+}
+.notification_widget.success:active,
+.notification_widget.success.active,
+.open > .dropdown-toggle.notification_widget.success {
+  color: #fff;
+  background-color: #449d44;
+  border-color: #398439;
+}
+.notification_widget.success:active:hover,
+.notification_widget.success.active:hover,
+.open > .dropdown-toggle.notification_widget.success:hover,
+.notification_widget.success:active:focus,
+.notification_widget.success.active:focus,
+.open > .dropdown-toggle.notification_widget.success:focus,
+.notification_widget.success:active.focus,
+.notification_widget.success.active.focus,
+.open > .dropdown-toggle.notification_widget.success.focus {
+  color: #fff;
+  background-color: #398439;
+  border-color: #255625;
+}
+.notification_widget.success:active,
+.notification_widget.success.active,
+.open > .dropdown-toggle.notification_widget.success {
+  background-image: none;
+}
+.notification_widget.success.disabled:hover,
+.notification_widget.success[disabled]:hover,
+fieldset[disabled] .notification_widget.success:hover,
+.notification_widget.success.disabled:focus,
+.notification_widget.success[disabled]:focus,
+fieldset[disabled] .notification_widget.success:focus,
+.notification_widget.success.disabled.focus,
+.notification_widget.success[disabled].focus,
+fieldset[disabled] .notification_widget.success.focus {
+  background-color: #5cb85c;
+  border-color: #4cae4c;
+}
+.notification_widget.success .badge {
+  color: #5cb85c;
+  background-color: #fff;
+}
+.notification_widget.info {
+  color: #fff;
+  background-color: #5bc0de;
+  border-color: #46b8da;
+}
+.notification_widget.info:focus,
+.notification_widget.info.focus {
+  color: #fff;
+  background-color: #31b0d5;
+  border-color: #1b6d85;
+}
+.notification_widget.info:hover {
+  color: #fff;
+  background-color: #31b0d5;
+  border-color: #269abc;
+}
+.notification_widget.info:active,
+.notification_widget.info.active,
+.open > .dropdown-toggle.notification_widget.info {
+  color: #fff;
+  background-color: #31b0d5;
+  border-color: #269abc;
+}
+.notification_widget.info:active:hover,
+.notification_widget.info.active:hover,
+.open > .dropdown-toggle.notification_widget.info:hover,
+.notification_widget.info:active:focus,
+.notification_widget.info.active:focus,
+.open > .dropdown-toggle.notification_widget.info:focus,
+.notification_widget.info:active.focus,
+.notification_widget.info.active.focus,
+.open > .dropdown-toggle.notification_widget.info.focus {
+  color: #fff;
+  background-color: #269abc;
+  border-color: #1b6d85;
+}
+.notification_widget.info:active,
+.notification_widget.info.active,
+.open > .dropdown-toggle.notification_widget.info {
+  background-image: none;
+}
+.notification_widget.info.disabled:hover,
+.notification_widget.info[disabled]:hover,
+fieldset[disabled] .notification_widget.info:hover,
+.notification_widget.info.disabled:focus,
+.notification_widget.info[disabled]:focus,
+fieldset[disabled] .notification_widget.info:focus,
+.notification_widget.info.disabled.focus,
+.notification_widget.info[disabled].focus,
+fieldset[disabled] .notification_widget.info.focus {
+  background-color: #5bc0de;
+  border-color: #46b8da;
+}
+.notification_widget.info .badge {
+  color: #5bc0de;
+  background-color: #fff;
+}
+.notification_widget.danger {
+  color: #fff;
+  background-color: #d9534f;
+  border-color: #d43f3a;
+}
+.notification_widget.danger:focus,
+.notification_widget.danger.focus {
+  color: #fff;
+  background-color: #c9302c;
+  border-color: #761c19;
+}
+.notification_widget.danger:hover {
+  color: #fff;
+  background-color: #c9302c;
+  border-color: #ac2925;
+}
+.notification_widget.danger:active,
+.notification_widget.danger.active,
+.open > .dropdown-toggle.notification_widget.danger {
+  color: #fff;
+  background-color: #c9302c;
+  border-color: #ac2925;
+}
+.notification_widget.danger:active:hover,
+.notification_widget.danger.active:hover,
+.open > .dropdown-toggle.notification_widget.danger:hover,
+.notification_widget.danger:active:focus,
+.notification_widget.danger.active:focus,
+.open > .dropdown-toggle.notification_widget.danger:focus,
+.notification_widget.danger:active.focus,
+.notification_widget.danger.active.focus,
+.open > .dropdown-toggle.notification_widget.danger.focus {
+  color: #fff;
+  background-color: #ac2925;
+  border-color: #761c19;
+}
+.notification_widget.danger:active,
+.notification_widget.danger.active,
+.open > .dropdown-toggle.notification_widget.danger {
+  background-image: none;
+}
+.notification_widget.danger.disabled:hover,
+.notification_widget.danger[disabled]:hover,
+fieldset[disabled] .notification_widget.danger:hover,
+.notification_widget.danger.disabled:focus,
+.notification_widget.danger[disabled]:focus,
+fieldset[disabled] .notification_widget.danger:focus,
+.notification_widget.danger.disabled.focus,
+.notification_widget.danger[disabled].focus,
+fieldset[disabled] .notification_widget.danger.focus {
+  background-color: #d9534f;
+  border-color: #d43f3a;
+}
+.notification_widget.danger .badge {
+  color: #d9534f;
+  background-color: #fff;
+}
+div#pager {
+  background-color: #fff;
+  font-size: 14px;
+  line-height: 20px;
+  overflow: hidden;
+  display: none;
+  position: fixed;
+  bottom: 0px;
+  width: 100%;
+  max-height: 50%;
+  padding-top: 8px;
+  -webkit-box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+  box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+  /* Display over codemirror */
+  z-index: 100;
+  /* Hack which prevents jquery ui resizable from changing top. */
+  top: auto !important;
+}
+div#pager pre {
+  line-height: 1.21429em;
+  color: #000;
+  background-color: #f7f7f7;
+  padding: 0.4em;
+}
+div#pager #pager-button-area {
+  position: absolute;
+  top: 8px;
+  right: 20px;
+}
+div#pager #pager-contents {
+  position: relative;
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+}
+div#pager #pager-contents #pager-container {
+  position: relative;
+  padding: 15px 0px;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+}
+div#pager .ui-resizable-handle {
+  top: 0px;
+  height: 8px;
+  background: #f7f7f7;
+  border-top: 1px solid #cfcfcf;
+  border-bottom: 1px solid #cfcfcf;
+  /* This injects handle bars (a short, wide = symbol) for
+        the resize handle. */
+}
+div#pager .ui-resizable-handle::after {
+  content: '';
+  top: 2px;
+  left: 50%;
+  height: 3px;
+  width: 30px;
+  margin-left: -15px;
+  position: absolute;
+  border-top: 1px solid #cfcfcf;
+}
+.quickhelp {
+  /* Old browsers */
+  display: -webkit-box;
+  -webkit-box-orient: horizontal;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: horizontal;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: horizontal;
+  box-align: stretch;
+  /* Modern browsers */
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  line-height: 1.8em;
+}
+.shortcut_key {
+  display: inline-block;
+  width: 21ex;
+  text-align: right;
+  font-family: monospace;
+}
+.shortcut_descr {
+  display: inline-block;
+  /* Old browsers */
+  -webkit-box-flex: 1;
+  -moz-box-flex: 1;
+  box-flex: 1;
+  /* Modern browsers */
+  flex: 1;
+}
+span.save_widget {
+  height: 30px;
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: baseline;
+  width: 50%;
+  flex: 1;
+}
+span.save_widget span.filename {
+  height: 100%;
+  line-height: 1em;
+  margin-left: 16px;
+  border: none;
+  font-size: 146.5%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  border-radius: 2px;
+}
+span.save_widget span.filename:hover {
+  background-color: #e6e6e6;
+}
+[dir="rtl"] span.save_widget.pull-left {
+  float: right !important;
+  float: right;
+}
+[dir="rtl"] span.save_widget span.filename {
+  margin-left: 0;
+  margin-right: 16px;
+}
+span.checkpoint_status,
+span.autosave_status {
+  font-size: small;
+  white-space: nowrap;
+  padding: 0 5px;
+}
+@media (max-width: 767px) {
+  span.save_widget {
+    font-size: small;
+    padding: 0 0 0 5px;
+  }
+  span.checkpoint_status,
+  span.autosave_status {
+    display: none;
+  }
+}
+@media (min-width: 768px) and (max-width: 991px) {
+  span.checkpoint_status {
+    display: none;
+  }
+  span.autosave_status {
+    font-size: x-small;
+  }
+}
+.toolbar {
+  padding: 0px;
+  margin-left: -5px;
+  margin-top: 2px;
+  margin-bottom: 5px;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+}
+.toolbar select,
+.toolbar label {
+  width: auto;
+  vertical-align: middle;
+  margin-right: 2px;
+  margin-bottom: 0px;
+  display: inline;
+  font-size: 92%;
+  margin-left: 0.3em;
+  margin-right: 0.3em;
+  padding: 0px;
+  padding-top: 3px;
+}
+.toolbar .btn {
+  padding: 2px 8px;
+}
+.toolbar .btn-group {
+  margin-top: 0px;
+  margin-left: 5px;
+}
+.toolbar-btn-label {
+  margin-left: 6px;
+}
+#maintoolbar {
+  margin-bottom: -3px;
+  margin-top: -8px;
+  border: 0px;
+  min-height: 27px;
+  margin-left: 0px;
+  padding-top: 11px;
+  padding-bottom: 3px;
+}
+#maintoolbar .navbar-text {
+  float: none;
+  vertical-align: middle;
+  text-align: right;
+  margin-left: 5px;
+  margin-right: 0px;
+  margin-top: 0px;
+}
+.select-xs {
+  height: 24px;
+}
+[dir="rtl"] .btn-group > .btn,
+.btn-group-vertical > .btn {
+  float: right;
+}
+.pulse,
+.dropdown-menu > li > a.pulse,
+li.pulse > a.dropdown-toggle,
+li.pulse.open > a.dropdown-toggle {
+  background-color: #F37626;
+  color: white;
+}
+/**
+ * Primary styles
+ *
+ * Author: Jupyter Development Team
+ */
+/** WARNING IF YOU ARE EDITTING THIS FILE, if this is a .css file, It has a lot
+ * of chance of beeing generated from the ../less/[samename].less file, you can
+ * try to get back the less file by reverting somme commit in history
+ **/
+/*
+ * We'll try to get something pretty, so we
+ * have some strange css to have the scroll bar on
+ * the left with fix button on the top right of the tooltip
+ */
+@-moz-keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@-webkit-keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@-moz-keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@-webkit-keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/*properties of tooltip after "expand"*/
+.bigtooltip {
+  overflow: auto;
+  height: 200px;
+  -webkit-transition-property: height;
+  -webkit-transition-duration: 500ms;
+  -moz-transition-property: height;
+  -moz-transition-duration: 500ms;
+  transition-property: height;
+  transition-duration: 500ms;
+}
+/*properties of tooltip before "expand"*/
+.smalltooltip {
+  -webkit-transition-property: height;
+  -webkit-transition-duration: 500ms;
+  -moz-transition-property: height;
+  -moz-transition-duration: 500ms;
+  transition-property: height;
+  transition-duration: 500ms;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  height: 80px;
+}
+.tooltipbuttons {
+  position: absolute;
+  padding-right: 15px;
+  top: 0px;
+  right: 0px;
+}
+.tooltiptext {
+  /*avoid the button to overlap on some docstring*/
+  padding-right: 30px;
+}
+.ipython_tooltip {
+  max-width: 700px;
+  /*fade-in animation when inserted*/
+  -webkit-animation: fadeOut 400ms;
+  -moz-animation: fadeOut 400ms;
+  animation: fadeOut 400ms;
+  -webkit-animation: fadeIn 400ms;
+  -moz-animation: fadeIn 400ms;
+  animation: fadeIn 400ms;
+  vertical-align: middle;
+  background-color: #f7f7f7;
+  overflow: visible;
+  border: #ababab 1px solid;
+  outline: none;
+  padding: 3px;
+  margin: 0px;
+  padding-left: 7px;
+  font-family: monospace;
+  min-height: 50px;
+  -moz-box-shadow: 0px 6px 10px -1px #adadad;
+  -webkit-box-shadow: 0px 6px 10px -1px #adadad;
+  box-shadow: 0px 6px 10px -1px #adadad;
+  border-radius: 2px;
+  position: absolute;
+  z-index: 1000;
+}
+.ipython_tooltip a {
+  float: right;
+}
+.ipython_tooltip .tooltiptext pre {
+  border: 0;
+  border-radius: 0;
+  font-size: 100%;
+  background-color: #f7f7f7;
+}
+.pretooltiparrow {
+  left: 0px;
+  margin: 0px;
+  top: -16px;
+  width: 40px;
+  height: 16px;
+  overflow: hidden;
+  position: absolute;
+}
+.pretooltiparrow:before {
+  background-color: #f7f7f7;
+  border: 1px #ababab solid;
+  z-index: 11;
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 10px;
+  width: 25px;
+  height: 25px;
+  -webkit-transform: rotate(45deg);
+  -moz-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  -o-transform: rotate(45deg);
+}
+ul.typeahead-list i {
+  margin-left: -10px;
+  width: 18px;
+}
+[dir="rtl"] ul.typeahead-list i {
+  margin-left: 0;
+  margin-right: -10px;
+}
+ul.typeahead-list {
+  max-height: 80vh;
+  overflow: auto;
+}
+ul.typeahead-list > li > a {
+  /** Firefox bug **/
+  /* see https://github.com/jupyter/notebook/issues/559 */
+  white-space: normal;
+}
+ul.typeahead-list  > li > a.pull-right {
+  float: left !important;
+  float: left;
+}
+[dir="rtl"] .typeahead-list {
+  text-align: right;
+}
+.cmd-palette .modal-body {
+  padding: 7px;
+}
+.cmd-palette form {
+  background: white;
+}
+.cmd-palette input {
+  outline: none;
+}
+.no-shortcut {
+  min-width: 20px;
+  color: transparent;
+}
+[dir="rtl"] .no-shortcut.pull-right {
+  float: left !important;
+  float: left;
+}
+[dir="rtl"] .command-shortcut.pull-right {
+  float: left !important;
+  float: left;
+}
+.command-shortcut:before {
+  content: "(command mode)";
+  padding-right: 3px;
+  color: #777777;
+}
+.edit-shortcut:before {
+  content: "(edit)";
+  padding-right: 3px;
+  color: #777777;
+}
+[dir="rtl"] .edit-shortcut.pull-right {
+  float: left !important;
+  float: left;
+}
+#find-and-replace #replace-preview .match,
+#find-and-replace #replace-preview .insert {
+  background-color: #BBDEFB;
+  border-color: #90CAF9;
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 0px;
+}
+[dir="ltr"] #find-and-replace .input-group-btn + .form-control {
+  border-left: none;
+}
+[dir="rtl"] #find-and-replace .input-group-btn + .form-control {
+  border-right: none;
+}
+#find-and-replace #replace-preview .replace .match {
+  background-color: #FFCDD2;
+  border-color: #EF9A9A;
+  border-radius: 0px;
+}
+#find-and-replace #replace-preview .replace .insert {
+  background-color: #C8E6C9;
+  border-color: #A5D6A7;
+  border-radius: 0px;
+}
+#find-and-replace #replace-preview {
+  max-height: 60vh;
+  overflow: auto;
+}
+#find-and-replace #replace-preview pre {
+  padding: 5px 10px;
+}
+.terminal-app {
+  background: #EEE;
+}
+.terminal-app #header {
+  background: #fff;
+  -webkit-box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+  box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.2);
+}
+.terminal-app .terminal {
+  width: 100%;
+  float: left;
+  font-family: monospace;
+  color: white;
+  background: black;
+  padding: 0.4em;
+  border-radius: 2px;
+  -webkit-box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.4);
+  box-shadow: 0px 0px 12px 1px rgba(87, 87, 87, 0.4);
+}
+.terminal-app .terminal,
+.terminal-app .terminal dummy-screen {
+  line-height: 1em;
+  font-size: 14px;
+}
+.terminal-app .terminal .xterm-rows {
+  padding: 10px;
+}
+.terminal-app .terminal-cursor {
+  color: black;
+  background: white;
+}
+.terminal-app #terminado-container {
+  margin-top: 20px;
+}
+/*# sourceMappingURL=style.min.css.map */
+    </style>
+<style type="text/css">
+    .highlight .hll { background-color: #ffffcc }
+.highlight  { background: #f8f8f8; }
+.highlight .c { color: #408080; font-style: italic } /* Comment */
+.highlight .err { border: 1px solid #FF0000 } /* Error */
+.highlight .k { color: #008000; font-weight: bold } /* Keyword */
+.highlight .o { color: #666666 } /* Operator */
+.highlight .ch { color: #408080; font-style: italic } /* Comment.Hashbang */
+.highlight .cm { color: #408080; font-style: italic } /* Comment.Multiline */
+.highlight .cp { color: #BC7A00 } /* Comment.Preproc */
+.highlight .cpf { color: #408080; font-style: italic } /* Comment.PreprocFile */
+.highlight .c1 { color: #408080; font-style: italic } /* Comment.Single */
+.highlight .cs { color: #408080; font-style: italic } /* Comment.Special */
+.highlight .gd { color: #A00000 } /* Generic.Deleted */
+.highlight .ge { font-style: italic } /* Generic.Emph */
+.highlight .gr { color: #FF0000 } /* Generic.Error */
+.highlight .gh { color: #000080; font-weight: bold } /* Generic.Heading */
+.highlight .gi { color: #00A000 } /* Generic.Inserted */
+.highlight .go { color: #888888 } /* Generic.Output */
+.highlight .gp { color: #000080; font-weight: bold } /* Generic.Prompt */
+.highlight .gs { font-weight: bold } /* Generic.Strong */
+.highlight .gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+.highlight .gt { color: #0044DD } /* Generic.Traceback */
+.highlight .kc { color: #008000; font-weight: bold } /* Keyword.Constant */
+.highlight .kd { color: #008000; font-weight: bold } /* Keyword.Declaration */
+.highlight .kn { color: #008000; font-weight: bold } /* Keyword.Namespace */
+.highlight .kp { color: #008000 } /* Keyword.Pseudo */
+.highlight .kr { color: #008000; font-weight: bold } /* Keyword.Reserved */
+.highlight .kt { color: #B00040 } /* Keyword.Type */
+.highlight .m { color: #666666 } /* Literal.Number */
+.highlight .s { color: #BA2121 } /* Literal.String */
+.highlight .na { color: #7D9029 } /* Name.Attribute */
+.highlight .nb { color: #008000 } /* Name.Builtin */
+.highlight .nc { color: #0000FF; font-weight: bold } /* Name.Class */
+.highlight .no { color: #880000 } /* Name.Constant */
+.highlight .nd { color: #AA22FF } /* Name.Decorator */
+.highlight .ni { color: #999999; font-weight: bold } /* Name.Entity */
+.highlight .ne { color: #D2413A; font-weight: bold } /* Name.Exception */
+.highlight .nf { color: #0000FF } /* Name.Function */
+.highlight .nl { color: #A0A000 } /* Name.Label */
+.highlight .nn { color: #0000FF; font-weight: bold } /* Name.Namespace */
+.highlight .nt { color: #008000; font-weight: bold } /* Name.Tag */
+.highlight .nv { color: #19177C } /* Name.Variable */
+.highlight .ow { color: #AA22FF; font-weight: bold } /* Operator.Word */
+.highlight .w { color: #bbbbbb } /* Text.Whitespace */
+.highlight .mb { color: #666666 } /* Literal.Number.Bin */
+.highlight .mf { color: #666666 } /* Literal.Number.Float */
+.highlight .mh { color: #666666 } /* Literal.Number.Hex */
+.highlight .mi { color: #666666 } /* Literal.Number.Integer */
+.highlight .mo { color: #666666 } /* Literal.Number.Oct */
+.highlight .sa { color: #BA2121 } /* Literal.String.Affix */
+.highlight .sb { color: #BA2121 } /* Literal.String.Backtick */
+.highlight .sc { color: #BA2121 } /* Literal.String.Char */
+.highlight .dl { color: #BA2121 } /* Literal.String.Delimiter */
+.highlight .sd { color: #BA2121; font-style: italic } /* Literal.String.Doc */
+.highlight .s2 { color: #BA2121 } /* Literal.String.Double */
+.highlight .se { color: #BB6622; font-weight: bold } /* Literal.String.Escape */
+.highlight .sh { color: #BA2121 } /* Literal.String.Heredoc */
+.highlight .si { color: #BB6688; font-weight: bold } /* Literal.String.Interpol */
+.highlight .sx { color: #008000 } /* Literal.String.Other */
+.highlight .sr { color: #BB6688 } /* Literal.String.Regex */
+.highlight .s1 { color: #BA2121 } /* Literal.String.Single */
+.highlight .ss { color: #19177C } /* Literal.String.Symbol */
+.highlight .bp { color: #008000 } /* Name.Builtin.Pseudo */
+.highlight .fm { color: #0000FF } /* Name.Function.Magic */
+.highlight .vc { color: #19177C } /* Name.Variable.Class */
+.highlight .vg { color: #19177C } /* Name.Variable.Global */
+.highlight .vi { color: #19177C } /* Name.Variable.Instance */
+.highlight .vm { color: #19177C } /* Name.Variable.Magic */
+.highlight .il { color: #666666 } /* Literal.Number.Integer.Long */
+    </style>
+
+
+<style type="text/css">
+/* Overrides of notebook CSS for static HTML export */
+body {
+  overflow: visible;
+  padding: 8px;
+}
+
+div#notebook {
+  overflow: visible;
+  border-top: none;
+}@media print {
+  div.cell {
+    display: block;
+    page-break-inside: avoid;
+  }
+  div.output_wrapper {
+    display: block;
+    page-break-inside: avoid;
+  }
+  div.output {
+    display: block;
+    page-break-inside: avoid;
+  }
+}
+</style>
+
+<!-- Custom stylesheet, it must be in the same directory as the html file -->
+<link rel="stylesheet" href="custom.css">
+
+<!-- Loading mathjax macro -->
+<!-- Load mathjax -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_HTML"></script>
+    <!-- MathJax configuration -->
+    <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+            displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        // Center justify equations in code and markdown cells. Elsewhere
+        // we use CSS to left justify single line equations in code cells.
+        displayAlign: 'center',
+        "HTML-CSS": {
+            styles: {'.MathJax_Display': {"margin": 0}},
+            linebreaks: { automatic: true }
+        }
+    });
+    </script>
+    <!-- End of mathjax configuration --></head>
+<body>
+  <div tabindex="-1" id="notebook" class="border-box-sizing">
+    <div class="container" id="notebook-container">
+
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Test">Test<a class="anchor-link" href="#Test">&#182;</a></h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">a</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt output_prompt">Out[3]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>array([0, 1])</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">matplotlib</span> notebook
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+
+
+
+<div id="b4964161-3f4a-495a-acb0-d487d6a959e3"></div>
+<div class="output_subarea output_javascript ">
+<script type="text/javascript">
+var element = $('#b4964161-3f4a-495a-acb0-d487d6a959e3');
+/* Put everything inside the global mpl namespace */
+window.mpl = {};
+
+
+mpl.get_websocket_type = function() {
+    if (typeof(WebSocket) !== 'undefined') {
+        return WebSocket;
+    } else if (typeof(MozWebSocket) !== 'undefined') {
+        return MozWebSocket;
+    } else {
+        alert('Your browser does not have WebSocket support. ' +
+              'Please try Chrome, Safari or Firefox ≥ 6. ' +
+              'Firefox 4 and 5 are also supported but you ' +
+              'have to enable WebSockets in about:config.');
+    };
+}
+
+mpl.figure = function(figure_id, websocket, ondownload, parent_element) {
+    this.id = figure_id;
+
+    this.ws = websocket;
+
+    this.supports_binary = (this.ws.binaryType != undefined);
+
+    if (!this.supports_binary) {
+        var warnings = document.getElementById("mpl-warnings");
+        if (warnings) {
+            warnings.style.display = 'block';
+            warnings.textContent = (
+                "This browser does not support binary websocket messages. " +
+                    "Performance may be slow.");
+        }
+    }
+
+    this.imageObj = new Image();
+
+    this.context = undefined;
+    this.message = undefined;
+    this.canvas = undefined;
+    this.rubberband_canvas = undefined;
+    this.rubberband_context = undefined;
+    this.format_dropdown = undefined;
+
+    this.image_mode = 'full';
+
+    this.root = $('<div/>');
+    this._root_extra_style(this.root)
+    this.root.attr('style', 'display: inline-block');
+
+    $(parent_element).append(this.root);
+
+    this._init_header(this);
+    this._init_canvas(this);
+    this._init_toolbar(this);
+
+    var fig = this;
+
+    this.waiting = false;
+
+    this.ws.onopen =  function () {
+            fig.send_message("supports_binary", {value: fig.supports_binary});
+            fig.send_message("send_image_mode", {});
+            if (mpl.ratio != 1) {
+                fig.send_message("set_dpi_ratio", {'dpi_ratio': mpl.ratio});
+            }
+            fig.send_message("refresh", {});
+        }
+
+    this.imageObj.onload = function() {
+            if (fig.image_mode == 'full') {
+                // Full images could contain transparency (where diff images
+                // almost always do), so we need to clear the canvas so that
+                // there is no ghosting.
+                fig.context.clearRect(0, 0, fig.canvas.width, fig.canvas.height);
+            }
+            fig.context.drawImage(fig.imageObj, 0, 0);
+        };
+
+    this.imageObj.onunload = function() {
+        fig.ws.close();
+    }
+
+    this.ws.onmessage = this._make_on_message_function(this);
+
+    this.ondownload = ondownload;
+}
+
+mpl.figure.prototype._init_header = function() {
+    var titlebar = $(
+        '<div class="ui-dialog-titlebar ui-widget-header ui-corner-all ' +
+        'ui-helper-clearfix"/>');
+    var titletext = $(
+        '<div class="ui-dialog-title" style="width: 100%; ' +
+        'text-align: center; padding: 3px;"/>');
+    titlebar.append(titletext)
+    this.root.append(titlebar);
+    this.header = titletext[0];
+}
+
+
+
+mpl.figure.prototype._canvas_extra_style = function(canvas_div) {
+
+}
+
+
+mpl.figure.prototype._root_extra_style = function(canvas_div) {
+
+}
+
+mpl.figure.prototype._init_canvas = function() {
+    var fig = this;
+
+    var canvas_div = $('<div/>');
+
+    canvas_div.attr('style', 'position: relative; clear: both; outline: 0');
+
+    function canvas_keyboard_event(event) {
+        return fig.key_event(event, event['data']);
+    }
+
+    canvas_div.keydown('key_press', canvas_keyboard_event);
+    canvas_div.keyup('key_release', canvas_keyboard_event);
+    this.canvas_div = canvas_div
+    this._canvas_extra_style(canvas_div)
+    this.root.append(canvas_div);
+
+    var canvas = $('<canvas/>');
+    canvas.addClass('mpl-canvas');
+    canvas.attr('style', "left: 0; top: 0; z-index: 0; outline: 0")
+
+    this.canvas = canvas[0];
+    this.context = canvas[0].getContext("2d");
+
+    var backingStore = this.context.backingStorePixelRatio ||
+	this.context.webkitBackingStorePixelRatio ||
+	this.context.mozBackingStorePixelRatio ||
+	this.context.msBackingStorePixelRatio ||
+	this.context.oBackingStorePixelRatio ||
+	this.context.backingStorePixelRatio || 1;
+
+    mpl.ratio = (window.devicePixelRatio || 1) / backingStore;
+
+    var rubberband = $('<canvas/>');
+    rubberband.attr('style', "position: absolute; left: 0; top: 0; z-index: 1;")
+
+    var pass_mouse_events = true;
+
+    canvas_div.resizable({
+        start: function(event, ui) {
+            pass_mouse_events = false;
+        },
+        resize: function(event, ui) {
+            fig.request_resize(ui.size.width, ui.size.height);
+        },
+        stop: function(event, ui) {
+            pass_mouse_events = true;
+            fig.request_resize(ui.size.width, ui.size.height);
+        },
+    });
+
+    function mouse_event_fn(event) {
+        if (pass_mouse_events)
+            return fig.mouse_event(event, event['data']);
+    }
+
+    rubberband.mousedown('button_press', mouse_event_fn);
+    rubberband.mouseup('button_release', mouse_event_fn);
+    // Throttle sequential mouse events to 1 every 20ms.
+    rubberband.mousemove('motion_notify', mouse_event_fn);
+
+    rubberband.mouseenter('figure_enter', mouse_event_fn);
+    rubberband.mouseleave('figure_leave', mouse_event_fn);
+
+    canvas_div.on("wheel", function (event) {
+        event = event.originalEvent;
+        event['data'] = 'scroll'
+        if (event.deltaY < 0) {
+            event.step = 1;
+        } else {
+            event.step = -1;
+        }
+        mouse_event_fn(event);
+    });
+
+    canvas_div.append(canvas);
+    canvas_div.append(rubberband);
+
+    this.rubberband = rubberband;
+    this.rubberband_canvas = rubberband[0];
+    this.rubberband_context = rubberband[0].getContext("2d");
+    this.rubberband_context.strokeStyle = "#000000";
+
+    this._resize_canvas = function(width, height) {
+        // Keep the size of the canvas, canvas container, and rubber band
+        // canvas in synch.
+        canvas_div.css('width', width)
+        canvas_div.css('height', height)
+
+        canvas.attr('width', width * mpl.ratio);
+        canvas.attr('height', height * mpl.ratio);
+        canvas.attr('style', 'width: ' + width + 'px; height: ' + height + 'px;');
+
+        rubberband.attr('width', width);
+        rubberband.attr('height', height);
+    }
+
+    // Set the figure to an initial 600x600px, this will subsequently be updated
+    // upon first draw.
+    this._resize_canvas(600, 600);
+
+    // Disable right mouse context menu.
+    $(this.rubberband_canvas).bind("contextmenu",function(e){
+        return false;
+    });
+
+    function set_focus () {
+        canvas.focus();
+        canvas_div.focus();
+    }
+
+    window.setTimeout(set_focus, 100);
+}
+
+mpl.figure.prototype._init_toolbar = function() {
+    var fig = this;
+
+    var nav_element = $('<div/>');
+    nav_element.attr('style', 'width: 100%');
+    this.root.append(nav_element);
+
+    // Define a callback function for later on.
+    function toolbar_event(event) {
+        return fig.toolbar_button_onclick(event['data']);
+    }
+    function toolbar_mouse_event(event) {
+        return fig.toolbar_button_onmouseover(event['data']);
+    }
+
+    for(var toolbar_ind in mpl.toolbar_items) {
+        var name = mpl.toolbar_items[toolbar_ind][0];
+        var tooltip = mpl.toolbar_items[toolbar_ind][1];
+        var image = mpl.toolbar_items[toolbar_ind][2];
+        var method_name = mpl.toolbar_items[toolbar_ind][3];
+
+        if (!name) {
+            // put a spacer in here.
+            continue;
+        }
+        var button = $('<button/>');
+        button.addClass('ui-button ui-widget ui-state-default ui-corner-all ' +
+                        'ui-button-icon-only');
+        button.attr('role', 'button');
+        button.attr('aria-disabled', 'false');
+        button.click(method_name, toolbar_event);
+        button.mouseover(tooltip, toolbar_mouse_event);
+
+        var icon_img = $('<span/>');
+        icon_img.addClass('ui-button-icon-primary ui-icon');
+        icon_img.addClass(image);
+        icon_img.addClass('ui-corner-all');
+
+        var tooltip_span = $('<span/>');
+        tooltip_span.addClass('ui-button-text');
+        tooltip_span.html(tooltip);
+
+        button.append(icon_img);
+        button.append(tooltip_span);
+
+        nav_element.append(button);
+    }
+
+    var fmt_picker_span = $('<span/>');
+
+    var fmt_picker = $('<select/>');
+    fmt_picker.addClass('mpl-toolbar-option ui-widget ui-widget-content');
+    fmt_picker_span.append(fmt_picker);
+    nav_element.append(fmt_picker_span);
+    this.format_dropdown = fmt_picker[0];
+
+    for (var ind in mpl.extensions) {
+        var fmt = mpl.extensions[ind];
+        var option = $(
+            '<option/>', {selected: fmt === mpl.default_extension}).html(fmt);
+        fmt_picker.append(option);
+    }
+
+    // Add hover states to the ui-buttons
+    $( ".ui-button" ).hover(
+        function() { $(this).addClass("ui-state-hover");},
+        function() { $(this).removeClass("ui-state-hover");}
+    );
+
+    var status_bar = $('<span class="mpl-message"/>');
+    nav_element.append(status_bar);
+    this.message = status_bar[0];
+}
+
+mpl.figure.prototype.request_resize = function(x_pixels, y_pixels) {
+    // Request matplotlib to resize the figure. Matplotlib will then trigger a resize in the client,
+    // which will in turn request a refresh of the image.
+    this.send_message('resize', {'width': x_pixels, 'height': y_pixels});
+}
+
+mpl.figure.prototype.send_message = function(type, properties) {
+    properties['type'] = type;
+    properties['figure_id'] = this.id;
+    this.ws.send(JSON.stringify(properties));
+}
+
+mpl.figure.prototype.send_draw_message = function() {
+    if (!this.waiting) {
+        this.waiting = true;
+        this.ws.send(JSON.stringify({type: "draw", figure_id: this.id}));
+    }
+}
+
+
+mpl.figure.prototype.handle_save = function(fig, msg) {
+    var format_dropdown = fig.format_dropdown;
+    var format = format_dropdown.options[format_dropdown.selectedIndex].value;
+    fig.ondownload(fig, format);
+}
+
+
+mpl.figure.prototype.handle_resize = function(fig, msg) {
+    var size = msg['size'];
+    if (size[0] != fig.canvas.width || size[1] != fig.canvas.height) {
+        fig._resize_canvas(size[0], size[1]);
+        fig.send_message("refresh", {});
+    };
+}
+
+mpl.figure.prototype.handle_rubberband = function(fig, msg) {
+    var x0 = msg['x0'] / mpl.ratio;
+    var y0 = (fig.canvas.height - msg['y0']) / mpl.ratio;
+    var x1 = msg['x1'] / mpl.ratio;
+    var y1 = (fig.canvas.height - msg['y1']) / mpl.ratio;
+    x0 = Math.floor(x0) + 0.5;
+    y0 = Math.floor(y0) + 0.5;
+    x1 = Math.floor(x1) + 0.5;
+    y1 = Math.floor(y1) + 0.5;
+    var min_x = Math.min(x0, x1);
+    var min_y = Math.min(y0, y1);
+    var width = Math.abs(x1 - x0);
+    var height = Math.abs(y1 - y0);
+
+    fig.rubberband_context.clearRect(
+        0, 0, fig.canvas.width / mpl.ratio, fig.canvas.height / mpl.ratio);
+
+    fig.rubberband_context.strokeRect(min_x, min_y, width, height);
+}
+
+mpl.figure.prototype.handle_figure_label = function(fig, msg) {
+    // Updates the figure title.
+    fig.header.textContent = msg['label'];
+}
+
+mpl.figure.prototype.handle_cursor = function(fig, msg) {
+    var cursor = msg['cursor'];
+    switch(cursor)
+    {
+    case 0:
+        cursor = 'pointer';
+        break;
+    case 1:
+        cursor = 'default';
+        break;
+    case 2:
+        cursor = 'crosshair';
+        break;
+    case 3:
+        cursor = 'move';
+        break;
+    }
+    fig.rubberband_canvas.style.cursor = cursor;
+}
+
+mpl.figure.prototype.handle_message = function(fig, msg) {
+    fig.message.textContent = msg['message'];
+}
+
+mpl.figure.prototype.handle_draw = function(fig, msg) {
+    // Request the server to send over a new figure.
+    fig.send_draw_message();
+}
+
+mpl.figure.prototype.handle_image_mode = function(fig, msg) {
+    fig.image_mode = msg['mode'];
+}
+
+mpl.figure.prototype.updated_canvas_event = function() {
+    // Called whenever the canvas gets updated.
+    this.send_message("ack", {});
+}
+
+// A function to construct a web socket function for onmessage handling.
+// Called in the figure constructor.
+mpl.figure.prototype._make_on_message_function = function(fig) {
+    return function socket_on_message(evt) {
+        if (evt.data instanceof Blob) {
+            /* FIXME: We get "Resource interpreted as Image but
+             * transferred with MIME type text/plain:" errors on
+             * Chrome.  But how to set the MIME type?  It doesn't seem
+             * to be part of the websocket stream */
+            evt.data.type = "image/png";
+
+            /* Free the memory for the previous frames */
+            if (fig.imageObj.src) {
+                (window.URL || window.webkitURL).revokeObjectURL(
+                    fig.imageObj.src);
+            }
+
+            fig.imageObj.src = (window.URL || window.webkitURL).createObjectURL(
+                evt.data);
+            fig.updated_canvas_event();
+            fig.waiting = false;
+            return;
+        }
+        else if (typeof evt.data === 'string' && evt.data.slice(0, 21) == "data:image/png;base64") {
+            fig.imageObj.src = evt.data;
+            fig.updated_canvas_event();
+            fig.waiting = false;
+            return;
+        }
+
+        var msg = JSON.parse(evt.data);
+        var msg_type = msg['type'];
+
+        // Call the  "handle_{type}" callback, which takes
+        // the figure and JSON message as its only arguments.
+        try {
+            var callback = fig["handle_" + msg_type];
+        } catch (e) {
+            console.log("No handler for the '" + msg_type + "' message type: ", msg);
+            return;
+        }
+
+        if (callback) {
+            try {
+                // console.log("Handling '" + msg_type + "' message: ", msg);
+                callback(fig, msg);
+            } catch (e) {
+                console.log("Exception inside the 'handler_" + msg_type + "' callback:", e, e.stack, msg);
+            }
+        }
+    };
+}
+
+// from http://stackoverflow.com/questions/1114465/getting-mouse-location-in-canvas
+mpl.findpos = function(e) {
+    //this section is from http://www.quirksmode.org/js/events_properties.html
+    var targ;
+    if (!e)
+        e = window.event;
+    if (e.target)
+        targ = e.target;
+    else if (e.srcElement)
+        targ = e.srcElement;
+    if (targ.nodeType == 3) // defeat Safari bug
+        targ = targ.parentNode;
+
+    // jQuery normalizes the pageX and pageY
+    // pageX,Y are the mouse positions relative to the document
+    // offset() returns the position of the element relative to the document
+    var x = e.pageX - $(targ).offset().left;
+    var y = e.pageY - $(targ).offset().top;
+
+    return {"x": x, "y": y};
+};
+
+/*
+ * return a copy of an object with only non-object keys
+ * we need this to avoid circular references
+ * http://stackoverflow.com/a/24161582/3208463
+ */
+function simpleKeys (original) {
+  return Object.keys(original).reduce(function (obj, key) {
+    if (typeof original[key] !== 'object')
+        obj[key] = original[key]
+    return obj;
+  }, {});
+}
+
+mpl.figure.prototype.mouse_event = function(event, name) {
+    var canvas_pos = mpl.findpos(event)
+
+    if (name === 'button_press')
+    {
+        this.canvas.focus();
+        this.canvas_div.focus();
+    }
+
+    var x = canvas_pos.x * mpl.ratio;
+    var y = canvas_pos.y * mpl.ratio;
+
+    this.send_message(name, {x: x, y: y, button: event.button,
+                             step: event.step,
+                             guiEvent: simpleKeys(event)});
+
+    /* This prevents the web browser from automatically changing to
+     * the text insertion cursor when the button is pressed.  We want
+     * to control all of the cursor setting manually through the
+     * 'cursor' event from matplotlib */
+    event.preventDefault();
+    return false;
+}
+
+mpl.figure.prototype._key_event_extra = function(event, name) {
+    // Handle any extra behaviour associated with a key event
+}
+
+mpl.figure.prototype.key_event = function(event, name) {
+
+    // Prevent repeat events
+    if (name == 'key_press')
+    {
+        if (event.which === this._key)
+            return;
+        else
+            this._key = event.which;
+    }
+    if (name == 'key_release')
+        this._key = null;
+
+    var value = '';
+    if (event.ctrlKey && event.which != 17)
+        value += "ctrl+";
+    if (event.altKey && event.which != 18)
+        value += "alt+";
+    if (event.shiftKey && event.which != 16)
+        value += "shift+";
+
+    value += 'k';
+    value += event.which.toString();
+
+    this._key_event_extra(event, name);
+
+    this.send_message(name, {key: value,
+                             guiEvent: simpleKeys(event)});
+    return false;
+}
+
+mpl.figure.prototype.toolbar_button_onclick = function(name) {
+    if (name == 'download') {
+        this.handle_save(this, null);
+    } else {
+        this.send_message("toolbar_button", {name: name});
+    }
+};
+
+mpl.figure.prototype.toolbar_button_onmouseover = function(tooltip) {
+    this.message.textContent = tooltip;
+};
+mpl.toolbar_items = [["Home", "Reset original view", "fa fa-home icon-home", "home"], ["Back", "Back to previous view", "fa fa-arrow-left icon-arrow-left", "back"], ["Forward", "Forward to next view", "fa fa-arrow-right icon-arrow-right", "forward"], ["", "", "", ""], ["Pan", "Pan axes with left mouse, zoom with right", "fa fa-arrows icon-move", "pan"], ["Zoom", "Zoom to rectangle", "fa fa-square-o icon-check-empty", "zoom"], ["", "", "", ""], ["Download", "Download plot", "fa fa-floppy-o icon-save", "download"]];
+
+mpl.extensions = ["eps", "jpeg", "pdf", "png", "ps", "raw", "svg", "tif"];
+
+mpl.default_extension = "png";var comm_websocket_adapter = function(comm) {
+    // Create a "websocket"-like object which calls the given IPython comm
+    // object with the appropriate methods. Currently this is a non binary
+    // socket, so there is still some room for performance tuning.
+    var ws = {};
+
+    ws.close = function() {
+        comm.close()
+    };
+    ws.send = function(m) {
+        //console.log('sending', m);
+        comm.send(m);
+    };
+    // Register the callback with on_msg.
+    comm.on_msg(function(msg) {
+        //console.log('receiving', msg['content']['data'], msg);
+        // Pass the mpl event to the overridden (by mpl) onmessage function.
+        ws.onmessage(msg['content']['data'])
+    });
+    return ws;
+}
+
+mpl.mpl_figure_comm = function(comm, msg) {
+    // This is the function which gets called when the mpl process
+    // starts-up an IPython Comm through the "matplotlib" channel.
+
+    var id = msg.content.data.id;
+    // Get hold of the div created by the display call when the Comm
+    // socket was opened in Python.
+    var element = $("#" + id);
+    var ws_proxy = comm_websocket_adapter(comm)
+
+    function ondownload(figure, format) {
+        window.open(figure.imageObj.src);
+    }
+
+    var fig = new mpl.figure(id, ws_proxy,
+                           ondownload,
+                           element.get(0));
+
+    // Call onopen now - mpl needs it, as it is assuming we've passed it a real
+    // web socket which is closed, not our websocket->open comm proxy.
+    ws_proxy.onopen();
+
+    fig.parent_element = element.get(0);
+    fig.cell_info = mpl.find_output_cell("<div id='" + id + "'></div>");
+    if (!fig.cell_info) {
+        console.error("Failed to find cell for figure", id, fig);
+        return;
+    }
+
+    var output_index = fig.cell_info[2]
+    var cell = fig.cell_info[0];
+
+};
+
+mpl.figure.prototype.handle_close = function(fig, msg) {
+    var width = fig.canvas.width/mpl.ratio
+    fig.root.unbind('remove')
+
+    // Update the output cell to use the data from the current canvas.
+    fig.push_to_output();
+    var dataURL = fig.canvas.toDataURL();
+    // Re-enable the keyboard manager in IPython - without this line, in FF,
+    // the notebook keyboard shortcuts fail.
+    IPython.keyboard_manager.enable()
+    $(fig.parent_element).html('<img src="' + dataURL + '" width="' + width + '">');
+    fig.close_ws(fig, msg);
+}
+
+mpl.figure.prototype.close_ws = function(fig, msg){
+    fig.send_message('closing', msg);
+    // fig.ws.close()
+}
+
+mpl.figure.prototype.push_to_output = function(remove_interactive) {
+    // Turn the data on the canvas into data in the output cell.
+    var width = this.canvas.width/mpl.ratio
+    var dataURL = this.canvas.toDataURL();
+    this.cell_info[1]['text/html'] = '<img src="' + dataURL + '" width="' + width + '">';
+}
+
+mpl.figure.prototype.updated_canvas_event = function() {
+    // Tell IPython that the notebook contents must change.
+    IPython.notebook.set_dirty(true);
+    this.send_message("ack", {});
+    var fig = this;
+    // Wait a second, then push the new image to the DOM so
+    // that it is saved nicely (might be nice to debounce this).
+    setTimeout(function () { fig.push_to_output() }, 1000);
+}
+
+mpl.figure.prototype._init_toolbar = function() {
+    var fig = this;
+
+    var nav_element = $('<div/>');
+    nav_element.attr('style', 'width: 100%');
+    this.root.append(nav_element);
+
+    // Define a callback function for later on.
+    function toolbar_event(event) {
+        return fig.toolbar_button_onclick(event['data']);
+    }
+    function toolbar_mouse_event(event) {
+        return fig.toolbar_button_onmouseover(event['data']);
+    }
+
+    for(var toolbar_ind in mpl.toolbar_items){
+        var name = mpl.toolbar_items[toolbar_ind][0];
+        var tooltip = mpl.toolbar_items[toolbar_ind][1];
+        var image = mpl.toolbar_items[toolbar_ind][2];
+        var method_name = mpl.toolbar_items[toolbar_ind][3];
+
+        if (!name) { continue; };
+
+        var button = $('<button class="btn btn-default" href="#" title="' + name + '"><i class="fa ' + image + ' fa-lg"></i></button>');
+        button.click(method_name, toolbar_event);
+        button.mouseover(tooltip, toolbar_mouse_event);
+        nav_element.append(button);
+    }
+
+    // Add the status bar.
+    var status_bar = $('<span class="mpl-message" style="text-align:right; float: right;"/>');
+    nav_element.append(status_bar);
+    this.message = status_bar[0];
+
+    // Add the close button to the window.
+    var buttongrp = $('<div class="btn-group inline pull-right"></div>');
+    var button = $('<button class="btn btn-mini btn-primary" href="#" title="Stop Interaction"><i class="fa fa-power-off icon-remove icon-large"></i></button>');
+    button.click(function (evt) { fig.handle_close(fig, {}); } );
+    button.mouseover('Stop Interaction', toolbar_mouse_event);
+    buttongrp.append(button);
+    var titlebar = this.root.find($('.ui-dialog-titlebar'));
+    titlebar.prepend(buttongrp);
+}
+
+mpl.figure.prototype._root_extra_style = function(el){
+    var fig = this
+    el.on("remove", function(){
+	fig.close_ws(fig, {});
+    });
+}
+
+mpl.figure.prototype._canvas_extra_style = function(el){
+    // this is important to make the div 'focusable
+    el.attr('tabindex', 0)
+    // reach out to IPython and tell the keyboard manager to turn it's self
+    // off when our div gets focus
+
+    // location in version 3
+    if (IPython.notebook.keyboard_manager) {
+        IPython.notebook.keyboard_manager.register_events(el);
+    }
+    else {
+        // location in version 2
+        IPython.keyboard_manager.register_events(el);
+    }
+
+}
+
+mpl.figure.prototype._key_event_extra = function(event, name) {
+    var manager = IPython.notebook.keyboard_manager;
+    if (!manager)
+        manager = IPython.keyboard_manager;
+
+    // Check for shift+enter
+    if (event.shiftKey && event.which == 13) {
+        this.canvas_div.blur();
+        // select the cell after this one
+        var index = IPython.notebook.find_cell_index(this.cell_info[0]);
+        IPython.notebook.select(index + 1);
+    }
+}
+
+mpl.figure.prototype.handle_save = function(fig, msg) {
+    fig.ondownload(fig, null);
+}
+
+
+mpl.find_output_cell = function(html_output) {
+    // Return the cell and output element which can be found *uniquely* in the notebook.
+    // Note - this is a bit hacky, but it is done because the "notebook_saving.Notebook"
+    // IPython event is triggered only after the cells have been serialised, which for
+    // our purposes (turning an active figure into a static one), is too late.
+    var cells = IPython.notebook.get_cells();
+    var ncells = cells.length;
+    for (var i=0; i<ncells; i++) {
+        var cell = cells[i];
+        if (cell.cell_type === 'code'){
+            for (var j=0; j<cell.output_area.outputs.length; j++) {
+                var data = cell.output_area.outputs[j];
+                if (data.data) {
+                    // IPython >= 3 moved mimebundle to data attribute of output
+                    data = data.data;
+                }
+                if (data['text/html'] == html_output) {
+                    return [cell, data, j];
+                }
+            }
+        }
+    }
+}
+
+// Register the function which deals with the matplotlib target/channel.
+// The kernel may be null if the page has been refreshed.
+if (IPython.notebook.kernel != null) {
+    IPython.notebook.kernel.comm_manager.register_target('matplotlib', mpl.mpl_figure_comm);
+}
+
+</script>
+</div>
+
+</div>
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+
+<div class="output_html rendered_html output_subarea ">
+<img src="data:image/png;base64,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" width="640">
+</div>
+
+</div>
+
+<div class="output_area">
+
+    <div class="prompt output_prompt">Out[9]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>[&lt;matplotlib.lines.Line2D at 0x22c350a9f48&gt;]</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    </div>
+  </div>
+</body>
+{% endblock %}
