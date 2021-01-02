@@ -13,12 +13,100 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import os
 from os.path import dirname, basename, join
-
+from matplotlib.pyplot import imread
+from PIL import Image
+import numpy as np
 
 __author__ = "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
+def ffmpeg(imglist,fps,output='video.mp4'):
+    """
+    FFMPEG
 
+    Using the ffmpeg make a video file from images.
+    The output video is saved at the same location of images.
+
+    Parameters
+    ----------
+    imglist : list
+        List of image filename.
+    fps   : int
+        Integer value of Frame Per Second.
+    output : str
+        Output video name with extension.
+            * Default is video.mp4
+
+    Returns
+    -------
+    video : file
+        Video file.
+
+    Example
+    -------
+    >>> from fisspy import makevideo
+    >>> from glob import glob
+    >>> imglist = glob('/data/img/*.png')
+    >>> imglist.sort()
+    >>> makevideo.ffmpeg(imglist, 10, 'video.mp4')
+    """
+
+    FFMPEG_BIN = "ffmpeg"
+
+    exten=output.split('.')[-1]
+    if exten == 'mp4':
+        codec='libx264'
+    elif exten == 'avi':
+        codec='libxvid'
+    elif exten == 'mov':
+        codec='mpeg4'
+    else:
+        ValueError('The given output extension is not supported !')
+
+    n=len(imglist)
+    if n == 0:
+        raise ValueError('Image list has no element!')
+
+    fps=str(fps)
+    img=imread(imglist[0])
+    size=img.shape
+    xsize=size[0]
+    ysize=size[1]
+    if bool(np.mod(xsize,2) + np.mod(ysize,2)):
+        if np.mod(xsize,2):
+            xsize -= 1
+        if np.mod(ysize,2):
+            ysize -=1
+        for i in imglist:
+            img = Image.open(i)
+            img = img.resize([ysize,xsize])
+            img.save(i)
+
+#    if bool(np.mod(xsize,2)+np.mod(ysize,2)):
+#        raise ValueError("The size of the image shuld be even numbers.")
+
+    newname=np.arange(n)
+    newname=np.char.add('_',newname.astype(str))
+    newname=np.char.add(newname,'.png')
+
+    dir=os.path.dirname(imglist[0])
+    if bool(dir):
+        os.chdir(dir)
+    else:
+        os.chdir(os.getcwd())
+
+    f=open('img_list.tmp','w')
+    for i in imglist:
+        f.write("file '"+os.path.basename(i)+"'\n")
+    f.close()
+
+    cmd=(FFMPEG_BIN+
+         ' -r '+fps+' -f concat -i img_list.tmp'+
+         ' -c:v '+codec+' -pix_fmt yuv420p -q:v 1 -y '+output)
+
+    res = os.system(cmd)
+    os.remove('img_list.tmp')
+    return res
 
 class img2video:
     """
@@ -54,7 +142,7 @@ class img2video:
     >>> imglist = glob('/data/img/*.png')
     >>> makevideo.img2video(imglist, 10, 'video.mp4')
     """
-    
+
     def __init__(self, imglist, fps, output='video.mp4', show=False, **kwargs):
 
         print("----Start to make video----")
@@ -84,7 +172,7 @@ class img2video:
         if show:
             plt.pause(0.1)
 
-        ani.save(output, fps=fps, **kwargs)
+        ani.save(fname, fps=fps, **kwargs)
         if not show:
             del ani
             plt.close(self.fig)

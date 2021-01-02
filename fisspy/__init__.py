@@ -7,12 +7,12 @@ An free and open-source Python package for `GST/FISS <http://fiss.snu.ac.kr>`_ i
 Links
 -----
 Homepage : http://fiss.snu.ac.kr \n
-Documentation : http://fisspy.readthedocs.io/en/stable/
+Documentation : http://fiss.snu.ac.kr/fisspy
 """
 
 from __future__ import absolute_import
 __author__="SNU Solar Group"
-__version__="0.9.80"
+__version__="0.9.81"
 
 
 from fisspy import cm

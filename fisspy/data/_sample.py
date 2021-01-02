@@ -22,19 +22,19 @@ if not home:
 fissdir=os.path.join(home,'fisspy')
 if not os.path.isdir(fissdir):
     mkdir(fissdir)
-    
+
 sampledir=os.path.join(fissdir,'sample_data')
 if not os.path.isdir(sampledir):
     mkdir(sampledir)
-    
+
 def download_sample_data():
     """
     Download the sample data.
-    
+
     Parameters
     ----------
     None
-    
+
     Returns
     -------
     None

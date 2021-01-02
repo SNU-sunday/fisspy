@@ -75,7 +75,7 @@ def lambdameter(wv, data0, ref_spectrum=False, wvRange=False,
     if np.any(wvRange):
         ss = np.logical_and(wv >= wvRange[0], wv <= wvRange[1])
     else:
-        ss = np.logical_and(wv >= wv[0], wv <= wv[-1])
+        ss = wv*0 == 0
 
 
     shape=data0.shape

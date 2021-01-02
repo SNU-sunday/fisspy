@@ -3,11 +3,7 @@
 
 {% block content %}
 <style type="text/css">
-/*!
-*
-* IPython base
-*
-*/
+
 .modal.fade .modal-dialog {
   -webkit-transform: translate(0, 0);
   -ms-transform: translate(0, 0);
@@ -39,15 +35,15 @@ label {
 }
 /* Flexible box model classes */
 /* Taken from Alex Russell http://infrequently.org/2009/08/css-3-progress/ */
-/* This file is a compatability layer.  It allows the usage of flexible box
+/* This file is a compatability layer.  It allows the usage of flexible box 
 model layouts accross multiple browsers, including older browsers.  The newest,
 universal implementation of the flexible box model is used when available (see
-`Modern browsers` comments below).  Browsers that are known to implement this
+`Modern browsers` comments below).  Browsers that are known to implement this 
 new spec completely include:
 
     Firefox 28.0+
     Chrome 29.0+
-    Internet Explorer 11+
+    Internet Explorer 11+ 
     Opera 17.0+
 
 Browsers not listed, including Safari, are supported via the styling under the
@@ -3429,7 +3425,7 @@ div#pager .ui-resizable-handle {
   background: #f7f7f7;
   border-top: 1px solid #cfcfcf;
   border-bottom: 1px solid #cfcfcf;
-  /* This injects handle bars (a short, wide = symbol) for
+  /* This injects handle bars (a short, wide = symbol) for 
         the resize handle. */
 }
 div#pager .ui-resizable-handle::after {
@@ -3929,9 +3925,6 @@ ul.typeahead-list  > li > a.pull-right {
     </style>
 
 
-
-
-<!-- Custom stylesheet, it must be in the same directory as the html file -->
 <link rel="stylesheet" href="custom.css">
 
 <!-- Loading mathjax macro -->
@@ -4003,7 +3996,7 @@ ul.typeahead-list  > li > a.pull-right {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -4020,7 +4013,7 @@ ul.typeahead-list  > li > a.pull-right {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span>
@@ -4049,10 +4042,10 @@ ul.typeahead-list  > li > a.pull-right {
 
 
 
-<div id="2985af25-bfdd-4c75-ae6a-0f816040eb1f"></div>
+<div id="52dec620-f6e2-438e-9a21-51d8f87e38f0"></div>
 <div class="output_subarea output_javascript ">
 <script type="text/javascript">
-var element = $('#2985af25-bfdd-4c75-ae6a-0f816040eb1f');
+var element = $('#52dec620-f6e2-438e-9a21-51d8f87e38f0');
 /* Put everything inside the global mpl namespace */
 window.mpl = {};
 
@@ -4064,7 +4057,7 @@ mpl.get_websocket_type = function() {
         return MozWebSocket;
     } else {
         alert('Your browser does not have WebSocket support. ' +
-              'Please try Chrome, Safari or Firefox â‰¥ 6. ' +
+              'Please try Chrome, Safari or Firefox ¡Ã 6. ' +
               'Firefox 4 and 5 are also supported but you ' +
               'have to enable WebSockets in about:config.');
     };
@@ -4891,9 +4884,41 @@ if (IPython.notebook.kernel != null) {
 </div>
 </div>
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="ffmpeg">ffmpeg<a class="anchor-link" href="#ffmpeg">&#182;</a></h3>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h4 id="fisspy.makevideo.ffmpeg(imglist,-fps,-output='video.mp4')"><span style="color:blue">fisspy.makevideo.ffmpeg</span>(imglist, fps, output='video.mp4')<a class="anchor-link" href="#fisspy.makevideo.ffmpeg(imglist,-fps,-output='video.mp4')">&#182;</a></h4><p>Using the ffmpeg make a video file from images.</p>
+<p>Default output directory is the same as the images, but you can change the output directory from the 'output' parameter.</p>
+<p><strong><em>Parameters:</em></strong></p>
+<ul>
+<li>imglist (list) - list of image files.</li>
+<li>fps (int) - frame per seconds.</li>
+<li>output (str) - output data file name. Default output directory is same as the file directory of image direcotry.</li>
+</ul>
+<p><strong><em>Returns:</em></strong></p>
+<ul>
+<li>Result of video file</li>
+</ul>
+<p><strong><em>Example</em></strong></p>
+<div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">fisspy</span> <span class="kn">import</span> <span class="n">makevideo</span>
+    <span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
+    <span class="o">&gt;&gt;&gt;</span> <span class="n">imglist</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="s1">&#39;/data/img/*.png&#39;</span><span class="p">)</span>
+    <span class="o">&gt;&gt;&gt;</span> <span class="n">imglist</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="o">&gt;&gt;&gt;</span> <span class="n">makevideo</span><span class="o">.</span><span class="n">ffmpeg</span><span class="p">(</span><span class="n">imglist</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;video.mp4&#39;</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
     </div>
   </div>
 </body>
-
 
 {% endblock %}
