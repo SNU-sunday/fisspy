@@ -187,7 +187,7 @@ class FISS:
         A right limit index of the frame along the scan direction
         If None, read all data from x1 to the end of the scan direction.
     noceff : `int`, optional
-        he number of coefficients to be used for
+        The number of coefficients to be used for
         the construction of frame in a pca file.
     noiseSuprresion : `bool`, optional
         If True Savitzky-Golay noise filter is applied in the wavelength axis.
@@ -203,7 +203,7 @@ class FISS:
 
     Other Parameters
     ----------------
-    **kwargs : `~scipy.signal.svagol_filter` properties
+    **kwargs : `~scipy.signal.savgol_filter` properties
 
     See also
     --------
