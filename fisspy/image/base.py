@@ -5,7 +5,7 @@ Basic image process tool.
 from __future__ import absolute_import, division
 
 import numpy as np
-from interpolation.splines import LinearSpline
+from interpolation.splines import LinearSpline, CubicSpline
 from scipy.fftpack import ifft2, fft2
 from sunpy.coordinates import frames
 from astropy.coordinates import SkyCoord
@@ -186,7 +186,7 @@ def rot_trans(x, y, xc, yc, angle, dx=0, dy=0, inv=False):
         yt=(x-xc-dx)*np.sin(angle)+(y-yc-dy)*np.cos(angle)+yc
     return xt,yt
 
-def img_interpol(img, xa, ya, xt, yt, missing=-1):
+def img_interpol(img, xa, ya, xt, yt, missing=-1, cubic=False):
     """
     Interpolate the image for a given coordinates.
 
@@ -219,7 +219,10 @@ def img_interpol(img, xa, ya, xt, yt, missing=-1):
     smin=[ya[0,0],xa[0]]
     smax=[ya[-1,0],xa[-1]]
     order=[len(ya),len(xa)]
-    interp=LinearSpline(smin,smax,order,img)
+    if cubic:
+        interp=CubicSpline(smin,smax,order,img)
+    else:
+        interp=LinearSpline(smin,smax,order,img)
     a=np.array((yt.reshape(size),xt.reshape(size)))
     b=interp(a.T)
     res=b.reshape(shape)
@@ -229,7 +232,7 @@ def img_interpol(img, xa, ya, xt, yt, missing=-1):
     return res
 
 def img_interpol3d(img, ta, ya, xa,
-                   tt, yt, xt, missing=-1):
+                   tt, yt, xt, missing=-1, cubic=False):
     """
     Interpolate the image for a given coordinates.
 
@@ -266,7 +269,10 @@ def img_interpol3d(img, ta, ya, xa,
     smin = [ta[0,0,0], ya[0,0,0], xa[0]]
     smax = [ta[-1,0,0],ya[0,-1,0], xa[-1]]
     order = [ta.size, ya.size, xa.size]
-    interp = LinearSpline(smin, smax, order, img)
+    if cubic:
+        interp = CubicSpline(smin, smax, order, img)
+    else:
+        interp = LinearSpline(smin, smax, order, img)
     a = np.array((tt.reshape(size), yt.reshape(size), xt.reshape(size)))
     b=interp(a.T)
     res=b.reshape(shape)
@@ -276,7 +282,7 @@ def img_interpol3d(img, ta, ya, xa,
     return res
 
 def rotation(img, angle, x, y, xc, yc,
-             dx=0, dy=0, inv=False, missing=-1):
+             dx=0, dy=0, inv=False, missing=-1, cubic=False):
     """
     Rotate the input image with angle and center position.
 
@@ -321,10 +327,10 @@ def rotation(img, angle, x, y, xc, yc,
     xt,yt=rot_trans(x, y, xc, yc, angle,
                     dx, dy, inv)
     return img_interpol(img, x, y, xt, yt,
-                        missing=missing)
+                        missing=missing, cubic=cubic)
 
 def rot(img, angle, xc=False, yc=False,
-        dx=0, dy=0, xmargin=0, ymargin=0, missing=0):
+        dx=0, dy=0, xmargin=0, ymargin=0, missing=0, cubic=False):
     """
     Rotate the input image.
 
@@ -379,9 +385,9 @@ def rot(img, angle, xc=False, yc=False,
     if not yc:
         yc=ny/2
     xt, yt=rot_trans(xa,ya,xc,yc,angle,dx=dx,dy=dy)
-    return img_interpol(img,x,y,xt,yt,missing=missing)
+    return img_interpol(img,x,y,xt,yt,missing=missing, cubic=cubic)
 
-def shift(image, sh, missing=0):
+def shift(image, sh, missing=0, cubic=False):
     """
     Shift the given image.
 
@@ -407,9 +413,9 @@ def shift(image, sh, missing=0):
     xt=x-sh[1]+y*0
     yt=y-sh[0]+x*0
 
-    return img_interpol(image,x,y,xt,yt,missing=missing)
+    return img_interpol(image,x,y,xt,yt,missing=missing,cubic=cubic)
 
-def shift3d(img, sh):
+def shift3d(img, sh, cubic=False):
     """
     Shift the given image.
 
@@ -434,10 +440,10 @@ def shift3d(img, sh):
     yt = y - sh[0][:, None, None] + t*0 + x*0
     xt = x - sh[1][:, None, None] + t*0 + y*0
 
-    return img_interpol3d(img, t, y, x, tt, yt, xt, missing=0)
+    return img_interpol3d(img, t, y, x, tt, yt, xt, missing=0, cubic=cubic)
 
 
-def diff_rot_correct(mmap, refx, refy, reftime):
+def diff_rot_correct(mmap, refx, refy, reftime, cubic=False):
     """
     Correct the solar rotation.
 
@@ -471,10 +477,10 @@ def diff_rot_correct(mmap, refx, refy, reftime):
     sx = x - refx.value
     sy = y - refy.value
     mmap.shift
-    smap = _mapShift(mmap, sx, sy)
+    smap = _mapShift(mmap, sx, sy, cubic=cubic)
     return smap
 
-def _mapShift(map1, sx, sy):
+def _mapShift(map1, sx, sy, cubic=False):
 
     new_meta = map1.meta.copy()
     new_meta['crval1'] = ((map1.meta['crval1']*
@@ -489,7 +495,10 @@ def _mapShift(map1, sx, sy):
     smin = [0, 0]
     smax = [new_meta['naxis2']-1, new_meta['naxis1']-1]
     order = map1.data.shape
-    interp = LinearSpline(smin, smax, order, map1.data)
+    if cubic:
+        interp = CubicSpline(smin, smax, order, map1.data)    
+    else:
+        interp = LinearSpline(smin, smax, order, map1.data)
 
     x = np.arange(new_meta['naxis1'], dtype=float)
     xx0 = x * np.ones([new_meta['naxis2'],1])
