@@ -7,15 +7,16 @@ from __future__ import absolute_import, division
 import numpy as np
 from interpolation.splines import LinearSpline, CubicSpline
 from scipy.fftpack import ifft2, fft2
-# from sunpy.coordinates import frames
-# from astropy.coordinates import SkyCoord
-# from sunpy.coordinates.ephemeris import get_earth
-# from sunpy.physics.differential_rotation import solar_rotate_coordinate
+from sunpy.coordinates import frames
+from astropy.coordinates import SkyCoord
+from sunpy.coordinates.ephemeris import get_earth
+from sunpy.physics.differential_rotation import solar_rotate_coordinate
 
 __author__ = "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 __all__ = ['alignoffset', 'rot_trans', 'img_interpol',
-           'rotation', 'rot', 'shift', 'shift3d']
+           'rotation', 'rot', 'shift', 'shift3d',
+           'diff_rot_correct']
 
 def alignoffset(image0, template0, cor= None):
     """
@@ -442,76 +443,76 @@ def shift3d(img, sh, cubic=False):
     return img_interpol3d(img, t, y, x, tt, yt, xt, missing=0, cubic=cubic)
 
 
-# def diff_rot_correct(mmap, refx, refy, reftime, cubic=False):
-#     """
-#     Correct the solar rotation.
+def diff_rot_correct(mmap, refx, refy, reftime, cubic=False):
+    """
+    Correct the solar rotation.
 
-#     Parameters
-#     ----------
-#     mmap : sunpy.map.GenericMap
-#         Single map class.
-#     refx : astropy.units.Quantity
-#         Horizontal wcs information of reference frame.
-#     refy : astropy.units.Quantity
-#         Vertical wcs information of reference frame.
-#     reftime : astropy.time.Time
-#         Time for the reference frame.
+    Parameters
+    ----------
+    mmap : sunpy.map.GenericMap
+        Single map class.
+    refx : astropy.units.Quantity
+        Horizontal wcs information of reference frame.
+    refy : astropy.units.Quantity
+        Vertical wcs information of reference frame.
+    reftime : astropy.time.Time
+        Time for the reference frame.
 
-#     Returns
-#     -------
-#     smap : sunpy.map.GenericMap
-#         Solar rotation corrected map class.
+    Returns
+    -------
+    smap : sunpy.map.GenericMap
+        Solar rotation corrected map class.
 
-#     """
+    """
 
-#     refc = SkyCoord(refx, refy, obstime= reftime,
-#                     observer= get_earth(reftime),
-#                     frame= frames.Helioprojective)
+    refc = SkyCoord(refx, refy, obstime= reftime,
+                    observer= get_earth(reftime),
+                    frame= frames.Helioprojective)
 
-#     date = mmap.date
-#     res = solar_rotate_coordinate(refc, time=date ,frame_time='synodic')
-#     x = res.Tx.value
-#     y = res.Ty.value
+    date = mmap.date
+    res = solar_rotate_coordinate(refc, time=date ,frame_time='synodic')
+    x = res.Tx.value
+    y = res.Ty.value
 
-#     sx = x - refx.value
-#     sy = y - refy.value
-#     mmap.shift
-#     smap = _mapShift(mmap, sx, sy, cubic=cubic)
-#     return smap
+    sx = x - refx.value
+    sy = y - refy.value
+    mmap.shift
+    smap = _mapShift(mmap, sx, sy, cubic=cubic)
+    return smap
 
-# def _mapShift(map1, sx, sy, cubic=False):
+def _mapShift(map1, sx, sy, cubic=False):
 
-#     new_meta = map1.meta.copy()
-#     new_meta['crval1'] = ((map1.meta['crval1']*
-#                            map1.spatial_units[0] +
-#                            sx * map1.spatial_units[0]).to(map1.spatial_units[0])).value
-#     new_meta['crval2'] = ((map1.meta['crval2']*
-#                            map1.spatial_units[0] +
-#                            sy * map1.spatial_units[0]).to(map1.spatial_units[0])).value
-#     delx = sx/map1.meta['cdelt1']
-#     dely = sy/map1.meta['cdelt2']
+    new_meta = map1.meta.copy()
+    new_meta['crval1'] = ((map1.meta['crval1']*
+                           map1.spatial_units[0] +
+                           sx * map1.spatial_units[0]).to(map1.spatial_units[0])).value
+    new_meta['crval2'] = ((map1.meta['crval2']*
+                           map1.spatial_units[0] +
+                           sy * map1.spatial_units[0]).to(map1.spatial_units[0])).value
+    delx = sx/map1.meta['cdelt1']
+    dely = sy/map1.meta['cdelt2']
 
-#     smin = [0, 0]
-#     smax = [new_meta['naxis2']-1, new_meta['naxis1']-1]
-#     order = map1.data.shape
-#     if cubic:
-#         interp = CubicSpline(smin, smax, order, map1.data)    
-#     else:
-#         interp = LinearSpline(smin, smax, order, map1.data)
+    smin = [0, 0]
+    smax = [new_meta['naxis2']-1, new_meta['naxis1']-1]
+    order = map1.data.shape
+    if cubic:
+        interp = CubicSpline(smin, smax, order, map1.data)    
+    else:
+        interp = LinearSpline(smin, smax, order, map1.data)
 
-#     x = np.arange(new_meta['naxis1'], dtype=float)
-#     xx0 = x * np.ones([new_meta['naxis2'],1])
-#     xx = xx0 + delx
-#     y = np.arange(new_meta['naxis2'], dtype=float)
-#     yy0 = y[:,None] + np.ones(new_meta['naxis1'])
-#     yy = yy0 + dely
-#     size = new_meta['naxis1']*new_meta['naxis2']
-#     inp = np.array([yy.reshape(size), xx.reshape(size)])
-#     out = interp(inp.T)
+    x = np.arange(new_meta['naxis1'], dtype=float)
+    xx0 = x * np.ones([new_meta['naxis2'],1])
+    xx = xx0 + delx
+    y = np.arange(new_meta['naxis2'], dtype=float)
+    yy0 = y[:,None] + np.ones(new_meta['naxis1'])
+    yy = yy0 + dely
+    size = new_meta['naxis1']*new_meta['naxis2']
+    inp = np.array([yy.reshape(size), xx.reshape(size)])
+    out = interp(inp.T)
 
-#     out = out.reshape(new_meta['naxis2'], new_meta['naxis1'])
-#     mask = np.invert((xx<=xx0.max())*(xx>=xx0.min())*(yy<=yy0.max())*(yy>=yy0.min()))
-#     out[mask] = 0
-#     newMap = map1._new_instance(out, new_meta, map1.plot_settings)
+    out = out.reshape(new_meta['naxis2'], new_meta['naxis1'])
+    mask = np.invert((xx<=xx0.max())*(xx>=xx0.min())*(yy<=yy0.max())*(yy>=yy0.min()))
+    out[mask] = 0
+    newMap = map1._new_instance(out, new_meta, map1.plot_settings)
 
-#     return newMap
+    return newMap
