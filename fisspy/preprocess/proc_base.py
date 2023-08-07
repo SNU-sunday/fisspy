@@ -86,7 +86,7 @@ def piecewise_quadratic_fit(x, y, npoint=5):
 
 # make class (usful for debugging but should be optimized for memory)
 class calFlat:
-    def __init__(self, fflat, ffoc=None, tilt=None, autorun=True, save=False, show=False, maxiter=40, msk=None):
+    def __init__(self, fflat, ffoc=None, tilt=None, autorun=True, save=False, show=False, maxiter=10, msk=None):
         self.rawFlat = fits.getdata(fflat)
         self.nf, self.ny, self.nw =  self.rawFlat.shape
         self.logRF = np.log10(self.rawFlat)
@@ -106,32 +106,43 @@ class calFlat:
         
         if autorun:
             # get slit pattern
-            self.slit = self.make_slit_pattern(cubic=True, show=show)
+            self.logSlit = self.make_slit_pattern(cubic=True, show=show)
             # remove the slit pattern
-            self.logF = self.logRF - self.slit
+            self.logF = self.logRF - self.logSlit
             plt.pause(0.1)
+            # save slit pattern
+            self.logSlit -= np.median(self.logSlit)
             # get flat image
             self.gain_calib(maxiter=maxiter, msk=msk, show=show)
         
             
             if show:
-                fig, ax = plt.subplots(2, figsize=[9,9], num='Flat Pattern', sharex=True, sharey=True)
+                fig, ax = plt.subplots(2, figsize=[9,9], num='Flat field', sharex=True, sharey=True)
                 im0 = ax[0].imshow(self.logRF[3], plt.cm.gray, origin='lower', interpolation='bilinear')
+                m = self.logRF[3].mean()
+                std = self.logRF[3].std()
+                im0.set_clim(m-std, m+std)
                 ax[0].set_ylabel("Y (pix)")
                 ax[0].set_title("Raw Data")
-                Flat = 10**self.Flat
-                im = ax[1].imshow(Flat, plt.cm.gray, origin='lower', interpolation='bilinear')
-                im.set_clim(Flat[10:-10,10:-10].min(),Flat[10:-10,10:-10].max())
+                logf = np.log10(self.Flat)
+                corI = self.logRF[3] - logf - self.logSlit
+                im = ax[1].imshow(corI, plt.cm.gray, origin='lower', interpolation='bilinear')
+                # im.set_clim(corI[10:-10,10:-10].min(),corI[10:-10,10:-10].max())
+                m = corI[10:-10,10:-10].mean()
+                std = corI[10:-10,10:-10].std()
+                self.im = im
+                im.set_clim(m-std, m+std)
                 ax[1].set_xlabel("Wavelength (pix)")
                 ax[1].set_ylabel("Y (pix)")
-                ax[1].set_title("Flat Pattern")
+                ax[1].set_title("Flat correction")
                 fig.tight_layout()
                 fig.show()
 
     def make_slit_pattern(self, cubic=True, show=False):
         ri = rot(self.mlogRF, np.deg2rad(-self.tilt), cubic=cubic, missing=-1)
 
-        rslit = ri[:,40:-40].mean(1)[:,None] * np.ones([self.ny,self.nw])
+        # rslit = ri[:,40:-40].mean(1)[:,None] * np.ones([self.ny,self.nw])
+        rslit = np.median(ri[:,40:-40], axis=1)[:,None] * np.ones([self.ny,self.nw])
         Slit = rot(rslit, np.deg2rad(self.tilt), cubic=cubic, missing=-1)
 
         if show:
@@ -148,8 +159,8 @@ class calFlat:
         return Slit
 
 
-    def gain_calib(self, maxiter=40, msk=None, show=False):
-        window_length = 20
+    def gain_calib(self, maxiter=10, msk=None, show=False):
+        window_length = 25
         polyorder = 2
         deriv = 0
         delta = 1.0
@@ -162,6 +173,9 @@ class calFlat:
             self.der2 -= self.der2[:,10:-10,10:-10].mean((1,2))[:,None, None]
             std = self.der2[:,10:-10,10:-10].std((1,2))[:,None,None]
             msk = np.exp(-0.5*np.abs((self.der2/std))**2)
+            msk = savgol_filter(msk, window_length, polyorder,
+                      deriv= deriv, delta= delta, cval= cval,
+                      mode= mode, axis=2)
         self.msk = msk
         self.C = (self.logF*msk).sum((1,2))/msk.sum((1,2))
         self.C -= self.C.mean()
@@ -213,7 +227,7 @@ class calFlat:
                 img = np.gradient(np.gradient((self.logF[k] - self.Flat)[j], axis=0), axis=0)*one
                 sh = alignoffset(img[:,5:-5], self.ref[:,5:-5])
                 self.dx[k,j] = sh[1]
-            self.dx[k] = piecewise_quadratic_fit(y, self.dx[k], 150)
+            self.dx[k] = piecewise_quadratic_fit(y, self.dx[k], 100)
 
 
         shape = [self.nf, self.ny, self.nw]
@@ -256,6 +270,9 @@ class calFlat:
             b[b < 1] = 1
             DelFlat = -ob.sum(0)/b
             self.Flat += DelFlat
+            # self.Flat = savgol_filter(self.Flat, 20, polyorder,
+            #           deriv= deriv, delta= delta, cval= cval,
+            #           mode= mode, axis=1)
 
             pos = np.arange(self.nw)[None,None,:] + self.x[:,None,None] + self.dx[:,:,None]
             weight = (pos >= 0) * (pos < self.nw)
@@ -275,11 +292,19 @@ class calFlat:
 
             err = np.abs(DelFlat).max()
             print(f"iteration={i}, err: {err:.2e}")
-        self.bfFlat = self.Flat.copy() # before savgol filter
-        self.Flat = savgol_filter(self.Flat, window_length, polyorder,
-                      deriv= deriv, delta= delta, cval= cval,
-                      mode= mode, axis=1)
+        
         self.Flat -= np.median(self.Flat)
+        self.Flat = 10**self.Flat
+
+        if show:
+            fig, ax = plt.subplots(figsize=[9,5], num='Flat Pattern', sharex=True, sharey=True)
+            im = ax.imshow(self.Flat, plt.cm.gray, origin='lower', interpolation='bilinear')
+            im.set_clim(self.Flat[10:-10,10:-10].min(),self.Flat[10:-10,10:-10].max())
+            ax.set_xlabel("Wavelength (pix)")
+            ax.set_ylabel("Y (pix)")
+            ax.set_title("Flat Pattern")
+            fig.tight_layout()
+            fig.show()
 
 
 
