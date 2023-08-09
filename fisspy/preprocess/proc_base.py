@@ -5,7 +5,7 @@ from fisspy.image.base import alignoffset, rot
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
-def get_tilt(img, show=False):
+def get_tilt(img, tilt=None, show=False):
     """
     Get a tilt angle of the spectrum camera in the unit of degree.
 
@@ -33,22 +33,29 @@ def get_tilt(img, show=False):
     wp = 40
 
     dy_img = np.gradient(img, axis=0)
-    i1 = dy_img[:, 40:wp+20]
-    i2 = dy_img[:, -(wp+20):-40]
+    whd = np.abs(dy_img[20:-20,wp:wp+20].mean(1)).argmax() + 20
+    i1 = dy_img[whd-16:whd+16, wp:wp+16]
+    i2 = dy_img[whd-16:whd+16, -(wp+16):-wp]
     shift = alignoffset(i2, i1)
-    Tilt = np.rad2deg(np.arctan2(shift[0], nw - wp*2))[0]
+    if tilt is None:
+        Tilt = np.rad2deg(np.arctan2(shift[0], nw - wp*2))[0]
+    else:
+        Tilt = tilt
 
 
     if show:
         rimg = rot(img, np.deg2rad(-Tilt), cubic=True, missing=-1)
-        whd = np.abs(dy_img[:,40:60].mean(1)).argmax()
+        
         fig, ax = plt.subplots(1,2, figsize=[14, 4], sharey=True, sharex=True, num='Get_tilt')
-        m = img.mean()
-        std = img.std()
-        imo = ax[0].imshow(img, plt.cm.gray, origin='lower', interpolation='bilinear')
-        # imo.set_clim(m-std,m+std)
+        iimg = img - np.median(img, axis=0)
+        m = iimg[whd-16:whd+16].mean()
+        std = iimg[whd-16:whd+16].std()
+        imo = ax[0].imshow(iimg, plt.cm.gray, origin='lower', interpolation='bilinear')
+        imo.set_clim(m-std*2,m+std*2)
+        
+        irimg = rimg - np.median(rimg, axis=0)
+        imr = ax[1].imshow(irimg, plt.cm.gray, origin='lower', interpolation='bilinear')
         clim = imo.get_clim()
-        imr = ax[1].imshow(rimg, plt.cm.gray, origin='lower', interpolation='bilinear')
         imr.set_clim(clim)
         # imr.set_clim(m-std,m+std)
 
@@ -87,19 +94,25 @@ def piecewise_quadratic_fit(x, y, npoint=5):
 # make class (usful for debugging but should be optimized for memory)
 class calFlat:
     def __init__(self, fflat, ffoc=None, tilt=None, autorun=True, save=False, show=False, maxiter=10, msk=None):
-        self.rawFlat = fits.getdata(fflat)
+        opn = fits.open(fflat)[0]
+        self.rawFlat = opn.data
+        self.date = opn.header['date']
         self.nf, self.ny, self.nw =  self.rawFlat.shape
         self.logRF = np.log10(self.rawFlat)
         self.mlogRF = self.logRF.mean(0)
         self.tilt = tilt
-
+        self.ffoc = ffoc
+        
         # get tilt angle in degree
-        if tilt is None:
-            if ffoc is not None:
-                foc = fits.getdata(ffoc)
-                self.tilt = get_tilt(foc.mean(0), show=show)
-            else:
-                self.tilt = get_tilt(self.mlogRF, show=show)
+        if ffoc is not None:
+            foc = fits.getdata(ffoc)
+            self.mfoc = foc.mean(0)
+            self.tilt = get_tilt(self.mfoc, show=show)
+
+        else:
+            self.tilt = get_tilt(10**self.mlogRF, tilt=tilt, show=show)
+
+
 
         print(f"Tilt: {self.tilt:.2f} degree")
 
@@ -117,7 +130,7 @@ class calFlat:
         
             
             if show:
-                fig, ax = plt.subplots(2, figsize=[9,9], num='Flat field', sharex=True, sharey=True)
+                fig, ax = plt.subplots(2, figsize=[9,9], num=f'Flat field {self.date}', sharex=True, sharey=True)
                 im0 = ax[0].imshow(self.logRF[3], plt.cm.gray, origin='lower', interpolation='bilinear')
                 m = self.logRF[3].mean()
                 std = self.logRF[3].std()
@@ -139,6 +152,10 @@ class calFlat:
                 fig.show()
 
     def make_slit_pattern(self, cubic=True, show=False):
+        """
+        Make a slit pattern image for a given tilt angle
+
+        """
         ri = rot(self.mlogRF, np.deg2rad(-self.tilt), cubic=cubic, missing=-1)
 
         # rslit = ri[:,40:-40].mean(1)[:,None] * np.ones([self.ny,self.nw])
@@ -146,11 +163,11 @@ class calFlat:
         Slit = rot(rslit, np.deg2rad(self.tilt), cubic=cubic, missing=-1)
 
         if show:
-            fig, ax = plt.subplots(figsize=[9,5], num='Slit Pattern')
+            fig, ax = plt.subplots(figsize=[9,5], num=f'Slit Pattern {self.date}')
             im = ax.imshow(Slit, plt.cm.gray, origin='lower', interpolation='bilinear')
             ax.set_xlabel("Wavelength (pix)")
             ax.set_ylabel("Y (pix)")
-            ax.set_title("Slit Pattern")
+            ax.set_title(f"Slit Pattern")
             fig.tight_layout()
             fig.show()
 
@@ -160,7 +177,7 @@ class calFlat:
 
 
     def gain_calib(self, maxiter=10, msk=None, show=False):
-        window_length = 25
+        window_length = 40
         polyorder = 2
         deriv = 0
         delta = 1.0
@@ -297,7 +314,7 @@ class calFlat:
         self.Flat = 10**self.Flat
 
         if show:
-            fig, ax = plt.subplots(figsize=[9,5], num='Flat Pattern', sharex=True, sharey=True)
+            fig, ax = plt.subplots(figsize=[9,5], num=f'Flat Pattern {self.date}', sharex=True, sharey=True)
             im = ax.imshow(self.Flat, plt.cm.gray, origin='lower', interpolation='bilinear')
             im.set_clim(self.Flat[10:-10,10:-10].min(),self.Flat[10:-10,10:-10].max())
             ax.set_xlabel("Wavelength (pix)")
@@ -305,152 +322,3 @@ class calFlat:
             ax.set_title("Flat Pattern")
             fig.tight_layout()
             fig.show()
-
-
-
-
-def gain_calib_fail(logF, maxiter=1, msk=None):
-    nf, ny, nx = logF.shape
-
-    if msk is None:
-        der2 = np.gradient(np.gradient(logF, axis=2), axis=2)
-        der2 -= der2[:,10:-10,10:-10].mean((1,2))[:,None, None]
-        std = der2[:,10:-10,10:-10].std((1,2))[:,None,None]
-        msk = np.exp(-0.5*np.abs((der2/std))**2)
-    C = (logF*msk).sum((1,2))/msk.sum((1,2))
-    C -= C.mean()
-
-    Flat = logF.max(0)
-    f1d = np.gradient(Flat, axis=1)
-    f1d -= f1d.mean()
-    f2d = np.gradient(np.gradient(Flat, axis=1), axis=1)
-    f2d -= f2d.mean()
-
-    mask = (np.abs(f2d) < f2d.std()) * (np.abs(f1d) < f1d.std())
-    mask[:,100:-100] = False
-
-    x = np.arange(nx)
-    for i, m in enumerate(mask):
-        coeff = np.polyfit(x[m], Flat[i,m], 2)
-        Flat[i] = np.polyval(coeff, x)
-    
-    
-    hy = int(ny//2)
-    one = np.ones((4, nx))
-
-    x = np.zeros(nf)
-    idir = [1,-1]
-    
-    for i in idir:
-        cor = 1
-        k = int(nf//2)
-        while(k!=nf-1 and k!=0):
-            img1 = np.gradient((logF[k+i,hy-10:hy+11]-Flat[hy-10:hy+11]).mean(0),axis=0)*one
-            img2 = np.gradient((logF[k,hy-10:hy+11]-Flat[hy-10:hy+11]).mean(0),axis=0)*one
-            sh, cor = alignoffset(img1, img2, cor=True)
-            x[k+i]=x[k]+sh[1]
-            k += i
-            print(f"k: {k}, x={x[k]}, cor={cor}")
-            if i == 1:
-                kf = k
-            else:
-                ki = k        
-    print(f"ki={ki}, kf={kf}")
-    
-    kf += 1
-    # kf = 5
-    
-    logF1 = logF[ki:kf]
-    x=x[ki:kf]
-    x-=np.median(x)
-    nf1 = len(logF1)
-
-    # for loop in range(2):
-    loop=0
-    dx = np.zeros([nf1, ny])
-    msk = msk[ki:kf]
-    C = C[ki:kf]
-
-    for k in range(nf1):
-        ref = np.gradient((logF1[k,hy-10:hy+11]-Flat[hy-10:hy+11]).mean(0),axis=0)*one
-        for j in range(ny):
-            img = np.gradient(np.gradient(logF1[k,j] - Flat[j], axis=0), axis=0)*one
-            sh = alignoffset(img[:,5:-5], ref[:,5:-5])
-            dx[k,j] = sh[1]
-        dx[k] = piecewise_quadratic_fit(np.arange(ny), dx[k], 100)
-    # return dx
-    
-    if loop == 0:
-        ones = np.ones([nf1,ny,nx])
-        size = ones.size
-        y = np.arange(ny)[None,:,None]*ones
-        f = np.arange(nf1)[:,None,None]*ones
-        pos = np.arange(nx)[None,None,:] + x[:,None,None] + dx[:,:,None]  
-        wh = (pos >= 0) * (pos < nx-1)
-        pos[pos < 0] = 0
-        pos[pos > nx-1] = nx-1
-        data = logF1 - Flat
-        smin = [0, 0, 0]
-        smax = [nf1-1, ny-1, nx-1]
-        order = [nf1, ny, nx]
-        interp = LinearSpline(smin,smax,order,data)
-        inp = np.array((f.reshape(size),y.reshape(size),pos.reshape(size)))
-        a = interp(inp.T).reshape([nf1,ny,nx])*wh
-        obj = a.sum((0,1))/wh.sum((0,1))
-        
-    for i in range(maxiter):
-        pos = np.arange(nx)[None,None,:] - x[:,None,None] - dx[:,:,None]  
-        wh = (pos > 0) * (pos < nx-1)
-        pos[pos < 0] = 0
-        pos[pos > nx-1] = nx-1
-        wh = wh*msk
-        interp = LinearSpline(smin, smax, order, obj*ones)
-        inp = np.array((f.reshape(size),y.reshape(size),pos.reshape(size)))
-        obj1 = interp(inp.T).reshape([nf1,ny,nx])
-        ob = (C[:,None,None] + obj1 + Flat - logF1)*wh
-        C -= ob.sum()/wh.sum()
-
-        tmp = np.gradient(obj)#*-1
-        interp = LinearSpline(smin, smax, order, tmp*ones)
-        oi = interp(inp.T).reshape([nf1,ny,nx])
-        x -= (ob*oi).sum((1,2))/(wh*oi**2).sum((1,2))
-        
-
-        b = wh.sum(0)
-        b[b < 1] = 1
-        delFlat = -ob.sum(0)/b
-
-        Flat += delFlat
-
-        pos = np.arange(nx)[None,None,:] + x[:,None,None] + dx[:,:,None]  
-        wh = (pos > 0) * (pos < nx-1)
-        pos[pos < 0] = 0
-        pos[pos > nx-1] = nx-1
-        interp = LinearSpline(smin, smax, order, msk)
-        inp = np.array((f.reshape(size),y.reshape(size),pos.reshape(size)))
-        tmp = interp(inp.T).reshape([nf1,ny,nx])
-        wh = wh*tmp
-        interp = CubicSpline(smin, smax, order, logF1-Flat)
-        tmp2 = interp(inp.T).reshape([nf1,ny,nx])
-        a = (C[:,None,None] + obj[None,None,:]*ones - tmp2)*wh
-        # ttest = obj.copy()
-        a = a.sum((0,1))
-        b = wh.sum((0,1))
-
-        b[b < 1] = 1
-        delObj = -a/b
-        obj += delObj
-        
-        err = np.abs(delFlat).max()
-        print(f"iteration: {i}, max(abs(delFlat))={err}")
-        # print(x)
-
-
-    # test = wh[4]
-    fig, ax = plt.subplots()
-    # ax.plot(obj)
-    ax.imshow(Flat, plt.cm.gray, origin='lower', interpolation='nearest')
-    fig.tight_layout()
-    fig.show()
-    return Flat
-
