@@ -4,6 +4,8 @@ from interpolation.splines import LinearSpline, CubicSpline
 from fisspy.image.base import alignoffset, rot
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
+from os.path import join, isdir, dirname, basename
+from os import getcwd, makedirs
 
 def get_tilt(img, tilt=None, show=False):
     """
@@ -12,7 +14,7 @@ def get_tilt(img, tilt=None, show=False):
     Parameters
     ----------
     img : `~numpy.array`
-        A two-dimensional `numpy.array` of the form ``(y, x)``.
+        A two-dimensional `~numpy.array` of the form ``(y, x)``.
     show : `bool`, optional
         If `False` (default) just calculate the tilt angle.
         If `True` calculate and draw the original image and the rotation corrected image.
@@ -77,6 +79,21 @@ def get_tilt(img, tilt=None, show=False):
 
 def piecewise_quadratic_fit(x, y, npoint=5):
     """
+    Smoothing the data by applying the piecewise quadratic fit.
+
+    Paramteres
+    ----------
+    x: `~numpy.array`
+        An one-dimensional `~numpy.array`.
+    y: `~numpy.array`
+        An one-dimensional `~numpy.array` to be filtered.
+    npoint: `int`
+        The length of the filter window.
+
+    Returns
+    -------
+    yf: `~numpy.array`
+        The filtered data.
     """
     nx = len(x)
     m = npoint if npoint < nx else nx
@@ -91,18 +108,52 @@ def piecewise_quadratic_fit(x, y, npoint=5):
         yf[i] = np.polyval(coeff, x[i])
     return yf
 
-# make class (usful for debugging but should be optimized for memory)
 class calFlat:
-    def __init__(self, fflat, ffoc=None, tilt=None, autorun=True, save=False, show=False, maxiter=10, msk=None):
+    def __init__(self, fflat, ffoc=None, tilt=None, autorun=True, save=True, show=False, maxiter=10, msk=None):
+        """
+        Make the master flat and slit pattern data.
+
+        Parameters
+        ----------
+        fflat: `str`
+            Raw flat file.
+        ffoc: `str`, optional.
+            If ffoc is given, the tilt angle is cacluate by using the focus pinhole image of ffoc file.
+            If `None` default, the tilt angle is calculate by using the flat file itself.
+        tilt: `float`, optional
+            Tilt angle of the image in degree unit.
+            If `None` (default), calculate the tilt angle by using the flat or focus file.
+        autorun: `bool`, optional
+            If `True` (default), run make_slit, gain calib and save fits (optional) directly.
+        save: `bool`, optional
+            If `True` (default), save the master flat and slit pattern when autorun is `True`.
+        show: `bool`, optional
+            If `True`, draw raw and flat-fielded image. Default is `False`
+        maxiter: `int`, optional
+            Maximum number of iteration to repeat the calculation for creation master flat.
+        msk: `~numpy.array`, optional
+            Spectrum Mask
+        
+        Returns
+        -------
+        calFlat instance.
+        """
         opn = fits.open(fflat)[0]
+        self.h = opn.header
         self.rawFlat = opn.data
-        self.date = opn.header['date']
+        self.date = self.h['date']
         self.nf, self.ny, self.nw =  self.rawFlat.shape
         self.logRF = np.log10(self.rawFlat)
         self.mlogRF = self.logRF.mean(0)
         self.tilt = tilt
         self.ffoc = ffoc
+        self.fflat = fflat
         
+        fdir = dirname(fflat)
+        if not fdir:
+            fdir = getcwd()
+
+        self.sdir = join(dirname(fdir), 'proc', 'cal')
         # get tilt angle in degree
         if ffoc is not None:
             foc = fits.getdata(ffoc)
@@ -119,14 +170,17 @@ class calFlat:
         
         if autorun:
             # get slit pattern
-            self.logSlit = self.make_slit_pattern(cubic=True, show=show)
+            self.Slit = self.make_slit_pattern(cubic=True, show=show)
+            self.logSlit = np.log10(self.Slit)
             # remove the slit pattern
             self.logF = self.logRF - self.logSlit
             plt.pause(0.1)
             # save slit pattern
             self.logSlit -= np.median(self.logSlit)
             # get flat image
-            self.gain_calib(maxiter=maxiter, msk=msk, show=show)
+            self.Flat = self.gain_calib(maxiter=maxiter, msk=msk, show=show)
+            if save:
+                self.saveFits(self.sdir)
         
             
             if show:
@@ -153,30 +207,55 @@ class calFlat:
 
     def make_slit_pattern(self, cubic=True, show=False):
         """
-        Make a slit pattern image for a given tilt angle
+        Make the slit pattern image with the given tilt angle.
 
+        Paramters
+        ---------
+        cubic: `bool`, optional
+            If `True` (default), apply the cubic interpolation to rotate the image.
+            If `False`, apply the linear interpolation.
+        show: `bool, optional
+            If `True`, Draw a slit pattern image. Default is `False`
+
+        Returns
+        -------
+        Slit: `~numpy.array`
         """
         ri = rot(self.mlogRF, np.deg2rad(-self.tilt), cubic=cubic, missing=-1)
 
         # rslit = ri[:,40:-40].mean(1)[:,None] * np.ones([self.ny,self.nw])
         rslit = np.median(ri[:,40:-40], axis=1)[:,None] * np.ones([self.ny,self.nw])
-        Slit = rot(rslit, np.deg2rad(self.tilt), cubic=cubic, missing=-1)
+        logSlit = rot(rslit, np.deg2rad(self.tilt), cubic=cubic, missing=-1)
 
         if show:
             fig, ax = plt.subplots(figsize=[9,5], num=f'Slit Pattern {self.date}')
-            im = ax.imshow(Slit, plt.cm.gray, origin='lower', interpolation='bilinear')
+            im = ax.imshow(logSlit, plt.cm.gray, origin='lower', interpolation='bilinear')
             ax.set_xlabel("Wavelength (pix)")
             ax.set_ylabel("Y (pix)")
             ax.set_title(f"Slit Pattern")
             fig.tight_layout()
             fig.show()
-
-        # TODO save Fits 
             
-        return Slit
-
+        return 10**logSlit
 
     def gain_calib(self, maxiter=10, msk=None, show=False):
+        """
+        Make the master flat following the technique decribed in Chae et al. (2013).
+
+        Parameters
+        ----------
+        maxiter: `int`, optional
+            Maximum number of iteration to repeat the calculation for creation master flat.
+        msk: `~numpy.array`, optional
+            Spectrum Mask
+        show: `bool`, optional
+            If `True`, Draw a Flat image. Default is `False`
+
+        Returns
+        -------
+        Flat: `~numpy.array`
+            Master Flat
+        """
         window_length = 40
         polyorder = 2
         deriv = 0
@@ -197,17 +276,17 @@ class calFlat:
         self.C = (self.logF*msk).sum((1,2))/msk.sum((1,2))
         self.C -= self.C.mean()
 
-        self.Flat = np.median(self.logF, axis=0)
-        self.Flat -= np.median(self.Flat)
-        f1d = np.gradient(self.Flat, axis=1)
+        Flat = np.median(self.logF, axis=0)
+        Flat -= np.median(Flat)
+        f1d = np.gradient(Flat, axis=1)
         f2d = np.gradient(f1d, axis=1)
         mask = (np.abs(f2d) <= f2d.std()) * (np.abs(f1d) <= f1d.std())
         mask[:,100:-100] = False
 
         w = np.arange(self.nw)
         for i, m in enumerate(mask):
-            coeff = np.polyfit(w[m], self.Flat[i,m], 2)
-            self.Flat[i] = np.polyval(coeff, w)
+            coeff = np.polyfit(w[m], Flat[i,m], 2)
+            Flat[i] = np.polyval(coeff, w)
 
         self.x = np.zeros(self.nf)
         self.xi = np.zeros(self.nf)
@@ -219,17 +298,17 @@ class calFlat:
             self.xi[k] = xdum[self.logF[k, hy] == self.logF[k, hy, 5:-5].min()][0]
 
         for k in range(self.nf-1):
-            img1 = (self.logF[k+1] - self.Flat)[hy-10:hy+10].mean(0)*one
-            img2 = (self.logF[k] - self.Flat)[hy-10:hy+10].mean(0)*one
+            img1 = (self.logF[k+1] - Flat)[hy-10:hy+10].mean(0)*one
+            img2 = (self.logF[k] - Flat)[hy-10:hy+10].mean(0)*one
             sh = alignoffset(img1, img2)
             dx = int(np.round(sh[1]))
             if dx < 0:
-                img1 = (self.logF[k+1] - self.Flat)[hy-10:hy+10, :dx].mean(0)*one[:,:dx]
-                img2 = (self.logF[k] - self.Flat)[hy-10:hy+10, -dx:].mean(0)*one[:,-dx:]
+                img1 = (self.logF[k+1] - Flat)[hy-10:hy+10, :dx].mean(0)*one[:,:dx]
+                img2 = (self.logF[k] - Flat)[hy-10:hy+10, -dx:].mean(0)*one[:,-dx:]
                 sh, cor = alignoffset(img1, img2, cor=True)
             else:
-                img1 = (self.logF[k+1] - self.Flat)[hy-10:hy+10, dx:].mean(0)*one[:,dx:]
-                img2 = (self.logF[k] - self.Flat)[hy-10:hy+10, :-dx].mean(0)*one[:,:-dx]
+                img1 = (self.logF[k+1] - Flat)[hy-10:hy+10, dx:].mean(0)*one[:,dx:]
+                img2 = (self.logF[k] - Flat)[hy-10:hy+10, :-dx].mean(0)*one[:,:-dx]
                 sh, cor = alignoffset(img1, img2, cor=True)
             self.x[k+1] = self.x[k] + sh[1] + dx
             print(f"k: {k+1}, x={self.x[k+1]}, cor={cor}")
@@ -239,9 +318,9 @@ class calFlat:
         self.dx = np.zeros([self.nf, self.ny])
         y = np.arange(self.ny)
         for k in range(self.nf):
-            self.ref = np.gradient(np.gradient((self.logF[k]-self.Flat)[hy-10:hy+10].mean(0), axis=0), axis=0)*one
+            self.ref = np.gradient(np.gradient((self.logF[k]-Flat)[hy-10:hy+10].mean(0), axis=0), axis=0)*one
             for j in range(self.ny):
-                img = np.gradient(np.gradient((self.logF[k] - self.Flat)[j], axis=0), axis=0)*one
+                img = np.gradient(np.gradient((self.logF[k] - Flat)[j], axis=0), axis=0)*one
                 sh = alignoffset(img[:,5:-5], self.ref[:,5:-5])
                 self.dx[k,j] = sh[1]
             self.dx[k] = piecewise_quadratic_fit(y, self.dx[k], 100)
@@ -256,7 +335,7 @@ class calFlat:
         weight = (pos >= 0) * (pos < self.nw)
         pos[pos < 0] = 0
         pos[pos > self.nw-1] = self.nw-1
-        data = self.logF - self.Flat
+        data = self.logF - Flat
         smin = [0, 0, 0]
         smax = [self.nf-1, self.ny-1, self.nw-1]
         order = [self.nf, self.ny, self.nw]
@@ -277,7 +356,7 @@ class calFlat:
             interp = LinearSpline(smin, smax, order, self.Object*ones)
             inp = np.array((f.reshape(size), y.reshape(size), pos.reshape(size)))
             obj1 = interp(inp.T).reshape(shape)
-            ob = (self.C[:,None,None] + obj1 + self.Flat - self.logF)*weight
+            ob = (self.C[:,None,None] + obj1 + Flat - self.logF)*weight
             self.C -= ob.sum((1,2))/weight.sum((1,2))
             data = np.gradient(self.Object, axis=0)*ones
             interp = LinearSpline(smin, smax, order, data)
@@ -286,10 +365,7 @@ class calFlat:
             b = weight.sum(0)
             b[b < 1] = 1
             DelFlat = -ob.sum(0)/b
-            self.Flat += DelFlat
-            # self.Flat = savgol_filter(self.Flat, 20, polyorder,
-            #           deriv= deriv, delta= delta, cval= cval,
-            #           mode= mode, axis=1)
+            Flat += DelFlat
 
             pos = np.arange(self.nw)[None,None,:] + self.x[:,None,None] + self.dx[:,:,None]
             weight = (pos >= 0) * (pos < self.nw)
@@ -298,7 +374,7 @@ class calFlat:
             interp = LinearSpline(smin, smax, order, self.msk)
             inp = np.array((f.reshape(size), y.reshape(size), pos.reshape(size)))
             weight = weight*interp(inp.T).reshape(shape)
-            data = self.logF - self.Flat
+            data = self.logF - Flat
             interp = CubicSpline(smin, smax, order, data)
             a = (self.C[:, None, None] + self.Object[None,None,:] - interp(inp.T).reshape(shape))*weight
 
@@ -310,15 +386,86 @@ class calFlat:
             err = np.abs(DelFlat).max()
             print(f"iteration={i}, err: {err:.2e}")
         
-        self.Flat -= np.median(self.Flat)
-        self.Flat = 10**self.Flat
+        Flat -= np.median(Flat)
+        Flat = 10**Flat
 
         if show:
             fig, ax = plt.subplots(figsize=[9,5], num=f'Flat Pattern {self.date}', sharex=True, sharey=True)
-            im = ax.imshow(self.Flat, plt.cm.gray, origin='lower', interpolation='bilinear')
-            im.set_clim(self.Flat[10:-10,10:-10].min(),self.Flat[10:-10,10:-10].max())
+            im = ax.imshow(Flat, plt.cm.gray, origin='lower', interpolation='bilinear')
+            im.set_clim(Flat[10:-10,10:-10].min(),Flat[10:-10,10:-10].max())
             ax.set_xlabel("Wavelength (pix)")
             ax.set_ylabel("Y (pix)")
             ax.set_title("Flat Pattern")
             fig.tight_layout()
             fig.show()
+            
+        return Flat
+    
+    def saveFits(self, sdir=False, overwirte=False):
+        """
+        Save slit pattern and flat as a fits file
+
+        Parameters
+        ----------
+        sdir: `str`, optional
+            Save directory.
+            If not, the data will be save at the '../proc/cal' directory for the input flat file.
+        overwrite: `bool`, optional
+            If `True`, overwrite the output file if it exists, Default is `False`
+
+        Returns
+        -------
+        None
+        """
+        if not sdir:
+            sdir = self.sdir
+        if not isdir(sdir):
+            makedirs(sdir)
+
+        rfname = basename(self.fflat)
+        tmp = rfname.replace('_Flat', '')
+        fname = tmp.replace('FISS_', 'FISS_FLAT_')
+        sname = tmp.replace('FISS_', 'FISS_SLIT_')
+        fname = join(sdir, fname)
+        sname = join(sdir, sname)
+
+        # save slit
+        hdu = fits.PrimaryHDU(self.Slit)
+        hdu.header['TILT'] = self.tilt
+        hdu.header['CCDNAME'] = self.h['CCDNAME']
+        hdu.header['EXPTIME'] = self.h['EXPTIME']
+        hdu.header['STRTIME'] = self.h['STRTIME']
+        hdu.header['ENDTIME'] = self.h['ENDTIME']
+        try:
+            hdu.header['WAVELEN'] = self.h['WAVELEN']
+        except:
+            pass
+        try:
+            hdu.header['GRATWVLN'] = self.h['GRATWVLN']
+        except:
+            pass
+        for comment in self.h['COMMENT']:
+            hdu.header.add_history(comment)
+        hdu.writeto(sname, overwrite=overwirte)
+
+        # save flat file
+        # save slit
+        fhdu = fits.PrimaryHDU(self.Flat)
+        fhdu.header['TILT'] = self.tilt
+        fhdu.header['CCDNAME'] = self.h['CCDNAME']
+        fhdu.header['EXPTIME'] = self.h['EXPTIME']
+        fhdu.header['STRTIME'] = self.h['STRTIME']
+        fhdu.header['ENDTIME'] = self.h['ENDTIME']
+        try:
+            fhdu.header['WAVELEN'] = self.h['WAVELEN']
+        except:
+            pass
+        try:
+            fhdu.header['GRATWVLN'] = self.h['GRATWVLN']
+        except:
+            pass
+        for comment in self.h['COMMENT']:
+            fhdu.header.add_history(comment)
+        fhdu.header.add_history('slit pattern subtracted')
+        fhdu.writeto(fname, overwrite=overwirte)
+        
