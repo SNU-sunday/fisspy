@@ -15,20 +15,20 @@ from scipy.fftpack import ifft2, fft2
 __author__ = "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 __all__ = ['alignoffset', 'rot_trans', 'img_interpol',
-           'rotation', 'rot', 'shift', 'shift3d']
+           'rotation', 'rot', 'shift']
 
 def alignoffset(image0, template0, cor= None):
     """
-    Align the two images
+    Calculate the align offset between two two-dimensional images
 
     Parameters
     ----------
     image0 : `~numpy.ndarray`
         Images for coalignment with the template
-        A 2 or 3 Dimensional array ex) image[t,y,x]
+        2 Dimensional array
     template0 : `~numpy.ndarray`
         The reference image for coalignment
-        2D Dimensional arry ex) template[y,x]
+        2-Dimensional arry ex) template[y,x]
     cor: `bool`
         If True, return the correlation between template0 and result.
 
@@ -93,41 +93,20 @@ def alignoffset(image0, template0, cor= None):
     x0=s[-1]-nx*(s[-1]>nx/2)
     y0=s[-2]-ny*(s[-2]>ny/2)
 
-    if ndim==2:
-        cc=np.empty((3,3))
-        cc[0,1]=corr[s[0]-1,s[1]]
-        cc[1,0]=corr[s[0],s[1]-1]
-        cc[1,1]=corr[s[0],s[1]]
-        cc[1,2]=corr[s[0],s[1]+1-nx]
-        cc[2,1]=corr[s[0]+1-ny,s[1]]
-        x1=0.5*(cc[1,0]-cc[1,2])/(cc[1,2]+cc[1,0]-2.*cc[1,1])
-        y1=0.5*(cc[0,1]-cc[2,1])/(cc[2,1]+cc[0,1]-2.*cc[1,1])
-    else:
-        cc=np.empty((si[0],3,3))
-        cc[:,0,1]=corr[s[0],s[1]-1,s[2]]
-        cc[:,1,0]=corr[s[0],s[1],s[2]-1]
-        cc[:,1,1]=corr[s[0],s[1],s[2]]
-        cc[:,1,2]=corr[s[0],s[1],s[2]+1-nx]
-        cc[:,2,1]=corr[s[0],s[1]+1-ny,s[2]]
-        x1=0.5*(cc[:,1,0]-cc[:,1,2])/(cc[:,1,2]+cc[:,1,0]-2.*cc[:,1,1])
-        y1=0.5*(cc[:,0,1]-cc[:,2,1])/(cc[:,2,1]+cc[:,0,1]-2.*cc[:,1,1])
+    cc=np.empty((3,3))
+    cc[0,1]=corr[s[0]-1,s[1]]
+    cc[1,0]=corr[s[0],s[1]-1]
+    cc[1,1]=corr[s[0],s[1]]
+    cc[1,2]=corr[s[0],s[1]+1-nx]
+    cc[2,1]=corr[s[0]+1-ny,s[1]]
+    x1=0.5*(cc[1,0]-cc[1,2])/(cc[1,2]+cc[1,0]-2.*cc[1,1])
+    y1=0.5*(cc[0,1]-cc[2,1])/(cc[2,1]+cc[0,1]-2.*cc[1,1])
 
 
     x=x0+x1
     y=y0+y1
 
-    if cor and ndim == 3:
-        img = shift3d(image, [-y, -x])
-        xx = np.arange(nx) + x[:,None,None]
-        yy = np.arange(ny)[:,None] + y[:,None,None]
-        kx = np.logical_and(xx >= 0, xx <= nx - 1)
-        ky = np.logical_and(yy >= 0, yy <= ny - 1)
-        roi = np.logical_and(kx, ky)
-        cor = (img * template * roi).sum((1,2)) / np.sqrt(
-                        (img **2 * roi).sum((1,2)) *
-                        (template **2 * roi).sum((1,2)))
-        return np.array([y, x]), cor
-    elif cor and ndim == 2:
+    if cor:
         img = shift(image, [-y, -x])
         xx = np.arange(nx) + x
         yy = np.arange(ny) + y
@@ -192,7 +171,7 @@ def img_interpol(img, xa, ya, xt, yt, missing=-1, cubic=False):
     Parameters
     ----------
     img : `~numpy.ndarray`
-        2 dimensional array of image.
+        N-dimensional array of image.
     xa : `~numpy.ndarray`
         Row vector of x.
     ya : `~numpy.ndarray`
@@ -209,74 +188,38 @@ def img_interpol(img, xa, ya, xt, yt, missing=-1, cubic=False):
     Returns
     -------
     res : ~numpy.ndarray
-        2 dimensional interpolated image.
+        N-dimensional interpolated image.
         The size of res is same as input img.
 
     """
-    shape=xt.shape
-    size=xt.size
-    smin=[ya[0,0],xa[0]]
-    smax=[ya[-1,0],xa[-1]]
-    order=[len(ya),len(xa)]
-    if cubic:
-        interp=CubicSpline(smin,smax,order,img)
-    else:
-        interp=LinearSpline(smin,smax,order,img)
-    a=np.array((yt.reshape(size),xt.reshape(size)))
-    b=interp(a.T)
-    res=b.reshape(shape)
-    if missing!=-1:
-        mask=np.invert((xt<=xa.max())*(xt>=xa.min())*(yt<=ya.max())*(yt>=ya.min()))
-        res[mask]=missing
-    return res
+    shape = img.shape
+    ndim = img.ndim
+    size = img.size
+    ones = np.ones(shape)
 
-def img_interpol3d(img, ta, ya, xa,
-                   tt, yt, xt, missing=-1, cubic=False):
-    """
-    Interpolate the image for a given coordinates.
-
-    Parameters
-    ----------
-    img : `~numpy.ndarray`
-        3 dimensional array of image.
-    xa : `~numpy.ndarray`
-        Row vector of x.
-    ya : `~numpy.ndarray`
-        Colomn vector of y.
-    ta : `~numpy.ndarray`
-        Frame vector.
-    tt : `~numpy.ndarray`
-        Coordinates of the positions in the observed frame.
-    yt : `~numpy.ndarray`
-        Coordinates of the positions in the observed frame.
-    xt : `~numpy.ndarray`
-        Coordinates of the positions in the observed frame.
-    missing : (optional) `float`
-        The value of extrapolated position.
-        Default is -1, and it means the False.
-        If False, then extrapolate the given position.
-
-    Returns
-    -------
-    res : ~numpy.ndarray
-        3 dimensional interpolated image.
-        The size of res is same as input img.
-
-    """
-    shape = xt.shape
-    size = xt.size
-    smin = [ta[0,0,0], ya[0,0,0], xa[0]]
-    smax = [ta[-1,0,0],ya[0,-1,0], xa[-1]]
-    order = [ta.size, ya.size, xa.size]
+    smin = np.zeros(ndim)
+    smax = np.array(shape)-1
+    smin[-1] = xa[0]
+    smin[-2] = ya[0,0]
+    smax[-1] = xa[-1]
+    smax[-2] = ya[-1,0]
+    order = shape
     if cubic:
         interp = CubicSpline(smin, smax, order, img)
     else:
         interp = LinearSpline(smin, smax, order, img)
-    a = np.array((tt.reshape(size), yt.reshape(size), xt.reshape(size)))
-    b=interp(a.T)
+
+    inp = np.zeros((ndim,size))
+    for i, sh in enumerate(shape[:-2]):
+        tmp = np.arange(sh)[tuple([None]*i + [Ellipsis] + [None]*(ndim-1-i))]*ones
+        inp[i] = tmp
+    inp[-2] = (yt * ones).reshape(size)
+    inp[-1] = (xt * ones).reshape(size)
+    # a = np.array((yt.reshape(size),xt.reshape(size)))
+    b = interp(inp.T)
     res=b.reshape(shape)
     if missing!=-1:
-        mask=np.invert((xt<=xa.max())*(xt>=xa.min())*(yt<=ya.max())*(yt>=ya.min()))
+        mask=np.invert((xt<=xa.max())*(xt>=xa.min())*(yt<=ya.max())*(yt>=ya.min()))*ones.astype(bool)
         res[mask]=missing
     return res
 
@@ -288,7 +231,7 @@ def rotation(img, angle, x, y, xc, yc,
     Parameters
     ----------
     img : `~numpy.ndarray`
-        2 dimensional array of image.
+        N-dimensional array of image.
     x : `~numpy.ndarray`
         Row vector of x.
     y : `~numpy.ndarray`
@@ -336,7 +279,7 @@ def rot(img, angle, xc=False, yc=False,
     Parameters
     ----------
     img : `~numpy.ndarray`
-        2 dimensional array of image.
+        N-dimensional array of image.
     angle : `float`
         Roation angle in 'radian' unit.
     xc : (optional) `float`
@@ -370,7 +313,8 @@ def rot(img, angle, xc=False, yc=False,
     The input angle must be in radian unit.
 
     """
-    ny,nx=img.shape
+    nx = img.shape[-1]
+    ny = img.shape[-2]
     nx1=int(nx+2*xmargin)
     ny1=int(ny+2*ymargin)
     x=np.arange(nx)
@@ -406,41 +350,13 @@ def shift(image, sh, missing=0, cubic=False):
     simage : ~numpy.ndarray
         shifted image.
     """
-    ny, nx =image.shape
+    ny, nx = image.shape
     x=np.arange(nx)
     y=np.arange(ny)[:,None]
     xt=x-sh[1]+y*0
     yt=y-sh[0]+x*0
 
     return img_interpol(image,x,y,xt,yt,missing=missing,cubic=cubic)
-
-def shift3d(img, sh, cubic=False):
-    """
-    Shift the given image.
-
-    Parameters
-    ----------
-    image :  `~numpy.ndarray`
-        3 dimensional array.
-    sh : tuple, list or ndarray
-        tuple, list or ndarray of shifting value set (y,x)
-
-    Returns
-    -------
-    simage : ~numpy.ndarray
-        shifted image.
-    """
-    nt, ny, nx =img.shape
-
-    t = np.arange(nt)[:,None,None]
-    y = np.arange(ny)[None,:,None]
-    x = np.arange(nx)
-    tt = t + y*0 + x*0
-    yt = y - sh[0][:, None, None] + t*0 + x*0
-    xt = x - sh[1][:, None, None] + t*0 + y*0
-
-    return img_interpol3d(img, t, y, x, tt, yt, xt, missing=0, cubic=cubic)
-
 
 # def diff_rot_correct(mmap, refx, refy, reftime, cubic=False):
 #     """

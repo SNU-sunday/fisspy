@@ -48,7 +48,7 @@ def get_tilt(img, tilt=None, show=False):
     if show:
         rimg = rot(img, np.deg2rad(-Tilt), cubic=True, missing=-1)
         
-        fig, ax = plt.subplots(1,2, figsize=[14, 4], sharey=True, sharex=True, num='Get_tilt')
+        fig, ax = plt.subplots(2,1, figsize=[8, 8], sharey=True, sharex=True, num='Get_tilt')
         iimg = img - np.median(img, axis=0)
         m = iimg[whd-16:whd+16].mean()
         std = iimg[whd-16:whd+16].std()
@@ -61,9 +61,10 @@ def get_tilt(img, tilt=None, show=False):
         imr.set_clim(clim)
         # imr.set_clim(m-std,m+std)
 
-        ax[0].set_xlabel('Wavelength (pix)')
+        # ax[0].set_xlabel('Wavelength (pix)')
         ax[1].set_xlabel('Wavelength (pix)')
-        ax[0].set_ylabel('Y (pix)')
+        ax[1].set_ylabel('Slit (pix)')
+        ax[0].set_ylabel('Slit (pix)')
         ax[0].set_title('tilted image')
         ax[1].set_title('corrected image')
 
@@ -107,6 +108,161 @@ def piecewise_quadratic_fit(x, y, npoint=5):
         coeff = np.polyfit(x[sid:fid], y[sid:fid], 2)
         yf[i] = np.polyval(coeff, x[i])
     return yf
+
+def get_curve_par(cflat, tilt, show=False):
+    """
+    Calculate the curvature of the spectrum by applying the second order polynominal fit.
+
+    Parameters
+    ----------
+    cflat: `~numpy.array`
+        2-dimensional flat corrected raw flat image. ex) cflat = rawflat[3]/Flat/Slit.
+    tilt: `float`
+        Tilt angle of the image in degree unit.
+    show: `bool`, optional
+        If `True`, draw wavelength shift along the slit direction and fitting. Default is `False`
+
+    Returns
+    -------
+    p: `list`
+        Results of the numpy.polyfit of the second-order polynomial fitting.
+    """
+    ny, nw = cflat.shape
+    rf = rot(cflat, np.deg2rad(-tilt), missing=-1)
+    d2flat = np.gradient(np.gradient(rf[:,5:-5], axis=1), axis=1)
+    d2flat = savgol_filter(d2flat, 40, 2, axis=1)
+
+    dw = np.zeros(ny)
+    one = np.ones((4,nw-10))
+    # if method == 0:
+    #     ref = d2flat[ny//2-2:ny//2+2].mean(1)[:,None] * one
+    #     for i, prof in enumerate(d2flat):
+    #         dw[i] = alignoffset(prof*one, ref)[1]
+    
+    
+    for direction in range(-1,2,2):
+        prof0 = d2flat[ny//2]
+        for i, prof in enumerate(d2flat[ny//2 + direction::direction]):
+            dw[direction*(i+1) + ny//2] = alignoffset(prof*one, prof0*one)[1]
+            dw[direction*(i+1) + ny//2] += dw[direction*(i) + ny//2]
+            prof0 = prof
+
+    y = np.arange(ny)
+    p = np.polyfit(y, dw, 2)
+
+    if show:
+        fig, ax = plt.subplots(figsize=[8,5], num='curvature parameter')
+        wf = np.polyval(p, y)
+        ax.scatter(y, dw, marker='+')
+        p1 = f"$+{p[1]:.2e}x$" if np.sign(p[1]) == 1 else f"${p[1]:.2e}x$"
+        p2 = f"$+{p[2]:.2e}" if np.sign(p[2]) == 1 else f"${p[2]:.2e}"
+        eq = f"$y = {p[0]:.2e}x^2${p1}{p2}"
+        eq = eq.replace('e','^{')
+        eq = eq.replace('x','}x')
+        eq = eq + '}$'
+        ax.plot(y, wf, color='r', label=eq)
+        ax.set_xlabel('Slit (pix)')
+        ax.set_ylabel('dw (pix)')
+        ax.legend()
+        fig.tight_layout()
+        fig.show()
+
+    return p
+
+def tilt_correction(img, tilt, cubic=True):
+    """
+    Return the tilt corrected image.
+
+    Paramters
+    ---------
+    img: `~numpy.array`
+        N-dimensional `~numpy.array` the last dimension should be the wavelength and the -2 dimension should be the slit dimension.
+        This image should be dark bias corrected, flat-fielded.
+    tilt: `float`
+        Tilt angle of the image in degree unit.
+    cubic: `bool`, optional
+        If `True` (default), apply the cubic interpolation to rotate the image.
+        If `False`, apply the linear interpolation.
+
+    Returns
+    -------
+    ti: `~numpy.array`
+        N-dimensional `~numpy.array` of tilt corrected image. 
+    """
+    ti = rot(img, np.deg2rad(-tilt), cubic=cubic, missing=-1)
+
+    return ti
+
+def curvature_correction(img, coeff, show=False):
+    """
+    Return the curvature corrected image.
+
+    Parameters
+    ----------
+    img: `~numpy.array`
+        N-dimensional `~numpy.array` the last dimension should be the wavelength and the -2 dimension should be the slit dimension.
+        This image should be dark bias corrected, flat-fielded, and tilt corrected.
+    coeff: `list`
+        Results of the `get_curve_par` function
+    show: `bool`, optional
+        If `True`, draw raw and curvature corrected image. Default is `False`
+
+    Returns
+    -------
+    ccImg: `~numpy.array`
+        N-dimensional `~numpy.array` of curvature corrected image.
+    """
+    shape = img.shape
+    ndim = img.ndim
+    size = img.size
+    y = np.arange(shape[-2])
+    dw = np.polyval(coeff, y)
+
+    dw -= (dw.min() + dw.max())/2
+    order = shape
+    smin = np.zeros(ndim)
+    smax = np.array(shape)-1
+    interp = CubicSpline(smin, smax, order, img)
+
+    ones = np.ones(shape)
+    w = (np.arange(shape[-1]))[tuple([None]*(ndim-1) + [Ellipsis])]*ones + dw[tuple([None]*(ndim-2) + [Ellipsis] + [None])]
+    y = np.arange(shape[-2])[tuple([None]*(ndim-2) + [Ellipsis] + [None])]*ones
+    inp = np.zeros((ndim,size))
+    idx = [None]*(ndim-2)
+    for i, sh in enumerate(shape[:-2]):
+        tmp = np.arange(sh)[tuple([None]*i + [Ellipsis] + [None]*(ndim-1-i))]*ones
+        inp[i] = tmp
+        idx[i] = sh//2
+    inp[-1] = w.reshape(size)
+    inp[-2] = y.reshape(size)
+
+    ccImg = interp(inp.T).reshape(shape)
+
+    if show:
+        fig, ax = plt.subplots(1,2, figsize=[8,8], sharex=True, sharey=True, num='Curvature corrected')
+        oimg = img[tuple(idx)].squeeze()
+        prof = oimg[20]
+        dp2 = np.gradient(np.gradient(prof))
+        wh = dp2.argmax()
+        cimg = ccImg[tuple(idx)].squeeze()
+        oim = ax[0].imshow(oimg, plt.cm.gray, origin='lower', interpolation='bilinear')
+        cim = ax[1].imshow(cimg, plt.cm.gray, origin='lower', interpolation='bilinear')
+        m = oimg[5:-5,wh-10:wh+10].mean()
+        std = oimg[5:-5,wh-10:wh+10].std()
+        oim.set_clim(m-std*1.5, m+std*1.5)
+        cim.set_clim(m-std*1.5, m+std*1.5)
+        ax[0].set_xlim(wh-10,wh+10)
+        ax[0].set_aspect(adjustable='box', aspect='auto')
+        ax[1].set_aspect(adjustable='box', aspect='auto')
+        ax[0].set_xlabel('Wavelength (pix)')
+        ax[1].set_xlabel('Wavelength (pix)')
+        ax[0].set_ylabel('Slit (pix)')
+        ax[0].set_title('Original')
+        ax[1].set_title('Curvature corrected')
+        fig.tight_layout()
+        fig.show()
+    return ccImg
+    
 
 class calFlat:
     def __init__(self, fflat, ffoc=None, tilt=None, autorun=True, save=True, show=False, maxiter=10, msk=None):
@@ -179,6 +335,7 @@ class calFlat:
             self.logSlit -= np.median(self.logSlit)
             # get flat image
             self.Flat = self.gain_calib(maxiter=maxiter, msk=msk, show=show)
+            self.cFlat = 10**(self.logRF[3] - np.log10(self.Flat) - self.logSlit)
             if save:
                 self.saveFits(self.sdir)
         
@@ -189,7 +346,7 @@ class calFlat:
                 m = self.logRF[3].mean()
                 std = self.logRF[3].std()
                 im0.set_clim(m-std, m+std)
-                ax[0].set_ylabel("Y (pix)")
+                ax[0].set_ylabel("Slit (pix)")
                 ax[0].set_title("Raw Data")
                 logf = np.log10(self.Flat)
                 corI = self.logRF[3] - logf - self.logSlit
@@ -200,7 +357,7 @@ class calFlat:
                 self.im = im
                 im.set_clim(m-std, m+std)
                 ax[1].set_xlabel("Wavelength (pix)")
-                ax[1].set_ylabel("Y (pix)")
+                ax[1].set_ylabel("Slit (pix)")
                 ax[1].set_title("Flat correction")
                 fig.tight_layout()
                 fig.show()
@@ -231,7 +388,7 @@ class calFlat:
             fig, ax = plt.subplots(figsize=[9,5], num=f'Slit Pattern {self.date}')
             im = ax.imshow(logSlit, plt.cm.gray, origin='lower', interpolation='bilinear')
             ax.set_xlabel("Wavelength (pix)")
-            ax.set_ylabel("Y (pix)")
+            ax.set_ylabel("Slit (pix)")
             ax.set_title(f"Slit Pattern")
             fig.tight_layout()
             fig.show()
@@ -394,7 +551,7 @@ class calFlat:
             im = ax.imshow(Flat, plt.cm.gray, origin='lower', interpolation='bilinear')
             im.set_clim(Flat[10:-10,10:-10].min(),Flat[10:-10,10:-10].max())
             ax.set_xlabel("Wavelength (pix)")
-            ax.set_ylabel("Y (pix)")
+            ax.set_ylabel("Slit (pix)")
             ax.set_title("Flat Pattern")
             fig.tight_layout()
             fig.show()
