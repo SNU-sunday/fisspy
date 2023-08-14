@@ -4,8 +4,12 @@ from interpolation.splines import LinearSpline, CubicSpline
 from fisspy.image.base import alignoffset, rot
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
-from os.path import join, isdir, dirname, basename
+from os.path import join, isdir, dirname, basename, abspath
 from os import getcwd, makedirs
+from glob import glob
+from astropy.time import Time
+from scipy.signal import correlate, correlation_lags
+
 
 def get_tilt(img, tilt=None, show=False):
     """
@@ -109,14 +113,14 @@ def piecewise_quadratic_fit(x, y, npoint=5):
         yf[i] = np.polyval(coeff, x[i])
     return yf
 
-def get_curve_par(cflat, tilt, show=False):
+def get_curve_par(cData, show=False):
     """
     Calculate the curvature of the spectrum by applying the second order polynominal fit.
 
     Parameters
     ----------
-    cflat: `~numpy.array`
-        2-dimensional flat corrected raw flat image. ex) cflat = rawflat[3]/Flat/Slit.
+    Data: `~numpy.array`
+        2- or 3-dimensional flat and tilt corrected flat data image. ex) Data = rawflat[3]/Flat/Slit.
     tilt: `float`
         Tilt angle of the image in degree unit.
     show: `bool`, optional
@@ -127,22 +131,31 @@ def get_curve_par(cflat, tilt, show=False):
     p: `list`
         Results of the numpy.polyfit of the second-order polynomial fitting.
     """
-    ny, nw = cflat.shape
-    rf = rot(cflat, np.deg2rad(-tilt), missing=-1)
-    d2flat = np.gradient(np.gradient(rf[:,5:-5], axis=1), axis=1)
-    d2flat = savgol_filter(d2flat, 40, 2, axis=1)
+    nDim = cData.ndim
+
+    if nDim == 3:
+        nx, ny, nw = cData.shape
+        d2Data = np.gradient(np.gradient(cData.mean(0)[:,5:-5], axis=1), axis=1)
+        d2Data = savgol_filter(d2Data, 40, 2, axis=1)
+        # d2Data = np.gradient(np.gradient(cData.mean[:,:,5:-5], axis=2), axis=2)
+        # d2Data = savgol_filter(d2Data, 40, 2, axis=2)
+    elif nDim == 2:
+        ny, nw = cData.shape
+        d2Data = np.gradient(np.gradient(cData[:,5:-5], axis=1), axis=1)
+        d2Data = savgol_filter(d2Data, 40, 2, axis=1)
+    
 
     dw = np.zeros(ny)
     one = np.ones((4,nw-10))
     # if method == 0:
-    #     ref = d2flat[ny//2-2:ny//2+2].mean(1)[:,None] * one
-    #     for i, prof in enumerate(d2flat):
+    #     ref = d2Data[ny//2-2:ny//2+2].mean(1)[:,None] * one
+    #     for i, prof in enumerate(d2Data):
     #         dw[i] = alignoffset(prof*one, ref)[1]
     
     
     for direction in range(-1,2,2):
-        prof0 = d2flat[ny//2]
-        for i, prof in enumerate(d2flat[ny//2 + direction::direction]):
+        prof0 = d2Data[ny//2]
+        for i, prof in enumerate(d2Data[ny//2 + direction::direction]):
             dw[direction*(i+1) + ny//2] = alignoffset(prof*one, prof0*one)[1]
             dw[direction*(i+1) + ny//2] += dw[direction*(i) + ny//2]
             prof0 = prof
@@ -263,7 +276,6 @@ def curvature_correction(img, coeff, show=False):
         fig.show()
     return ccImg
     
-
 class calFlat:
     def __init__(self, fflat, ffoc=None, tilt=None, autorun=True, save=True, show=False, maxiter=10, msk=None):
         """
@@ -335,7 +347,7 @@ class calFlat:
             self.logSlit -= np.median(self.logSlit)
             # get flat image
             self.Flat = self.gain_calib(maxiter=maxiter, msk=msk, show=show)
-            self.cFlat = 10**(self.logRF[3] - np.log10(self.Flat) - self.logSlit)
+            self.cFlat = 10**(self.logRF - np.log10(self.Flat) - self.logSlit)
             if save:
                 self.saveFits(self.sdir)
         
@@ -586,19 +598,31 @@ class calFlat:
         fname = join(sdir, fname)
         sname = join(sdir, sname)
 
+        if self.h['STRTIME'].find('.') < 10:
+            self.h['STRTIME'] = self.h['STRTIME'].replace('-', 'T').replace('.', '-')
+        if self.h['ENDTIME'].find('.') < 10:
+            self.h['ENDTIME'] = self.h['ENDTIME'].replace('-', 'T').replace('.', '-')
+
+        obstime = (Time(self.h['STRTIME']).jd + Time(self.h['ENDTIME']).jd)/2
+        obstime = Time(obstime, format='jd').isot
+
         # save slit
         hdu = fits.PrimaryHDU(self.Slit)
-        hdu.header['TILT'] = self.tilt
-        hdu.header['CCDNAME'] = self.h['CCDNAME']
-        hdu.header['EXPTIME'] = self.h['EXPTIME']
-        hdu.header['STRTIME'] = self.h['STRTIME']
-        hdu.header['ENDTIME'] = self.h['ENDTIME']
+        hdu.header['EXPTIME'] = (self.h['EXPTIME'], 'Second')
+        hdu.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
+        hdu.header['DATE'] = (self.h['DATE'], 'File Creation Date (UT)')
+        hdu.header['STRTIME'] = (self.h['STRTIME'], 'Scan Start Time')
+        hdu.header['ENDTIME'] = (self.h['ENDTIME'], 'Scan Finish Time')
+        hdu.header['TILT'] = (self.tilt, 'Degree')
+        hdu.header['CCDNAME'] = (self.h['CCDNAME'], 'Prodctname of CCD')
+        
+        
         try:
-            hdu.header['WAVELEN'] = self.h['WAVELEN']
+            hdu.header['WAVELEN'] = (self.h['WAVELEN'], 'Angstrom')
         except:
             pass
         try:
-            hdu.header['GRATWVLN'] = self.h['GRATWVLN']
+            hdu.header['GRATWVLN'] = (self.h['GRATWVLN'], 'Angstrom')
         except:
             pass
         for comment in self.h['COMMENT']:
@@ -608,21 +632,197 @@ class calFlat:
         # save flat file
         # save slit
         fhdu = fits.PrimaryHDU(self.Flat)
-        fhdu.header['TILT'] = self.tilt
-        fhdu.header['CCDNAME'] = self.h['CCDNAME']
-        fhdu.header['EXPTIME'] = self.h['EXPTIME']
-        fhdu.header['STRTIME'] = self.h['STRTIME']
-        fhdu.header['ENDTIME'] = self.h['ENDTIME']
+        fhdu.header['TILT'] = (self.tilt, 'Degree')
+        fhdu.header['CCDNAME'] = (self.h['CCDNAME'], 'Prodctname of CCD')
+        fhdu.header['EXPTIME'] = (self.h['EXPTIME'], 'Second')
+        fhdu.header['STRTIME'] = (self.h['STRTIME'], 'Scan Start Time')
+        fhdu.header['ENDTIME'] = (self.h['ENDTIME'], 'Scan Finish Time')
         try:
-            fhdu.header['WAVELEN'] = self.h['WAVELEN']
+            fhdu.header['WAVELEN'] = (self.h['WAVELEN'], 'Angstrom')
         except:
             pass
         try:
-            fhdu.header['GRATWVLN'] = self.h['GRATWVLN']
+            fhdu.header['GRATWVLN'] = (self.h['GRATWVLN'], 'Angstrom')
         except:
             pass
         for comment in self.h['COMMENT']:
             fhdu.header.add_history(comment)
         fhdu.header.add_history('slit pattern subtracted')
         fhdu.writeto(fname, overwrite=overwirte)
+
+def readcal(pcdir):
+    """
+    Read FLAT ans SLIT pattern files.
+    """
+    lcam = ['A', 'B']
+    res = {}
+
+    for cam in lcam:
+        lflat = glob(join(pcdir, f"FISS_FLAT*{cam}.fts"))
+        lslit = glob(join(pcdir, f"FISS_SLIT*{cam}.fts"))
+        lflat.sort()
+        lslit.sort()
+        h = fits.getheader(lflat[0])
+        res[f'Tilt_{cam}'] = h['TILT']
+        nf = len(lflat)
+        jd = np.zeros(nf)
+        flat = np.zeros((nf, h['naxis2'], h['naxis1']))
+        slit = np.zeros((nf, h['naxis2'], h['naxis1']))
+        for i, fflat in enumerate(lflat):
+            oflat = fits.open(fflat)[0]
+            flat[i] = oflat.data
+            hf = oflat.header
+
+            slit[i] = fits.getdata(lslit[i])
+            jd[i] = Time(hf['obstime']).jd
+
+        res[f'Flat_{cam}'] = flat
+        res[f'Slit_{cam}'] = slit
+        res[f'JD_{cam}'] = jd
+
+    return res
+
+def preprocess(f, flat, slit, dark, tilt, curve_coeff):
+    opn = fits.open(f)[0]
+    h = opn.header
+    data = opn.data - dark
+
+    data /= flat*slit
+    ti = tilt_correction(data, tilt)
+    ci = curvature_correction(ti, curve_coeff)
+
+def wv_calib_atlas(data, header, cent_wv):
+    dirn = dirname(abspath(__file__))
+    atlas = join(dirn, 'solar_atlas.npz')
+    wave = atlas['wave']
+    intensity = atlas['intensity']
+
+    data1 = np.median(data, axis=0) if data.ndim == 3 else data
+
+    if cent_wv:
+        crval1 = cent_wv
+    else:
+        try:
+            crval1 = header['GRATWVLN']
+        except:
+            crval1 = int(header['WAVELEN'])
+
+    if header['CCDNAME'] == 'DV897_BV': # cam A
+        if abs(crval1 - 6562.817) < 5:
+            crval1 = 6562.817
+        elif abs(crval1 - 5889.95) < 5:
+            crval1 = 5889.95
+        elif abs(crval1 - 5875.618) < 5:
+            crval1 = 5875.618
+        res = get_echelle_res(crval1, 0.93)
+    elif header['CCDNAME'] == 'DU8285_VP': # cam B
+        if abs(crval1 - 6562.817) < 5:
+            crval1 = 8542.09
+        elif abs(crval1 - 5889.95) < 5:
+            crval1 = 5434.5235
+        res = get_echelle_res(crval1, 1.92)
+
+    ny, nw = data1.shape
+    wr = spectral_range(res['alpha'], res['order'], nw)
+    dw = (wr[1]-wr[0])/nw
+    wv = np.arange(nw)*dw + wr[0]
+    smin = [wave[0]]
+    smax = [wave[-1]]
+    order = [len(wave)]
+    interp = CubicSpline(smin, smax, order, intensity)
+    ii = interp(wv)
+
+    lags = correlation_lags(len(prof), len(ii))
+    smin = [0]
+    smax = [nw-1]
+    order = [nw]
+    interp = CubicSpline(smin, smax, order, lags)
+    wpix = np.arange(nw)
+    cpix = np.zeros[ny]
+    for i, prof in enumerate(data1):
+        cor = correlate(prof, ii, method='fft')
+        wh = cor.argmax()
+        lag = lags[wh]
+        p = np.polyfit(np.arange(7)+wh-3, cor[wh-3:wh+4], 2)
+        wmax = -p[1]*0.5/p[0]
         
+        wv_cor = wv + interp(wmax)*dw
+        mmin = [wv_cor[0]]
+        mmax = [wv_cor[-1]]
+        cinterp = CubicSpline(mmin, mmax, order, wpix)
+        cpix[i] = cinterp(crval1)
+    cpix1 = np.median(cpix)
+    wvpar = [cpix1, dw, crval1]
+
+    return wvpar
+        
+
+def get_echelle_res(lamb, theta=0.93, grooves=79, blazeAngle=63.4):
+    """
+    Determine the parameters of an echelle grating.
+
+    Parameters
+    ----------
+    lamb: `float`
+        Target wavelength (Angstrom)
+    theta: `float` (optional)
+        Deflection angle (angle between incidence and reflection) in degree
+    grooves: `int` (optional)
+        Number of grooves per mm
+    blazeAngle: `float` (optional)
+        Blaze angle (degree)
+
+    Returns
+    -------
+    res: `dict`
+        'alpha' - Incident angle
+        'order' - Grating order of the peak brightness
+        'brightness' - Relative brightness for given wavelength.
+    """
+    phi = np.deg2rad(blazeAngle)
+    sigma = 1e7/grooves # unit of angstrom
+    m0 = np.round(2*sigma/lamb*np.sin(phi))
+    marr = np.arange(-2,3) + m0
+    
+    B = np.zeros(5)
+    Dalpha = np.zeros(5)
+    for i, m in enumerate(marr):
+        alpha = phi
+        for j in range(10):
+            f = np.sin(alpha) + np.sin(alpha-np.deg2rad(theta))-m*lamb/sigma
+            df = np.cos(alpha) + np.cos(alpha-np.deg2rad(theta))
+            alpha -= f/df
+            # print(f"m: {m}, alpha: {alpha}")
+
+        Dalpha[i] = np.rad2deg(alpha)
+        beta = alpha - np.deg2rad(theta)
+        x = np.pi*sigma*np.cos(phi)/lamb*(np.sin(alpha-phi)+np.sin(beta-phi))
+        B[i] = 1 if x == 0 else (np.sin(x)/x)**2
+
+    m = marr[B.argmax()]
+    DA = Dalpha[B.argmax()]
+    res = {"alpha": DA,
+           "order": int(m),
+           "brightness": B.max()
+           }
+    
+    return res
+
+def spectral_range(alpha, order, nw=512):
+    f = 1.5 # FISS collimator focal length in m
+    grooves = 79
+    sigma = 1e7 / 79
+    
+    if nw % 512 == 0:
+        theta = np.deg2rad(0.93)
+        domain = np.array([0.5, -0.5])
+    elif nw % 502 ==0:
+        theta = np.deg2rad(1.92)
+        domain = np.array([-0.5, 0.5])
+    else:
+        raise ValueError(f"nw should be either 512 or 502, not {nw}")
+    width = nw*16e-6 # Detector width in m
+    theta_range = theta + domain*width/f
+    wl = sigma/order * (np.sin(np.deg2rad(alpha)) + np.sin(np.deg2rad(alpha) - theta_range))
+
+    return wl

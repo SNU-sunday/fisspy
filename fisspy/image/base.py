@@ -212,7 +212,8 @@ def img_interpol(img, xa, ya, xt, yt, missing=-1, cubic=False):
     inp = np.zeros((ndim,size))
     for i, sh in enumerate(shape[:-2]):
         tmp = np.arange(sh)[tuple([None]*i + [Ellipsis] + [None]*(ndim-1-i))]*ones
-        inp[i] = tmp
+        inp[i] = tmp.reshape(size)
+        
     inp[-2] = (yt * ones).reshape(size)
     inp[-1] = (xt * ones).reshape(size)
     # a = np.array((yt.reshape(size),xt.reshape(size)))
