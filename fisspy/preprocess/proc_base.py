@@ -9,7 +9,7 @@ from os import getcwd, makedirs
 from glob import glob
 from astropy.time import Time
 from scipy.signal import correlate, correlation_lags
-
+from interpolation import interp as interp1d
 
 def get_tilt(img, tilt=None, show=False):
     """
@@ -691,9 +691,9 @@ def preprocess(f, flat, slit, dark, tilt, curve_coeff):
     ti = tilt_correction(data, tilt)
     ci = curvature_correction(ti, curve_coeff)
 
-def wv_calib_atlas(data, header, cent_wv):
+def wv_calib_atlas(data, header, cent_wv=False):
     dirn = dirname(abspath(__file__))
-    atlas = join(dirn, 'solar_atlas.npz')
+    atlas = np.load(join(dirn, 'solar_atlas.npz'))
     wave = atlas['wave']
     intensity = atlas['intensity']
 
@@ -730,27 +730,30 @@ def wv_calib_atlas(data, header, cent_wv):
     smax = [wave[-1]]
     order = [len(wave)]
     interp = CubicSpline(smin, smax, order, intensity)
-    ii = interp(wv)
+    ii = interp(wv[:,None])
 
-    lags = correlation_lags(len(prof), len(ii))
-    smin = [0]
+    lags = correlation_lags(nw, len(ii))
+    smin = [-nw+1]
     smax = [nw-1]
-    order = [nw]
+    order = [nw*2-1]
     interp = CubicSpline(smin, smax, order, lags)
     wpix = np.arange(nw)
-    cpix = np.zeros[ny]
+    cpix = np.zeros(ny)
     for i, prof in enumerate(data1):
         cor = correlate(prof, ii, method='fft')
         wh = cor.argmax()
         lag = lags[wh]
         p = np.polyfit(np.arange(7)+wh-3, cor[wh-3:wh+4], 2)
-        wmax = -p[1]*0.5/p[0]
-        
-        wv_cor = wv + interp(wmax)*dw
+        wmax = -p[1]*0.5/p[0] + smin[0]
+        print(wmax)
+        print(interp(np.array([[wmax],[wmax]]))[0])
+        wv_cor = wv + interp(np.array([[wmax],[wmax]]))[0]*dw
         mmin = [wv_cor[0]]
         mmax = [wv_cor[-1]]
+        order = [nw]
         cinterp = CubicSpline(mmin, mmax, order, wpix)
-        cpix[i] = cinterp(crval1)
+        print(mmin, mmax)
+        cpix[i] = cinterp(np.array([[crval1],[crval1]]))[0]
     cpix1 = np.median(cpix)
     wvpar = [cpix1, dw, crval1]
 
