@@ -244,7 +244,7 @@ def curvature_correction(img, coeff, show=False):
     idx = [None]*(ndim-2)
     for i, sh in enumerate(shape[:-2]):
         tmp = np.arange(sh)[tuple([None]*i + [Ellipsis] + [None]*(ndim-1-i))]*ones
-        inp[i] = tmp
+        inp[i] = tmp.reshape(size)
         idx[i] = sh//2
     inp[-1] = w.reshape(size)
     inp[-2] = y.reshape(size)
@@ -703,9 +703,9 @@ def wv_calib_atlas(data, header, cent_wv=False):
         crval1 = cent_wv
     else:
         try:
-            crval1 = header['GRATWVLN']
+            crval1 = float(header['GRATWVLN'])
         except:
-            crval1 = int(header['WAVELEN'])
+            crval1 = float(header['WAVELEN'])
 
     if header['CCDNAME'] == 'DV897_BV': # cam A
         if abs(crval1 - 6562.817) < 5:
@@ -716,7 +716,9 @@ def wv_calib_atlas(data, header, cent_wv=False):
             crval1 = 5875.618
         res = get_echelle_res(crval1, 0.93)
     elif header['CCDNAME'] == 'DU8285_VP': # cam B
-        if abs(crval1 - 6562.817) < 5:
+        if abs(crval1 - 8542.09) < 5:
+            crval1 = 8542.09
+        elif abs(crval1 - 6562.817) < 5:
             crval1 = 8542.09
         elif abs(crval1 - 5889.95) < 5:
             crval1 = 5434.5235
@@ -740,19 +742,13 @@ def wv_calib_atlas(data, header, cent_wv=False):
     wpix = np.arange(nw)
     cpix = np.zeros(ny)
     for i, prof in enumerate(data1):
-        cor = correlate(prof, ii, method='fft')
-        wh = cor.argmax()
-        lag = lags[wh]
-        p = np.polyfit(np.arange(7)+wh-3, cor[wh-3:wh+4], 2)
-        wmax = -p[1]*0.5/p[0] + smin[0]
-        print(wmax)
-        print(interp(np.array([[wmax],[wmax]]))[0])
-        wv_cor = wv + interp(np.array([[wmax],[wmax]]))[0]*dw
+        sh = alignoffset(prof*np.ones((4,502)), ii*np.ones((4,502)))
+        wmax = -sh[-1][0]
+        wv_cor = wv + wmax*dw
         mmin = [wv_cor[0]]
         mmax = [wv_cor[-1]]
         order = [nw]
         cinterp = CubicSpline(mmin, mmax, order, wpix)
-        print(mmin, mmax)
         cpix[i] = cinterp(np.array([[crval1],[crval1]]))[0]
     cpix1 = np.median(cpix)
     wvpar = [cpix1, dw, crval1]

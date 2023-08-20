@@ -17,7 +17,7 @@ __email__ = "jhkang@astro.snu.ac.kr"
 __all__ = ['alignoffset', 'rot_trans', 'img_interpol',
            'rotation', 'rot', 'shift']
 
-def alignoffset(image0, template0, cor= None):
+def alignoffset(image0, template0, cor= None, test=False):
     """
     Calculate the align offset between two two-dimensional images
 
@@ -54,7 +54,7 @@ def alignoffset(image0, template0, cor= None):
     si=image0.shape
     ndim=image0.ndim
 
-    if ndim>3 or ndim==1:
+    if ndim>=3 or ndim==1:
         raise ValueError('Image must be 2 or 3 dimensional array.')
 
     if not st[-1]==si[-1] and st[-2]==si[-2]:
@@ -85,7 +85,6 @@ def alignoffset(image0, template0, cor= None):
     #to avoid the fast change the image by the granular motion or strong flow
 
     corr=ifft2(ifft2(template*gauss)*fft2(image*gauss)).real
-
     # calculate the cross-correlation values by using convolution theorem and
     # DFT-IDFT relation
 
@@ -105,7 +104,8 @@ def alignoffset(image0, template0, cor= None):
 
     x=x0+x1
     y=y0+y1
-
+    if test:
+        return corr
     if cor:
         img = shift(image, [-y, -x])
         xx = np.arange(nx) + x
