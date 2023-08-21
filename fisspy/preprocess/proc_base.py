@@ -1,7 +1,7 @@
 import numpy as np
 from astropy.io import fits
 from interpolation.splines import LinearSpline, CubicSpline
-from fisspy.image.base import alignoffset, rot
+from fisspy.image.base import alignoffset, rot, shift
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from os.path import join, isdir, dirname, basename, abspath
@@ -42,9 +42,24 @@ def get_tilt(img, tilt=None, show=False):
     whd = np.abs(dy_img[20:-20,wp:wp+20].mean(1)).argmax() + 20
     i1 = dy_img[whd-16:whd+16, wp:wp+16]
     i2 = dy_img[whd-16:whd+16, -(wp+16):-wp]
-    shift = alignoffset(i2, i1)
+    
+    tmp = 10
+    shy = 0
+    iteration = 0
+    while abs(tmp) > 1e-1:
+        sh = alignoffset(i2, i1)
+        sh[1,0] = 0
+        tmp = sh[0,0]
+        shy += tmp
+        i2 = shift(i2, -sh, missing=-1, cubic=True)
+        iteration += 1
+        if iteration == 10:
+            print('break')
+            break
+
+    
     if tilt is None:
-        Tilt = np.rad2deg(np.arctan2(shift[0], nw - wp*2))[0]
+        Tilt = np.rad2deg(np.arctan2(shy, nw - wp*2))
     else:
         Tilt = tilt
 
@@ -52,7 +67,7 @@ def get_tilt(img, tilt=None, show=False):
     if show:
         rimg = rot(img, np.deg2rad(-Tilt), cubic=True, missing=-1)
         
-        fig, ax = plt.subplots(2,1, figsize=[8, 8], sharey=True, sharex=True, num='Get_tilt')
+        fig, ax = plt.subplots(2,1, figsize=[6, 6], sharey=True, sharex=True, num='Get_tilt')
         iimg = img - np.median(img, axis=0)
         m = iimg[whd-16:whd+16].mean()
         std = iimg[whd-16:whd+16].std()
@@ -79,6 +94,7 @@ def get_tilt(img, tilt=None, show=False):
 
         fig.tight_layout()
         fig.show()
+        fig.canvas.manager.window.move(0,0)
 
     return Tilt
 
@@ -164,7 +180,7 @@ def get_curve_par(cData, show=False):
     p = np.polyfit(y, dw, 2)
 
     if show:
-        fig, ax = plt.subplots(figsize=[8,5], num='curvature parameter')
+        fig, ax = plt.subplots(figsize=[6,4], num='curvature parameter')
         wf = np.polyval(p, y)
         ax.scatter(y, dw, marker='+')
         p1 = f"$+{p[1]:.2e}x$" if np.sign(p[1]) == 1 else f"${p[1]:.2e}x$"
@@ -179,6 +195,7 @@ def get_curve_par(cData, show=False):
         ax.legend()
         fig.tight_layout()
         fig.show()
+        fig.canvas.manager.window.move(1300,0)
 
     return p
 
@@ -323,17 +340,18 @@ class calFlat:
 
         self.sdir = join(dirname(fdir), 'proc', 'cal')
         # get tilt angle in degree
-        if ffoc is not None:
-            foc = fits.getdata(ffoc)
-            self.mfoc = foc.mean(0)
-            self.tilt = get_tilt(self.mfoc, show=show)
+        if tilt is None:
+            if ffoc is not None:
+                foc = fits.getdata(ffoc)
+                self.mfoc = foc.mean(0)
+                self.tilt = get_tilt(self.mfoc, show=show)
 
-        else:
-            self.tilt = get_tilt(10**self.mlogRF, tilt=tilt, show=show)
+            else:
+                self.tilt = get_tilt(10**self.mlogRF, tilt=tilt, show=show)
 
 
 
-        print(f"Tilt: {self.tilt:.2f} degree")
+        print(f"Tilt: {self.tilt:.3f} degree")
 
         
         if autorun:
@@ -353,7 +371,7 @@ class calFlat:
         
             
             if show:
-                fig, ax = plt.subplots(2, figsize=[9,9], num=f'Flat field {self.date}', sharex=True, sharey=True)
+                fig, ax = plt.subplots(2, figsize=[7,7], num=f'Flat field {self.date}', sharex=True, sharey=True)
                 im0 = ax[0].imshow(self.logRF[3], plt.cm.gray, origin='lower', interpolation='bilinear')
                 m = self.logRF[3].mean()
                 std = self.logRF[3].std()
@@ -373,6 +391,7 @@ class calFlat:
                 ax[1].set_title("Flat correction")
                 fig.tight_layout()
                 fig.show()
+                fig.canvas.manager.window.move(600,0)
 
     def make_slit_pattern(self, cubic=True, show=False):
         """
@@ -391,19 +410,21 @@ class calFlat:
         Slit: `~numpy.array`
         """
         ri = rot(self.mlogRF, np.deg2rad(-self.tilt), cubic=cubic, missing=-1)
+        # ri = rot(self.logRF.max(0), np.deg2rad(-self.tilt), cubic=cubic, missing=-1)
 
         # rslit = ri[:,40:-40].mean(1)[:,None] * np.ones([self.ny,self.nw])
         rslit = np.median(ri[:,40:-40], axis=1)[:,None] * np.ones([self.ny,self.nw])
         logSlit = rot(rslit, np.deg2rad(self.tilt), cubic=cubic, missing=-1)
 
         if show:
-            fig, ax = plt.subplots(figsize=[9,5], num=f'Slit Pattern {self.date}')
+            fig, ax = plt.subplots(figsize=[6,3.5], num=f'Slit Pattern {self.date}')
             im = ax.imshow(logSlit, plt.cm.gray, origin='lower', interpolation='bilinear')
             ax.set_xlabel("Wavelength (pix)")
             ax.set_ylabel("Slit (pix)")
             ax.set_title(f"Slit Pattern")
             fig.tight_layout()
             fig.show()
+            fig.canvas.manager.window.move(0,1080-350)
             
         return 10**logSlit
 
@@ -559,7 +580,7 @@ class calFlat:
         Flat = 10**Flat
 
         if show:
-            fig, ax = plt.subplots(figsize=[9,5], num=f'Flat Pattern {self.date}', sharex=True, sharey=True)
+            fig, ax = plt.subplots(figsize=[6,3.5], num=f'Flat Pattern {self.date}', sharex=True, sharey=True)
             im = ax.imshow(Flat, plt.cm.gray, origin='lower', interpolation='bilinear')
             im.set_clim(Flat[10:-10,10:-10].min(),Flat[10:-10,10:-10].max())
             ax.set_xlabel("Wavelength (pix)")
@@ -567,6 +588,7 @@ class calFlat:
             ax.set_title("Flat Pattern")
             fig.tight_layout()
             fig.show()
+            fig.canvas.manager.window.move(600,1080-350)
             
         return Flat
     
@@ -647,7 +669,7 @@ class calFlat:
             pass
         for comment in self.h['COMMENT']:
             fhdu.header.add_history(comment)
-        fhdu.header.add_history('slit pattern subtracted')
+        fhdu.header.add_history('Slit pattern subtracted')
         fhdu.writeto(fname, overwrite=overwirte)
 
 def readcal(pcdir):
@@ -682,7 +704,15 @@ def readcal(pcdir):
 
     return res
 
-def preprocess(f, flat, slit, dark, tilt, curve_coeff):
+def preprocess(f, outname, flat, slit, dark, tilt, curve_coeff, cent_wv=False, overwrite=False, ret=False):
+    # odir = dirname(f)
+    # dirn = join(dirname(dirname(odir)), 'proc', basename(odir))
+    
+    # if not isdir(dirn):
+    #     makedirs(dirn)
+    # fname = join(outdir, basename(f).replace('.fts','1.fts'))
+
+
     opn = fits.open(f)[0]
     h = opn.header
     data = opn.data - dark
@@ -690,6 +720,38 @@ def preprocess(f, flat, slit, dark, tilt, curve_coeff):
     data /= flat*slit
     ti = tilt_correction(data, tilt)
     ci = curvature_correction(ti, curve_coeff)
+
+    wvpar = wv_calib_atlas(ci, h, cent_wv)
+    hdu = fits.PrimaryHDU(data)
+    hdu.header = h
+    hdu.header['CRPIX1'] = (wvpar[0], 'reference pixel position')
+    hdu.header['CRDELT1'] = (wvpar[1], 'angstrom/pixel')
+    hdu.header['CRVAL1'] = (wvpar[2], 'reference wavelength (angstrom)')
+    hdu.header['WAVELEN'] = (f"{wvpar[2]:.2f}", 'reference wavelength')
+    hdu.header['TILT'] = (tilt, 'tilt angle in degree')
+    hdu.header.add_history('Bias+Dark subtracted')
+    hdu.header.add_history('Slit pattern subtracted')
+    hdu.header.add_history('Flat fileded')
+    hdu.header.add_history(f'{tilt:.3f} degree tilt corrected')
+    hdu.header.add_history('Curvature corrected')
+    hdu.writeto(outname, overwrite=overwrite)
+
+    if ret:
+        return ci, hdu.header
+
+def pca_conpression(data, h, outname, ncoeff=30, pfname=None, pdata=None):
+    if pfname is None:
+        pfname = outname.replace('c.fts', 'p.fts')
+    nx, ny, nw = data.shape
+    bscale = 1
+    bzero = 0
+    ret = False
+
+    if pdata is None:
+        ret = True
+        x = np.round()
+
+
 
 def wv_calib_atlas(data, header, cent_wv=False):
     dirn = dirname(abspath(__file__))
@@ -708,43 +770,60 @@ def wv_calib_atlas(data, header, cent_wv=False):
             crval1 = float(header['WAVELEN'])
 
     if header['CCDNAME'] == 'DV897_BV': # cam A
-        if abs(crval1 - 6562.817) < 5:
+        if abs(crval1 - 6562.817) < 3:
             crval1 = 6562.817
-        elif abs(crval1 - 5889.95) < 5:
+        elif abs(crval1 - 5889.95) < 3:
             crval1 = 5889.95
-        elif abs(crval1 - 5875.618) < 5:
+        elif abs(crval1 - 5875.618) < 3:
             crval1 = 5875.618
         res = get_echelle_res(crval1, 0.93)
     elif header['CCDNAME'] == 'DU8285_VP': # cam B
-        if abs(crval1 - 8542.09) < 5:
+        if abs(crval1 - 8542.09) < 3:
             crval1 = 8542.09
-        elif abs(crval1 - 6562.817) < 5:
+        elif abs(crval1 - 6562.817) < 3:
             crval1 = 8542.09
-        elif abs(crval1 - 5889.95) < 5:
+        elif abs(crval1 - 5889.95) < 3:
             crval1 = 5434.5235
         res = get_echelle_res(crval1, 1.92)
 
+    data1 = data1[10:-10]
     ny, nw = data1.shape
     wr = spectral_range(res['alpha'], res['order'], nw)
     dw = (wr[1]-wr[0])/nw
     wv = np.arange(nw)*dw + wr[0]
-    smin = [wave[0]]
-    smax = [wave[-1]]
-    order = [len(wave)]
-    interp = CubicSpline(smin, smax, order, intensity)
+    wh = (wave >= crval1-10) * (wave <= crval1+10)
+    wave2 = wave[wh]
+    smin = [wave2[0]]
+    smax = [wave2[-1]]
+    order = [len(wave2)]
+    interp = CubicSpline(smin, smax, order, intensity[wh])
     ii = interp(wv[:,None])
 
-    lags = correlation_lags(nw, len(ii))
-    smin = [-nw+1]
-    smax = [nw-1]
-    order = [nw*2-1]
-    interp = CubicSpline(smin, smax, order, lags)
     wpix = np.arange(nw)
     cpix = np.zeros(ny)
+    refI = ii*np.ones((4,nw))
     for i, prof in enumerate(data1):
-        sh = alignoffset(prof*np.ones((4,502)), ii*np.ones((4,502)))
-        wmax = -sh[-1][0]
-        wv_cor = wv + wmax*dw
+        prof = prof *np.ones((4,nw))
+        wmax = 0
+        wsh = 10
+        iteration = 0
+        while abs(wsh) >= 1e-1:
+            if wmax == 0:
+                sh = alignoffset(prof, refI)
+            elif wmax > 0:
+                sh = alignoffset(prof[:,:-int(wmax)], refI[:,:-int(wmax)])
+            else:
+                sh = alignoffset(prof[:,-int(wmax):], refI[:,-int(wmax):])
+            prof = shift(prof, -sh, missing=-1, cubic=True)
+            wsh = sh[-1][0]
+            if iteration == 0:
+                wsh0 = wsh
+            wmax += wsh
+            iteration += 1
+            if iteration == 10:
+                print(wsh)
+                break
+        wv_cor = wv - wmax*dw
         mmin = [wv_cor[0]]
         mmax = [wv_cor[-1]]
         order = [nw]
