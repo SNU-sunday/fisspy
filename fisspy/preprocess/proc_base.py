@@ -434,7 +434,7 @@ class calFlat:
             ratio = 0.45
         if abs(self.tilt) < 0.08:
             ratio = 0
-        ratio = 0.7 # A tilt=-0.269 20140613
+        ratio = 1 # A tilt=-0.269 20140613
         tmp = rot(self.logRF, np.deg2rad(-self.tilt), cubic=cubic, missing=-1)
         refI = tmp[3,self.ny//2-10:self.ny//2+10,5:-5].mean(0) * np.ones((4,self.nw-10))
         si = np.zeros((self.nf, self.ny, self.nw))
@@ -460,7 +460,7 @@ class calFlat:
 
             if abs(shA[i] - dx) > 10:
                 dx = shA[i]
-            tt = np.tan(np.deg2rad(self.tilt))*dx*ratio
+            tt = np.sin(np.deg2rad(self.tilt))*dx*ratio
             shk[0,0] = tt
             self.shyA[i] = tt
             si[i] = shift(tmp[i], shk, missing=-1, cubic=True)
@@ -470,7 +470,7 @@ class calFlat:
         logSlit = rot(rslit, np.deg2rad(self.tilt), cubic=cubic, missing=-1)
         
         self.tsi = si
-        
+        self.tfig = None
         if show:
             fig, ax = plt.subplots(figsize=[6,3.5], num=f'Slit Pattern {self.date}')
             im = ax.imshow(logSlit, plt.cm.gray, origin='lower', interpolation='bilinear')
@@ -776,6 +776,27 @@ class calFlat:
             fhdu.header.add_history(comment)
         fhdu.header.add_history('Slit pattern subtracted')
         fhdu.writeto(fname, overwrite=overwirte)
+
+    def slitTest(self, i=3):
+        if self.tfig == None:
+            rlogRF = rot(self.logRF, np.deg2rad(-self.tilt), cubic=True, missing=-1)
+            self.tmpo = 10**(rlogRF - rlogRF.mean(1)[:,None,:])
+            self.tmps = 10**(self.tsi - self.tsi.mean(1)[:,None,:])
+            m = self.tmps.mean()
+            std = self.tmps.std()
+            self.tfig, ax = plt.subplots(1, 2, figsize=[14,5], sharey=True)
+            self.imtmpo = ax[0].imshow(self.tmpo[i], plt.cm.gray, origin='lower')
+            self.imtmps = ax[1].imshow(self.tmps[i], plt.cm.gray, origin='lower')
+            self.imtmpo.set_clim(m-std*0.5, m+std*0.5)
+            self.imtmps.set_clim(m-std*0.5, m+std*0.5)
+            ax[0].set_aspect(adjustable='box', aspect='auto')
+            ax[1].set_aspect(adjustable='box', aspect='auto')
+            self.tfig.tight_layout()
+            self.tfig.show()
+        else:            
+            self.imtmpo.set_data(self.tmpo[i])
+            self.imtmps.set_data(self.tmps[i])
+            self.tfig.canvas.draw_idle()
 
 def readcal(pcdir):
     """
