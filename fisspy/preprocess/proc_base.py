@@ -94,7 +94,10 @@ def get_tilt(img, tilt=None, show=False):
 
         fig.tight_layout()
         fig.show()
-        fig.canvas.manager.window.move(0,0)
+        try:
+            fig.canvas.manager.window.move(0,0)
+        except:
+            pass
 
     return Tilt
 
@@ -195,7 +198,10 @@ def get_curve_par(cData, show=False):
         ax.legend()
         fig.tight_layout()
         fig.show()
-        fig.canvas.manager.window.move(1300,0)
+        try:
+            fig.canvas.manager.window.move(1300,0)
+        except:
+            pass
 
     return p
 
@@ -399,7 +405,10 @@ class calFlat:
                 ax[1].set_title("Flat correction")
                 fig.tight_layout()
                 fig.show()
-                fig.canvas.manager.window.move(600,0)
+                try:
+                    fig.canvas.manager.window.move(600,0)
+                except:
+                    pass
 
     def make_slit_pattern(self, cubic=True, show=False):
         """
@@ -425,6 +434,7 @@ class calFlat:
             ratio = 0.45
         if abs(self.tilt) < 0.08:
             ratio = 0
+        ratio = 0.7 # A tilt=-0.269 20140613
         tmp = rot(self.logRF, np.deg2rad(-self.tilt), cubic=cubic, missing=-1)
         refI = tmp[3,self.ny//2-10:self.ny//2+10,5:-5].mean(0) * np.ones((4,self.nw-10))
         si = np.zeros((self.nf, self.ny, self.nw))
@@ -469,7 +479,10 @@ class calFlat:
             ax.set_title(f"Slit Pattern")
             fig.tight_layout()
             fig.show()
-            fig.canvas.manager.window.move(0,1080-350)
+            try:
+                fig.canvas.manager.window.move(0,1080-350)
+            except:
+                pass
             
         return 10**logSlit
     
@@ -510,7 +523,10 @@ class calFlat:
             ax.set_title(f"Slit Pattern")
             fig.tight_layout()
             fig.show()
-            fig.canvas.manager.window.move(0,1080-350)
+            try:
+                fig.canvas.manager.window.move(0,1080-350)
+            except:
+                    pass
             
         return 10**logSlit
 
@@ -674,7 +690,10 @@ class calFlat:
             ax.set_title("Flat Pattern")
             fig.tight_layout()
             fig.show()
-            fig.canvas.manager.window.move(600,1080-350)
+            try:
+                fig.canvas.manager.window.move(600,1080-350)
+            except:
+                    pass
             
         return Flat
     
@@ -825,7 +844,7 @@ def preprocess(f, outname, flat, slit, dark, tilt, curve_coeff, cent_wv=False, o
     if ret:
         return ci, hdu.header
 
-def pca_conpression(data, h, outname, ncoeff=30, pfname=None, pdata=None):
+def pca_compression(data, h, outname, ncoeff=30, pfname=None, pdata=None):
     if pfname is None:
         pfname = outname.replace('c.fts', 'p.fts')
     nx, ny, nw = data.shape
