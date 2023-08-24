@@ -67,7 +67,7 @@ def get_tilt(img, tilt=None, show=False):
     if show:
         rimg = rot(img, np.deg2rad(-Tilt), cubic=True, missing=-1)
         
-        fig, ax = plt.subplots(2,1, figsize=[6, 6], sharey=True, sharex=True, num='Get_tilt')
+        fig, ax = plt.subplots(2,1, figsize=[6, 6], sharey=True, sharex=True)
         iimg = img - np.median(img, axis=0)
         m = iimg[whd-16:whd+16].mean()
         std = iimg[whd-16:whd+16].std()
@@ -183,7 +183,7 @@ def get_curve_par(cData, show=False):
     p = np.polyfit(y, dw, 2)
 
     if show:
-        fig, ax = plt.subplots(figsize=[6,4], num='curvature parameter')
+        fig, ax = plt.subplots(figsize=[6,4])
         wf = np.polyval(p, y)
         ax.scatter(y, dw, marker='+')
         p1 = f"$+{p[1]:.2e}x$" if np.sign(p[1]) == 1 else f"${p[1]:.2e}x$"
@@ -195,6 +195,7 @@ def get_curve_par(cData, show=False):
         ax.plot(y, wf, color='r', label=eq)
         ax.set_xlabel('Slit (pix)')
         ax.set_ylabel('dw (pix)')
+        ax.set_title('Curvature')
         ax.legend()
         fig.tight_layout()
         fig.show()
@@ -275,7 +276,7 @@ def curvature_correction(img, coeff, show=False):
     ccImg = interp(inp.T).reshape(shape)
 
     if show:
-        fig, ax = plt.subplots(1,2, figsize=[8,8], sharex=True, sharey=True, num='Curvature corrected')
+        fig, ax = plt.subplots(1,2, figsize=[8,8], sharex=True, sharey=True)
         oimg = img[tuple(idx)].squeeze()
         prof = oimg[20]
         dp2 = np.gradient(np.gradient(prof))
@@ -300,7 +301,7 @@ def curvature_correction(img, coeff, show=False):
     return ccImg
     
 class calFlat:
-    def __init__(self, fflat, ffoc=None, tilt=None, autorun=True, save=True, show=False, maxiter=10, msk=None):
+    def __init__(self, fflat, ffoc=None, tilt=None, autorun=True, shiftcor=True, save=True, show=False, maxiter=10, msk=None):
         """
         Make the master flat and slit pattern data.
 
@@ -363,37 +364,50 @@ class calFlat:
         
         if autorun:
             # get slit pattern
-            self.Slit = self.make_slit_pattern(cubic=True, show=show)
+            self.Slit = self.make_slit_pattern(cubic=True, show=show, shiftcor=shiftcor)
             self.logSlit = np.log10(self.Slit)
+            self.Slit = 10**(self.logSlit - np.median(self.logSlit))
             # remove the slit pattern
             # self.logF = self.logRF - self.logSlit
             self.logF = np.zeros((self.nf, self.ny, self.nw))
             sh = np.zeros((2,1))
-            for i in range(self.nf):
-                sh[0,0] = self.shyA[i]
-                lslit = shift(self.logSlit, -sh, missing=-1, cubic=True)
-                self.logF[i] = self.logRF[i] - lslit
+            if self.shiftcor:
+                for i in range(self.nf):
+                    sh[0,0] = self.shyA[i]
+                    lslit = shift(self.logSlit, -sh, missing=-1, cubic=True)
+                    self.logF[i] = self.logRF[i] - lslit
+            else:
+                self.logF = self.logRF - self.logSlit
 
             plt.pause(0.1)
             # save slit pattern
             self.logSlit -= np.median(self.logSlit)
             # get flat image
             self.Flat = self.gain_calib(maxiter=maxiter, msk=msk, show=show)
-            self.cFlat = 10**(self.logRF - np.log10(self.Flat) - self.logSlit)
+
+            # corrected flat pattern
+            if self.shiftcor:
+                self.cFlat = np.zeros((self.nf, self.ny, self.nw))
+                for i in range(self.nf):
+                    sh[0,0] = self.shyA[i]
+                    lslit = shift(self.logSlit, -sh, missing=-1, cubic=True)
+                    self.cFlat[i] = 10**(self.logRF[i] - np.log10(self.Flat) - lslit)
+            else:
+                self.cFlat = 10**(self.logRF - np.log10(self.Flat) - self.logSlit)
             if save:
                 self.saveFits(self.sdir)
         
             
             if show:
-                fig, ax = plt.subplots(2, figsize=[7,7], num=f'Flat field {self.date}', sharex=True, sharey=True)
-                im0 = ax[0].imshow(self.logRF[3], plt.cm.gray, origin='lower', interpolation='bilinear')
-                m = self.logRF[3].mean()
-                std = self.logRF[3].std()
+                fig, ax = plt.subplots(2, figsize=[7,7], sharex=True, sharey=True)
+                im0 = ax[0].imshow(10**self.logRF[3], plt.cm.gray, origin='lower', interpolation='bilinear')
+                m = (10**self.logRF[3]).mean()
+                std = (10**self.logRF[3]).std()
                 im0.set_clim(m-std, m+std)
                 ax[0].set_ylabel("Slit (pix)")
                 ax[0].set_title("Raw Data")
                 logf = np.log10(self.Flat)
-                corI = self.logRF[3] - logf - self.logSlit
+                corI = 10**(self.logRF[3] - logf - self.logSlit)
                 im = ax[1].imshow(corI, plt.cm.gray, origin='lower', interpolation='bilinear')
                 # im.set_clim(corI[10:-10,10:-10].min(),corI[10:-10,10:-10].max())
                 m = corI[10:-10,10:-10].mean()
@@ -410,7 +424,7 @@ class calFlat:
                 except:
                     pass
 
-    def make_slit_pattern(self, cubic=True, show=False):
+    def make_slit_pattern(self, shiftcor=True, cubic=True, show=False):
         """
         Make the slit pattern image with the given tilt angle.
 
@@ -426,44 +440,35 @@ class calFlat:
         -------
         Slit: `~numpy.array`
         """
-        if self.nw % 512 == 0:
-            shA = np.array([191.4, 157.0, 53.8, 0, -36.8, -144.8, -206.2])
-            ratio = 1.45
+        self.shiftcor = shiftcor
+        rlRF = rot(self.logRF, np.deg2rad(-self.tilt), cubic=cubic, missing=-1)
+        
+        if shiftcor:
+            d2rlRF = np.gradient(np.gradient(rlRF, axis=1), axis=1)
+            wh = int(np.median(np.abs(d2rlRF[3,5:-5,5:-5]).argmax(0))) + 5
+            ref = d2rlRF[3,wh-16:wh+16,5:-5]
+            si = np.zeros((self.nf, self.ny, self.nw))
+            si[3] = rlRF[3]
+            self.shyA = np.zeros(self.nf)
+            for i in range(self.nf):
+                if i == self.nf//2:
+                    continue
+                spec = d2rlRF[i,wh-16:wh+16,5:-5]
+                sh = alignoffset(spec, ref)
+                # tt = 0
+                # for w in range(self.nw-10):
+                #     specI = spec[:,w][:,None]*np.ones((32,4))
+                #     refI = ref[:,w][:,None]*np.ones((32,4))
+                #     sh = alignoffset(specI, refI)
+                #     tt += sh[0,0]
+                
+                # tt /= self.nw-10
+                # sh[0,0] = tt
+                sh[1,0] = 0
+                self.shyA[i] = -sh[0,0]
+                si[i] = shift(rlRF[i], -sh, missing=-1, cubic=True)
         else:
-            shA = np.array([-193.3, -157.9, -53.0, 0, 35.4, 140.8, 202.0])
-            ratio = 0.45
-        if abs(self.tilt) < 0.08:
-            ratio = 0
-        ratio = 1 # A tilt=-0.269 20140613
-        tmp = rot(self.logRF, np.deg2rad(-self.tilt), cubic=cubic, missing=-1)
-        refI = tmp[3,self.ny//2-10:self.ny//2+10,5:-5].mean(0) * np.ones((4,self.nw-10))
-        si = np.zeros((self.nf, self.ny, self.nw))
-        si[3] = tmp[3]
-        self.shyA = np.zeros(self.nf)
-        for i in range(self.nf):
-            if i == self.nf//2:
-                continue
-            shk = np.zeros((2,1))
-            wsh = 10
-            dx = 0
-            prof = tmp[i,self.ny//2-10:self.ny//2+10,5:-5].mean(0) * np.ones((4,self.nw-10))
-            while abs(wsh) >= 1e-1:
-                if dx == 0:
-                    sh = alignoffset(prof, refI)
-                elif dx > 0:
-                    sh = alignoffset(prof[:,:-int(dx)], refI[:,:-int(dx)])
-                else:
-                    sh = alignoffset(prof[:,-int(dx):], refI[:,-int(dx):])
-                prof = shift(prof, -sh, missing=-1, cubic=True)
-                wsh = sh[-1][0]
-                dx += wsh
-
-            if abs(shA[i] - dx) > 10:
-                dx = shA[i]
-            tt = np.sin(np.deg2rad(self.tilt))*dx*ratio
-            shk[0,0] = tt
-            self.shyA[i] = tt
-            si[i] = shift(tmp[i], shk, missing=-1, cubic=True)
+            si = rlRF
         
         ri = np.median(si,axis=0)
         rslit = np.median(ri[:,40:-40], axis=1)[:,None] * np.ones([self.ny,self.nw])
@@ -472,7 +477,7 @@ class calFlat:
         self.tsi = si
         self.tfig = None
         if show:
-            fig, ax = plt.subplots(figsize=[6,3.5], num=f'Slit Pattern {self.date}')
+            fig, ax = plt.subplots(figsize=[6,3.5])
             im = ax.imshow(logSlit, plt.cm.gray, origin='lower', interpolation='bilinear')
             ax.set_xlabel("Wavelength (pix)")
             ax.set_ylabel("Slit (pix)")
@@ -485,50 +490,7 @@ class calFlat:
                 pass
             
         return 10**logSlit
-    
-    def make_slit_pattern_ori(self, cubic=True, show=False):
-        """
-        Make the slit pattern image with the given tilt angle.
 
-        Paramters
-        ---------
-        cubic: `bool`, optional
-            If `True` (default), apply the cubic interpolation to rotate the image.
-            If `False`, apply the linear interpolation.
-        show: `bool, optional
-            If `True`, Draw a slit pattern image. Default is `False`
-
-        Returns
-        -------
-        Slit: `~numpy.array`
-        """
-        tmp = self.mlogRF
-        # tmp = self.logRF.max(0)
-        ri = rot(tmp, np.deg2rad(-self.tilt), cubic=cubic, missing=-1)
-
-        # rslit = ri[:,40:-40].mean(1)[:,None] * np.ones([self.ny,self.nw])
-        rslit = np.median(ri[:,40:-40], axis=1)[:,None] * np.ones([self.ny,self.nw])
-        logSlit = rot(rslit, np.deg2rad(self.tilt), cubic=cubic, missing=-1)
-        
-        # sh = alignoffset(logSlit[5:-5,40][:,None]*np.ones((self.ny-10,4)), tmp[5:-5,40][:,None]*np.ones((self.ny-10,4)))
-        # logSlit = shift(logSlit, -sh, cubic=True, missing=-1)
-        # print(sh)
-        self.trslit = rslit - np.median(rslit)
-        
-        if show:
-            fig, ax = plt.subplots(figsize=[6,3.5], num=f'Slit Pattern {self.date}')
-            im = ax.imshow(logSlit, plt.cm.gray, origin='lower', interpolation='bilinear')
-            ax.set_xlabel("Wavelength (pix)")
-            ax.set_ylabel("Slit (pix)")
-            ax.set_title(f"Slit Pattern")
-            fig.tight_layout()
-            fig.show()
-            try:
-                fig.canvas.manager.window.move(0,1080-350)
-            except:
-                    pass
-            
-        return 10**logSlit
 
     def gain_calib(self, maxiter=10, msk=None, show=False):
         """
@@ -682,7 +644,7 @@ class calFlat:
         Flat = 10**Flat
 
         if show:
-            fig, ax = plt.subplots(figsize=[6,3.5], num=f'Flat Pattern {self.date}', sharex=True, sharey=True)
+            fig, ax = plt.subplots(figsize=[6,3.5], sharex=True, sharey=True)
             im = ax.imshow(Flat, plt.cm.gray, origin='lower', interpolation='bilinear')
             im.set_clim(Flat[10:-10,10:-10].min(),Flat[10:-10,10:-10].max())
             ax.set_xlabel("Wavelength (pix)")
@@ -784,7 +746,7 @@ class calFlat:
             self.tmps = 10**(self.tsi - self.tsi.mean(1)[:,None,:])
             m = self.tmps.mean()
             std = self.tmps.std()
-            self.tfig, ax = plt.subplots(1, 2, figsize=[14,5], sharey=True)
+            self.tfig, ax = plt.subplots(1, 2, figsize=[14,5], sharey=True, sharex=True)
             self.imtmpo = ax[0].imshow(self.tmpo[i], plt.cm.gray, origin='lower')
             self.imtmps = ax[1].imshow(self.tmps[i], plt.cm.gray, origin='lower')
             self.imtmpo.set_clim(m-std*0.5, m+std*0.5)
@@ -831,24 +793,36 @@ def readcal(pcdir):
     return res
 
 def preprocess(f, outname, flat, slit, dark, tilt, curve_coeff, cent_wv=False, overwrite=False, ret=False):
-    # odir = dirname(f)
-    # dirn = join(dirname(dirname(odir)), 'proc', basename(odir))
-    
-    # if not isdir(dirn):
-    #     makedirs(dirn)
-    # fname = join(outdir, basename(f).replace('.fts','1.fts'))
 
 
     opn = fits.open(f)[0]
     h = opn.header
     data = opn.data - dark
 
-    data /= flat*slit
+    d2rd = np.gradient(np.gradient(data, axis=1), axis=1)
+    d2rs = np.gradient(np.gradient(slit, axis=0), axis=0)
+    wh = int(np.median(np.abs(d2rs[5:-5,5:-5]).argmax(0))) + 5
+    ref = d2rs[wh-16:wh+16,5:-5]
+    step = 10
+    nx = len(d2rd[::step])
+    shy = np.zeros(nx)
+    print(wh)
+    for i, frd in enumerate(d2rd[::step]):
+        spec = frd[wh-16:wh+16,5:-5]
+        sh = alignoffset(spec, ref)
+        shy[i] = sh[0,0]
+
+    sh[0,0] = np.median(shy)
+    print(np.median(shy))
+    sh[1,0] = 0
+    smflat = shift(slit*flat, sh, missing=-1, cubic=True)
+    data = data/smflat
+
     ti = tilt_correction(data, tilt)
     ci = curvature_correction(ti, curve_coeff)
 
     wvpar = wv_calib_atlas(ci, h, cent_wv)
-    hdu = fits.PrimaryHDU(data)
+    hdu = fits.PrimaryHDU(ci)
     hdu.header = h
     hdu.header['CRPIX1'] = (wvpar[0], 'reference pixel position')
     hdu.header['CRDELT1'] = (wvpar[1], 'angstrom/pixel')
