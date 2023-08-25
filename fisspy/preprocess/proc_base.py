@@ -10,6 +10,7 @@ from glob import glob
 from astropy.time import Time
 from scipy.signal import correlate, correlation_lags
 from interpolation import interp as interp1d
+from scipy.signal import find_peaks
 
 def get_tilt(img, tilt=None, show=False):
     """
@@ -133,54 +134,40 @@ def piecewise_quadratic_fit(x, y, npoint=5):
     return yf
 
 def get_curve_par(cData, show=False):
-    """
-    Calculate the curvature of the spectrum by applying the second order polynominal fit.
-
-    Parameters
-    ----------
-    Data: `~numpy.array`
-        2- or 3-dimensional flat and tilt corrected flat data image. ex) Data = rawflat[3]/Flat/Slit.
-    tilt: `float`
-        Tilt angle of the image in degree unit.
-    show: `bool`, optional
-        If `True`, draw wavelength shift along the slit direction and fitting. Default is `False`
-
-    Returns
-    -------
-    p: `list`
-        Results of the numpy.polyfit of the second-order polynomial fitting.
-    """
     nDim = cData.ndim
-
+    ones = np.ones((4,16))
     if nDim == 3:
-        nx, ny, nw = cData.shape
-        d2Data = np.gradient(np.gradient(cData.mean(0)[:,5:-5], axis=1), axis=1)
-        d2Data = savgol_filter(d2Data, 40, 2, axis=1)
-        # d2Data = np.gradient(np.gradient(cData.mean[:,:,5:-5], axis=2), axis=2)
-        # d2Data = savgol_filter(d2Data, 40, 2, axis=2)
+        nf, ny, nw = cData.shape
+        d2Data = np.gradient(np.gradient(cData[:,5:-5,5:-5], axis=2), axis=2)
+
     elif nDim == 2:
         ny, nw = cData.shape
+        dw = np.zeros(ny)
         d2Data = np.gradient(np.gradient(cData[:,5:-5], axis=1), axis=1)
-        d2Data = savgol_filter(d2Data, 40, 2, axis=1)
-    
+        nf = 1
+        d2Data = d2Data[None,:,:]
+        
+    dw = np.zeros((nf,ny))
+    for f in range(nf):
+        k = d2Data[f].mean(0)
+        pk = find_peaks(k, k.std()*2)[0]
+        pk = pk[(pk >= 8) * (pk - 8 <=nw-10)]
+        npk = len(pk)
+        dwpk = np.zeros((npk, ny))
+        for pp, wh in enumerate(pk):
+            for direction in range(-1,2,2):
+                prof0 = d2Data[f,ny//2,wh-8:wh+8]*ones
+                for i, prof in enumerate(d2Data[f, ny//2 + direction::direction]):
+                    prof = prof[wh-8:wh+8]*ones
+                    dwpk[pp,direction*(i+1) + ny//2] = alignoffset(prof, prof0)[1]
+                    dwpk[pp,direction*(i+1) + ny//2] += dwpk[pp,direction*(i) + ny//2]
+                    prof0 = prof
+        dw[f] = np.median(dwpk,axis=0)
 
-    dw = np.zeros(ny)
-    one = np.ones((4,nw-10))
-    # if method == 0:
-    #     ref = d2Data[ny//2-2:ny//2+2].mean(1)[:,None] * one
-    #     for i, prof in enumerate(d2Data):
-    #         dw[i] = alignoffset(prof*one, ref)[1]
-    
-    
-    for direction in range(-1,2,2):
-        prof0 = d2Data[ny//2]
-        for i, prof in enumerate(d2Data[ny//2 + direction::direction]):
-            dw[direction*(i+1) + ny//2] = alignoffset(prof*one, prof0*one)[1]
-            dw[direction*(i+1) + ny//2] += dw[direction*(i) + ny//2]
-            prof0 = prof
+    dw = dw.mean(0)
 
     y = np.arange(ny)
-    p = np.polyfit(y, dw, 2)
+    p = np.polyfit(y[10:-10], dw[10:-10], 2)
 
     if show:
         fig, ax = plt.subplots(figsize=[6,4])
@@ -378,25 +365,14 @@ class calFlat:
 
             # curvature correction
             coeff = get_curve_par(self.logF, show=show)
-            cif = curvature_correction(self.logF, coeff, show=show)
-
-            
+            self.logF = curvature_correction(self.logF, coeff, show=show)
 
             plt.pause(0.1)
-            # save slit pattern
-            self.logSlit -= np.median(self.logSlit)
-            # get flat image
+
             self.Flat = self.gain_calib(maxiter=maxiter, msk=msk, show=show)
 
             # corrected flat pattern
-            if self.shiftcor:
-                self.cFlat = np.zeros((self.nf, self.ny, self.nw))
-                for i in range(self.nf):
-                    sh[0,0] = self.shyA[i]
-                    lslit = shift(self.logSlit, -sh, missing=-1, cubic=True)
-                    self.cFlat[i] = 10**(self.logRF[i] - np.log10(self.Flat) - lslit)
-            else:
-                self.cFlat = 10**(self.logRF - np.log10(self.Flat) - self.logSlit)
+            self.cFlat = 10**(self.logF - np.log10(self.Flat))
             if save:
                 self.saveFits(self.sdir)
         
@@ -410,11 +386,10 @@ class calFlat:
                 ax[0].set_ylabel("Slit (pix)")
                 ax[0].set_title("Raw Data")
                 logf = np.log10(self.Flat)
-                corI = 10**(self.logRF[3] - logf - self.logSlit)
-                im = ax[1].imshow(corI, plt.cm.gray, origin='lower', interpolation='bilinear')
-                # im.set_clim(corI[10:-10,10:-10].min(),corI[10:-10,10:-10].max())
-                m = corI[10:-10,10:-10].mean()
-                std = corI[10:-10,10:-10].std()
+                im = ax[1].imshow(self.cFlat[3], plt.cm.gray, origin='lower', interpolation='bilinear')
+                # im.set_clim(self.cFlat[3][10:-10,10:-10].min(),self.cFlat[3][10:-10,10:-10].max())
+                m = self.cFlat[3][10:-10,10:-10].mean()
+                std = self.cFlat[3][10:-10,10:-10].std()
                 self.im = im
                 im.set_clim(m-std, m+std)
                 ax[1].set_xlabel("Wavelength (pix)")
