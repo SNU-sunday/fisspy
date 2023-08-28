@@ -496,7 +496,10 @@ class calFlat:
                       deriv= deriv, delta= delta, cval= cval,
                       mode= mode, axis=2)
         self.msk = msk
-        self.rmFlat = tt = self.logF - self.logF.mean(1)[:,None,:]
+        self.mlf = np.mean(self.logF,1)
+        self.rmFlat = tt = self.logF - self.mlf[:,None,:]
+        self.rmFlat2 = self.rmFlat + self.mlf.max(0) # y direction vignetting is removed (that is not intended problems)
+        tt = self.logF
         self.C = (tt*msk).sum((1,2))/msk.sum((1,2))
         self.C -= self.C.mean()
 
@@ -524,17 +527,17 @@ class calFlat:
             self.xi[k] = xdum[tt[k, hy] == tt[k, hy, 5:-5].min()][0]
 
         for k in range(self.nf-1):
-            img1 = (tt[k+1] - Flat)[hy-10:hy+10].mean(0)*one
-            img2 = (tt[k] - Flat)[hy-10:hy+10].mean(0)*one
+            img1 = (self.logF[k+1] - Flat)[hy-10:hy+10].mean(0)*one
+            img2 = (self.logF[k] - Flat)[hy-10:hy+10].mean(0)*one
             sh = alignoffset(img1, img2)
             dx = int(np.round(sh[1]))
             if dx < 0:
-                img1 = (tt[k+1] - Flat)[hy-10:hy+10, :dx].mean(0)*one[:,:dx]
-                img2 = (tt[k] - Flat)[hy-10:hy+10, -dx:].mean(0)*one[:,-dx:]
+                img1 = (self.logF[k+1] - Flat)[hy-10:hy+10, :dx].mean(0)*one[:,:dx]
+                img2 = (self.logF[k] - Flat)[hy-10:hy+10, -dx:].mean(0)*one[:,-dx:]
                 sh, cor = alignoffset(img1, img2, cor=True)
             else:
-                img1 = (tt[k+1] - Flat)[hy-10:hy+10, dx:].mean(0)*one[:,dx:]
-                img2 = (tt[k] - Flat)[hy-10:hy+10, :-dx].mean(0)*one[:,:-dx]
+                img1 = (self.logF[k+1] - Flat)[hy-10:hy+10, dx:].mean(0)*one[:,dx:]
+                img2 = (self.logF[k] - Flat)[hy-10:hy+10, :-dx].mean(0)*one[:,:-dx]
                 sh, cor = alignoffset(img1, img2, cor=True)
             self.x[k+1] = self.x[k] + sh[1] + dx
             # print(f"k: {k+1}, x={self.x[k+1]}, cor={cor}")
@@ -544,9 +547,9 @@ class calFlat:
         self.dx = np.zeros([self.nf, self.ny])
         y = np.arange(self.ny)
         for k in range(self.nf):
-            self.ref = np.gradient(np.gradient((tt[k]-Flat)[hy-10:hy+10].mean(0), axis=0), axis=0)*one
+            self.ref = np.gradient(np.gradient((self.logF[k]-Flat)[hy-10:hy+10].mean(0), axis=0), axis=0)*one
             for j in range(self.ny):
-                img = np.gradient(np.gradient((tt[k] - Flat)[j], axis=0), axis=0)*one
+                img = np.gradient(np.gradient((self.logF[k] - Flat)[j], axis=0), axis=0)*one
                 sh = alignoffset(img[:,5:-5], self.ref[:,5:-5])
                 self.dx[k,j] = sh[1]
             self.dx[k] = piecewise_quadratic_fit(y, self.dx[k], 100)
@@ -610,7 +613,7 @@ class calFlat:
             self.Object += DelObject
 
             err = np.abs(DelFlat).max()
-            # print(f"iteration={i}, err: {err:.2e}")
+            print(f"iteration={i}, err: {err:.2e}")
         
         Flat -= np.median(Flat[5:-5,5:-5])
         Flat = 10**Flat
