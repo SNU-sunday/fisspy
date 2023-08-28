@@ -364,7 +364,7 @@ class calFlat:
                 self.logF = self.rlRF - np.log10(self.Slit)
 
             # curvature correction
-            coeff = get_curve_par(self.logF, show=show)
+            self.coeff = coeff = get_curve_par(self.logF, show=show)
             self.logF = curvature_correction(self.logF, coeff, show=show)
 
             plt.pause(0.1)
@@ -496,11 +496,14 @@ class calFlat:
                       deriv= deriv, delta= delta, cval= cval,
                       mode= mode, axis=2)
         self.msk = msk
-        self.C = (self.logF*msk).sum((1,2))/msk.sum((1,2))
+        self.rmFlat = tt = self.logF - self.logF.mean(1)[:,None,:]
+        self.C = (tt*msk).sum((1,2))/msk.sum((1,2))
         self.C -= self.C.mean()
 
-        Flat = np.median(self.logF, axis=0)
-        Flat -= np.median(Flat)
+        # Flat = np.median(self.logF, axis=0)
+        # Flat -= np.median(Flat)
+        Flat = tt.mean(0)
+        Flat -= np.mean(Flat)
         f1d = np.gradient(Flat, axis=1)
         f2d = np.gradient(f1d, axis=1)
         mask = (np.abs(f2d) <= f2d.std()) * (np.abs(f1d) <= f1d.std())
@@ -518,20 +521,20 @@ class calFlat:
         one = np.ones((4, self.nw))
 
         for k in range(self.nf):
-            self.xi[k] = xdum[self.logF[k, hy] == self.logF[k, hy, 5:-5].min()][0]
+            self.xi[k] = xdum[tt[k, hy] == tt[k, hy, 5:-5].min()][0]
 
         for k in range(self.nf-1):
-            img1 = (self.logF[k+1] - Flat)[hy-10:hy+10].mean(0)*one
-            img2 = (self.logF[k] - Flat)[hy-10:hy+10].mean(0)*one
+            img1 = (tt[k+1] - Flat)[hy-10:hy+10].mean(0)*one
+            img2 = (tt[k] - Flat)[hy-10:hy+10].mean(0)*one
             sh = alignoffset(img1, img2)
             dx = int(np.round(sh[1]))
             if dx < 0:
-                img1 = (self.logF[k+1] - Flat)[hy-10:hy+10, :dx].mean(0)*one[:,:dx]
-                img2 = (self.logF[k] - Flat)[hy-10:hy+10, -dx:].mean(0)*one[:,-dx:]
+                img1 = (tt[k+1] - Flat)[hy-10:hy+10, :dx].mean(0)*one[:,:dx]
+                img2 = (tt[k] - Flat)[hy-10:hy+10, -dx:].mean(0)*one[:,-dx:]
                 sh, cor = alignoffset(img1, img2, cor=True)
             else:
-                img1 = (self.logF[k+1] - Flat)[hy-10:hy+10, dx:].mean(0)*one[:,dx:]
-                img2 = (self.logF[k] - Flat)[hy-10:hy+10, :-dx].mean(0)*one[:,:-dx]
+                img1 = (tt[k+1] - Flat)[hy-10:hy+10, dx:].mean(0)*one[:,dx:]
+                img2 = (tt[k] - Flat)[hy-10:hy+10, :-dx].mean(0)*one[:,:-dx]
                 sh, cor = alignoffset(img1, img2, cor=True)
             self.x[k+1] = self.x[k] + sh[1] + dx
             # print(f"k: {k+1}, x={self.x[k+1]}, cor={cor}")
@@ -541,9 +544,9 @@ class calFlat:
         self.dx = np.zeros([self.nf, self.ny])
         y = np.arange(self.ny)
         for k in range(self.nf):
-            self.ref = np.gradient(np.gradient((self.logF[k]-Flat)[hy-10:hy+10].mean(0), axis=0), axis=0)*one
+            self.ref = np.gradient(np.gradient((tt[k]-Flat)[hy-10:hy+10].mean(0), axis=0), axis=0)*one
             for j in range(self.ny):
-                img = np.gradient(np.gradient((self.logF[k] - Flat)[j], axis=0), axis=0)*one
+                img = np.gradient(np.gradient((tt[k] - Flat)[j], axis=0), axis=0)*one
                 sh = alignoffset(img[:,5:-5], self.ref[:,5:-5])
                 self.dx[k,j] = sh[1]
             self.dx[k] = piecewise_quadratic_fit(y, self.dx[k], 100)
@@ -558,7 +561,7 @@ class calFlat:
         weight = (pos >= 0) * (pos < self.nw)
         pos[pos < 0] = 0
         pos[pos > self.nw-1] = self.nw-1
-        data = self.logF - Flat
+        data = tt - Flat
         smin = [0, 0, 0]
         smax = [self.nf-1, self.ny-1, self.nw-1]
         order = [self.nf, self.ny, self.nw]
@@ -579,7 +582,7 @@ class calFlat:
             interp = LinearSpline(smin, smax, order, self.Object*ones)
             inp = np.array((f.reshape(size), y.reshape(size), pos.reshape(size)))
             obj1 = interp(inp.T).reshape(shape)
-            ob = (self.C[:,None,None] + obj1 + Flat - self.logF)*weight
+            ob = (self.C[:,None,None] + obj1 + Flat - tt)*weight
             self.C -= ob.sum((1,2))/weight.sum((1,2))
             data = np.gradient(self.Object, axis=0)*ones
             interp = LinearSpline(smin, smax, order, data)
@@ -597,7 +600,7 @@ class calFlat:
             interp = LinearSpline(smin, smax, order, self.msk)
             inp = np.array((f.reshape(size), y.reshape(size), pos.reshape(size)))
             weight = weight*interp(inp.T).reshape(shape)
-            data = self.logF - Flat
+            data = tt - Flat
             interp = CubicSpline(smin, smax, order, data)
             a = (self.C[:, None, None] + self.Object[None,None,:] - interp(inp.T).reshape(shape))*weight
 
@@ -609,7 +612,7 @@ class calFlat:
             err = np.abs(DelFlat).max()
             # print(f"iteration={i}, err: {err:.2e}")
         
-        Flat -= np.median(Flat)
+        Flat -= np.median(Flat[5:-5,5:-5])
         Flat = 10**Flat
 
         if show:
