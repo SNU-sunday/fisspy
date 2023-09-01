@@ -11,6 +11,17 @@ from astropy.time import Time
 from scipy.signal import correlate, correlation_lags
 from interpolation import interp as interp1d
 from scipy.signal import find_peaks
+from scipy.optimize import curve_fit
+
+def multiGaussian(x, *pars):
+    ng = len(pars)
+    y = np.zeros((len(x)))
+    for i, par in enumerate(pars):
+        A = par[0]
+        m = par[1]
+        sig = par[2]
+        y += A*np.exp(-((x-m)/sig)**2)
+
 
 def get_tilt(img, tilt=None, show=False):
     """
@@ -497,8 +508,26 @@ class calFlat:
                       mode= mode, axis=2)
         self.msk = msk
         self.mlf = np.mean(self.logF,1)
-        self.rmFlat = tt = self.logF - self.mlf[:,None,:]
-        self.rmFlat2 = self.rmFlat + self.mlf.max(0) # y direction vignetting is removed (that is not intended problems)
+        ap = self.atlas_subtraction()
+        lprof = np.median(self.logF[:,5:-5],1)
+        rmin = ap[self.nf//2].argmin()
+        for i in range(self.nf):
+            sh = int(self.tsh[i] - self.tsh[self.nf//2])
+            am1 = ap[i,rmin-sh-10:rmin-sh+10].min()
+            am2 = ap[i,-30:-10].mean()
+            ra = am2 - am1
+            pm1 = lprof[i,rmin-sh-10:rmin-sh+10].min()
+            pm2 = ap[i,-30:-10].mean()
+            rp = pm2 - pm1
+            r = rp/ra
+            ap[i] *= r
+            ys = pm1 - ap[i,rmin-sh-10:rmin-sh+10].min()
+            ap[i] += ys
+
+        self.ap = ap
+        self.rmFlat = tt = self.logF - ap[:,None,:]
+        self.rmFlat2 = self.logF - self.mlf[:,None,:]
+        # self.rmFlat2 = self.rmFlat + self.mlf.max(0) # y direction vignetting is removed (that is not intended problems)
         tt = self.logF
         self.C = (tt*msk).sum((1,2))/msk.sum((1,2))
         self.C -= self.C.mean()
@@ -739,6 +768,73 @@ class calFlat:
             self.imtmpo.set_data(self.tmpo[i])
             self.imtmps.set_data(self.tmps[i])
             self.tfig.canvas.draw_idle()
+    
+    def atlas_subtraction(self):
+        wave, intensity = read_atlas()
+        li = np.log10(intensity)
+        fprof = np.median(self.logF[:,5:-5], axis=1)
+        
+        try:
+            crval1 = float(self.h['GRATWVLN'])
+        except:
+            crval1 = float(self.h['WAVELEN'])
+
+        if self.h['CCDNAME'] == 'DV897_BV': # cam A
+            if abs(crval1 - 6562.817) < 3:
+                crval1 = 6562.817
+            elif abs(crval1 - 5889.95) < 3:
+                crval1 = 5889.95
+            elif abs(crval1 - 5875.618) < 3:
+                crval1 = 5875.618
+            res = get_echelle_res(crval1, 0.93)
+        elif self.h['CCDNAME'] == 'DU8285_VP': # cam B
+            if abs(crval1 - 8542.09) < 3:
+                crval1 = 8542.09
+            elif abs(crval1 - 6562.817) < 3:
+                crval1 = 8542.09
+            elif abs(crval1 - 5889.95) < 3:
+                crval1 = 5434.5235
+            res = get_echelle_res(crval1, 1.92)
+
+        nf, nw = fprof.shape
+        wr = spectral_range(res['alpha'], res['order'], nw)
+        dw = (wr[1]-wr[0])/nw
+        wv = np.arange(nw)*dw + wr[0]
+        wh = (wave >= crval1-15) * (wave <= crval1+15)
+        wave2 = wave[wh]
+        smin = [wave2[0]]
+        smax = [wave2[-1]]
+        order = [len(wave2)]
+        interp = CubicSpline(smin, smax, order, li[wh])
+        refI = interp(wv[:,None])*np.ones((4,nw))
+
+        self.tsh = np.zeros(nf)
+        aprof = np.zeros((nf,nw))
+        for i, prof in enumerate(fprof):
+            prof = prof*np.ones((4,nw))
+            iteration = 0
+            sh = alignoffset(refI[:,5:-5], prof[:,5:-5])
+            wvl = wv.copy()
+            self.tsh[i] += sh[1,0]
+            while abs(sh[1,0]) >= 1e-1:
+                wvl += sh[1,0]*dw
+                testI = interp(wvl[:,None])*np.ones((4,nw))
+                sh = alignoffset(testI, prof)
+                self.tsh[i] += sh[1,0]
+                iteration += 1
+                if iteration == 10:
+                    print(f"{i} break")
+                    break
+            aprof[i] = testI[2]
+
+        return aprof
+
+def read_atlas():
+    dirn = dirname(abspath(__file__))
+    atlas = np.load(join(dirn, 'solar_atlas.npz'))
+    wave = atlas['wave']
+    intensity = atlas['intensity']
+    return wave, intensity
 
 def readcal(pcdir):
     """
@@ -832,10 +928,7 @@ def pca_compression(data, h, outname, ncoeff=30, pfname=None, pdata=None):
 
 
 def wv_calib_atlas(data, header, cent_wv=False):
-    dirn = dirname(abspath(__file__))
-    atlas = np.load(join(dirn, 'solar_atlas.npz'))
-    wave = atlas['wave']
-    intensity = atlas['intensity']
+    wave, intensity = read_atlas()
 
     data1 = np.median(data, axis=0) if data.ndim == 3 else data
 
