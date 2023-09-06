@@ -12,16 +12,80 @@ from scipy.signal import correlate, correlation_lags
 from interpolation import interp as interp1d
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
+from fisspy.analysis.wavelet import Wavelet
 
 def multiGaussian(x, *pars):
-    ng = len(pars)
+    ng = len(pars)//3
     y = np.zeros((len(x)))
-    for i, par in enumerate(pars):
-        A = par[0]
-        m = par[1]
-        sig = par[2]
+    for i in range(ng):
+        A = pars[i*3]
+        m = pars[i*3+1]
+        sig = pars[i*3+2]
         y += A*np.exp(-((x-m)/sig)**2)
+    return y
 
+def Gaussian(x, *par):
+    A = par[0]
+    m = par[1]
+    sig = par[2]
+    y = A*np.exp(-((x-m)/sig)**2)
+    return y
+
+def cal_fringe(data, axis=0, freqRange=[0,-1], msk=None):
+    """
+    axis: `int`, optional
+        0, wavelet along the slit direction
+    """
+    wvlet = Wavelet(data, dt=1, axis=axis, dj=0.05, param=12)
+    shape = wvlet.wavelet.shape
+    nwl = shape[1]
+    
+    for i in range(2):
+        if freqRange[i] < 0:
+            freqRange[i] = nwl + freqRange[i]
+
+    
+    x = np.arange(nwl)
+
+    pars = [None]*3
+    
+    freq = np.arctan2(wvlet.wavelet.imag, wvlet.wavelet.real)
+    coeff = np.zeros((3, shape[0], shape[2]))
+    Awvlet = np.abs(wvlet.wavelet)
+    fringe_wvlet = np.zeros(shape, dtype=complex)
+    # if msk is None:
+    #     st = 0
+    #     end = nwl
+
+    # for ii in range(1):
+    for ii in range(shape[0]):
+        # if ii % 10 == 0:
+        print(f"{ii}")
+        wh = None
+        for jj in range(shape[2]):
+            wv = Awvlet[ii,:,jj]
+            pars[0] = wv[freqRange[0]:freqRange[1]].max()
+            if wh is None:
+                wh = wv[freqRange[0]:freqRange[1]].argmax() + freqRange[0]
+            else:
+                wh = wv[wh-3:wh+3].argmax() + wh-3
+            pars[1] = wh
+            pars[2] = 2
+            try:
+                cp, cov = curve_fit(Gaussian, x[wh-3:wh+3], wv[wh-3:wh+3], p0=pars)
+                coeff[:,ii,jj] = cp
+            except:
+                print(f"catch err at {ii},:,{jj}")
+                return x, Awvlet, freq, coeff
+            fringe_pwr = Gaussian(x, *cp)
+            fringe_spec = fringe_pwr*(np.cos(freq[ii, :, jj])+1j*np.sin(freq[ii, :, jj]))
+            fringe_wvlet[ii,:,jj] = fringe_spec
+
+    fringe = wvlet.iwavelet(fringe_wvlet, wvlet.scale)
+    return x, fringe, freq, coeff
+
+
+    
 
 def get_tilt(img, tilt=None, show=False):
     """
@@ -339,6 +403,7 @@ class calFlat:
         self.ffoc = ffoc
         self.fflat = fflat
         self.shyA = None
+        self.fsData = None
         
         fdir = dirname(fflat)
         if not fdir:
@@ -508,8 +573,9 @@ class calFlat:
                       mode= mode, axis=2)
         self.msk = msk
         self.mlf = np.mean(self.logF,1)
-        ap = self.atlas_subtraction()
-        lprof = np.median(self.logF[:,5:-5],1)
+        self.ap = ap =  self.atlas_subtraction()
+        self.ap = ap.copy()
+        self.lprof = lprof = np.median(self.logF[:,5:-5],1)
         rmin = ap[self.nf//2].argmin()
         for i in range(self.nf):
             sh = int(self.tsh[i] - self.tsh[self.nf//2])
@@ -829,6 +895,9 @@ class calFlat:
 
         return aprof
 
+
+
+    
 def read_atlas():
     dirn = dirname(abspath(__file__))
     atlas = np.load(join(dirn, 'solar_atlas.npz'))
@@ -1058,14 +1127,14 @@ def get_echelle_res(lamb, theta=0.93, grooves=79, blazeAngle=63.4):
 def spectral_range(alpha, order, nw=512):
     f = 1.5 # FISS collimator focal length in m
     grooves = 79
-    sigma = 1e7 / 79
+    sigma = 1e7 / grooves
     
     if nw % 512 == 0:
         theta = np.deg2rad(0.93)
         domain = np.array([0.5, -0.5])
     elif nw % 502 ==0:
         theta = np.deg2rad(1.92)
-        domain = np.array([-0.5, 0.5])
+        domain = np.array([-0.503, 0.503])
     else:
         raise ValueError(f"nw should be either 512 or 502, not {nw}")
     width = nw*16e-6 # Detector width in m
