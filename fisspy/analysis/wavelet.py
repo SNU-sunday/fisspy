@@ -346,6 +346,9 @@ class Wavelet:
             elif self.param == 12:
                 self.cdelta = 0.38
                 self.dj0 = 0.60
+            elif self.param == 18:
+                self.cdelta = 0.27
+                self.dj0 = 0.60
         elif self.mother == 'PAUL':
             if not self.param:
                 self.param = 4.

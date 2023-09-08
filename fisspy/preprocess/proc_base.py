@@ -8,9 +8,9 @@ from os.path import join, isdir, dirname, basename, abspath
 from os import getcwd, makedirs
 from glob import glob
 from astropy.time import Time
-from scipy.signal import correlate, correlation_lags
-from interpolation import interp as interp1d
+# from interpolation import interp as interp1d
 from scipy.signal import find_peaks
+from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 from fisspy.analysis.wavelet import Wavelet
 
@@ -31,20 +31,36 @@ def Gaussian(x, *par):
     y = A*np.exp(-((x-m)/sig)**2)
     return y
 
-def cal_fringe(data, axis=0, freqRange=[0,-1], msk=None):
+def data_mask_and_fill(data, msk_range, axis=1, kind='nearest'):
+    shape = data.shape
+    nmsk = len(msk_range)
+    if nmsk %2 !=0:
+        raise(ValueError("msk_range should has even number of elements"))
+    nmsk //= 2
+    x = np.arange(shape[axis])
+    xt = x.copy()
+    tdata = data.copy()
+
+    for i in range(nmsk):
+        xt = np.delete(xt, np.arange(msk_range[i*2], msk_range[i*2+1]))
+        tdata = np.delete(tdata, np.arange(msk_range[i*2], msk_range[i*2+1]), axis=axis)
+        
+    interp = interp1d(xt, tdata, axis=axis, kind=kind)
+    mdata = interp(x)
+    return mdata
+
+def cal_fringe_gauss(data, axis=0, filterRange=[0,-1], dj=0.05, wpar=12):
     """
     axis: `int`, optional
         0, wavelet along the slit direction
     """
-    wvlet = Wavelet(data, dt=1, axis=axis, dj=0.05, param=12)
+    wvlet = Wavelet(data, dt=1, axis=axis, dj=dj, param=wpar)
     shape = wvlet.wavelet.shape
     nwl = shape[1]
-    
     for i in range(2):
-        if freqRange[i] < 0:
-            freqRange[i] = nwl + freqRange[i]
+        if filterRange[i] < 0:
+            filterRange[i] = nwl + filterRange[i]
 
-    
     x = np.arange(nwl)
 
     pars = [None]*3
@@ -53,40 +69,45 @@ def cal_fringe(data, axis=0, freqRange=[0,-1], msk=None):
     coeff = np.zeros((3, shape[0], shape[2]))
     Awvlet = np.abs(wvlet.wavelet)
     fringe_wvlet = np.zeros(shape, dtype=complex)
-    # if msk is None:
-    #     st = 0
-    #     end = nwl
 
-    # for ii in range(1):
     for ii in range(shape[0]):
-        # if ii % 10 == 0:
-        print(f"{ii}")
+        if ii % 10 == 0:
+            print(f"calculate {ii}-th row")
         wh = None
         for jj in range(shape[2]):
             wv = Awvlet[ii,:,jj]
-            pars[0] = wv[freqRange[0]:freqRange[1]].max()
+            pars[0] = wv[filterRange[0]:filterRange[1]].max()
             if wh is None:
-                wh = wv[freqRange[0]:freqRange[1]].argmax() + freqRange[0]
+                wh = wv[filterRange[0]:filterRange[1]].argmax() + filterRange[0]
             else:
                 wh = wv[wh-3:wh+3].argmax() + wh-3
             pars[1] = wh
             pars[2] = 2
             try:
-                cp, cov = curve_fit(Gaussian, x[wh-3:wh+3], wv[wh-3:wh+3], p0=pars)
+                cp, cov = curve_fit(Gaussian, x[wh-5:wh+5], wv[wh-5:wh+5], p0=pars)
                 coeff[:,ii,jj] = cp
             except:
                 print(f"catch err at {ii},:,{jj}")
                 return x, Awvlet, freq, coeff
-            fringe_pwr = Gaussian(x, *cp)
-            fringe_spec = fringe_pwr*(np.cos(freq[ii, :, jj])+1j*np.sin(freq[ii, :, jj]))
-            fringe_wvlet[ii,:,jj] = fringe_spec
 
+    fringe_pwr = Gaussian(x[None,:,None], *coeff[:,:,None,:])
+    fringe_wvlet = fringe_pwr*(np.cos(freq)+1j*np.sin(freq))
     fringe = wvlet.iwavelet(fringe_wvlet, wvlet.scale)
-    return x, fringe, freq, coeff
 
+    return fringe
 
+def cal_fringe_simple(data, filterRange, axis=0, dj=0.05, wpar=12):
+    wvlet = Wavelet(data, dt=1, axis=axis, dj=dj, param=wpar)
+    wavelet = wvlet.wavelet
+    shape = wavelet.shape
     
+    nwl = shape[1]
 
+    wavelet[:,:filterRange[0]] = 0
+    wavelet[:,filterRange[1]:] = 0
+
+    return wvlet.iwavelet(wavelet, wvlet.scale)
+    
 def get_tilt(img, tilt=None, show=False):
     """
     Get a tilt angle of the spectrum camera in the unit of degree.
@@ -442,8 +463,11 @@ class calFlat:
             # curvature correction
             self.coeff = coeff = get_curve_par(self.logF, show=show)
             self.logF = curvature_correction(self.logF, coeff, show=show)
-
             plt.pause(0.1)
+
+            # fringe subtraction
+            self.atlas_subtraction()
+            
 
             self.Flat = self.gain_calib(maxiter=maxiter, msk=msk, show=show)
 
@@ -572,27 +596,7 @@ class calFlat:
                       deriv= deriv, delta= delta, cval= cval,
                       mode= mode, axis=2)
         self.msk = msk
-        self.mlf = np.mean(self.logF,1)
-        self.ap = ap =  self.atlas_subtraction()
-        self.ap = ap.copy()
-        self.lprof = lprof = np.median(self.logF[:,5:-5],1)
-        rmin = ap[self.nf//2].argmin()
-        for i in range(self.nf):
-            sh = int(self.tsh[i] - self.tsh[self.nf//2])
-            am1 = ap[i,rmin-sh-10:rmin-sh+10].min()
-            am2 = ap[i,-30:-10].mean()
-            ra = am2 - am1
-            pm1 = lprof[i,rmin-sh-10:rmin-sh+10].min()
-            pm2 = ap[i,-30:-10].mean()
-            rp = pm2 - pm1
-            r = rp/ra
-            ap[i] *= r
-            ys = pm1 - ap[i,rmin-sh-10:rmin-sh+10].min()
-            ap[i] += ys
-
-        self.ap = ap
-        self.rmFlat = tt = self.logF - ap[:,None,:]
-        self.rmFlat2 = self.logF - self.mlf[:,None,:]
+        
         # self.rmFlat2 = self.rmFlat + self.mlf.max(0) # y direction vignetting is removed (that is not intended problems)
         tt = self.logF
         self.C = (tt*msk).sum((1,2))/msk.sum((1,2))
@@ -893,11 +897,36 @@ class calFlat:
                     break
             aprof[i] = testI[2]
 
-        return aprof
 
+        self.mlf = np.mean(self.logF,1)
+        ap =  aprof
+        self.lprof = lprof = np.median(self.logF[:,5:-5],1)
+        rmin = ap[self.nf//2].argmin()
+        for i in range(self.nf):
+            sh = int(self.tsh[i] - self.tsh[self.nf//2])
+            am1 = ap[i,rmin-sh-10:rmin-sh+10].min()
+            am2 = ap[i,-30:-10].mean()
+            ra = am2 - am1
+            pm1 = lprof[i,rmin-sh-10:rmin-sh+10].min()
+            pm2 = ap[i,-30:-10].mean()
+            rp = pm2 - pm1
+            r = rp/ra
+            ap[i] *= r
+            ys = pm1 - ap[i,rmin-sh-10:rmin-sh+10].min()
+            ap[i] += ys
 
+        self.ap = ap
+        self.rmFlat = self.logF - ap[:,None,:]
 
-    
+    def get_spectrumMaskRange(self, data):
+        prof = self.logF[:,5:-5,5:-5].mean(1)
+        whmin = prof.argmin(1)
+        tt = data[5:-5,5:-5].mean(0) - data[5:-5,5:-5].min()
+        pars = [tt[whmin], whmin, 5]
+        x = np.arange(tt.shape[1])
+        cp, cr = curve_fit(Gaussian, x[whmin-5:whmin+5], tt[whmin-5:whmin+5], p0=pars)
+        return [cp[1]-cp[2]*1.5,cp[1]+cp[2]*1.5]
+
 def read_atlas():
     dirn = dirname(abspath(__file__))
     atlas = np.load(join(dirn, 'solar_atlas.npz'))
@@ -994,8 +1023,6 @@ def pca_compression(data, h, outname, ncoeff=30, pfname=None, pdata=None):
         ret = True
         x = np.round()
 
-
-
 def wv_calib_atlas(data, header, cent_wv=False):
     wave, intensity = read_atlas()
 
@@ -1072,7 +1099,6 @@ def wv_calib_atlas(data, header, cent_wv=False):
 
     return wvpar
         
-
 def get_echelle_res(lamb, theta=0.93, grooves=79, blazeAngle=63.4):
     """
     Determine the parameters of an echelle grating.
