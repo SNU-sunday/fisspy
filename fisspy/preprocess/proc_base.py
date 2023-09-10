@@ -49,12 +49,58 @@ def data_mask_and_fill(data, msk_range, axis=1, kind='nearest'):
     mdata = interp(x)
     return mdata
 
-def cal_fringe_gauss(data, axis=0, filterRange=[0,-1], dj=0.05, wpar=12):
+# def cal_fringeGauss(data, axis=0, filterRange=[0,-1], dj=0.05, wpar=12):
+#     """
+#     axis: `int`, optional
+#         0, wavelet along the slit direction
+#     """
+#     wvlet = Wavelet(data, dt=1, axis=axis, dj=dj, param=wpar)
+#     shape = wvlet.wavelet.shape
+#     nwl = shape[1]
+#     for i in range(2):
+#         if filterRange[i] < 0:
+#             filterRange[i] = nwl + filterRange[i]
+
+#     x = np.arange(nwl)
+
+#     pars = [None]*3
+    
+#     freq = np.arctan2(wvlet.wavelet.imag, wvlet.wavelet.real)
+#     coeff = np.zeros((3, shape[0], shape[2]))
+#     Awvlet = np.abs(wvlet.wavelet)
+#     fringe_wvlet = np.zeros(shape, dtype=complex)
+
+#     for ii in range(shape[0]):
+#         if ii % 10 == 0:
+#             print(f"calculate {ii}-th row")
+#         wh = None
+#         for jj in range(shape[2]):
+#             wv = Awvlet[ii,:,jj]
+#             pars[0] = wv[filterRange[0]:filterRange[1]].max()
+#             if wh is None:
+#                 wh = wv[filterRange[0]:filterRange[1]].argmax() + filterRange[0]
+#             else:
+#                 wh = wv[wh-3:wh+3].argmax() + wh-3
+#             pars[1] = wh
+#             pars[2] = 2
+#             try:
+#                 cp, cov = curve_fit(Gaussian, x[wh-5:wh+5], wv[wh-5:wh+5], p0=pars)
+#                 coeff[:,ii,jj] = cp
+#             except:
+#                 print(f"catch err at {ii},:,{jj}")
+#                 return x, Awvlet, freq, coeff
+
+#     fringe_pwr = Gaussian(x[None,:,None], *coeff[:,:,None,:])
+#     fringe_wvlet = fringe_pwr*(np.cos(freq)+1j*np.sin(freq))
+#     fringe = wvlet.iwavelet(fringe_wvlet, wvlet.scale)
+
+#     return fringe
+
+def cal_fringeGauss(wvlet, filterRange=[0,-1]):
     """
     axis: `int`, optional
         0, wavelet along the slit direction
     """
-    wvlet = Wavelet(data, dt=1, axis=axis, dj=dj, param=wpar)
     shape = wvlet.wavelet.shape
     nwl = shape[1]
     for i in range(2):
@@ -96,9 +142,8 @@ def cal_fringe_gauss(data, axis=0, filterRange=[0,-1], dj=0.05, wpar=12):
 
     return fringe
 
-def cal_fringe_simple(data, filterRange, axis=0, dj=0.05, wpar=12):
-    wvlet = Wavelet(data, dt=1, axis=axis, dj=dj, param=wpar)
-    wavelet = wvlet.wavelet
+def cal_fringeSimple(wvlet, filterRange):
+    wavelet = wvlet.wavelet.copy()
     shape = wavelet.shape
     
     nwl = shape[1]
@@ -107,6 +152,18 @@ def cal_fringe_simple(data, filterRange, axis=0, dj=0.05, wpar=12):
     wavelet[:,filterRange[1]:] = 0
 
     return wvlet.iwavelet(wavelet, wvlet.scale)
+
+# def cal_fringeSimple(data, filterRange, axis=0, dj=0.05, wpar=12):
+#     wvlet = Wavelet(data, dt=1, axis=axis, dj=dj, param=wpar)
+#     wavelet = wvlet.wavelet
+#     shape = wavelet.shape
+    
+#     nwl = shape[1]
+
+#     wavelet[:,:filterRange[0]] = 0
+#     wavelet[:,filterRange[1]:] = 0
+
+#     return wvlet.iwavelet(wavelet, wvlet.scale)
     
 def get_tilt(img, tilt=None, show=False):
     """
@@ -287,7 +344,7 @@ def get_curve_par(cData, show=False):
         except:
             pass
 
-    return p
+    return p, dw
 
 def tilt_correction(img, tilt, cubic=True):
     """
@@ -359,29 +416,15 @@ def curvature_correction(img, coeff, show=False):
     ccImg = interp(inp.T).reshape(shape)
 
     if show:
-        fig, ax = plt.subplots(1,2, figsize=[8,8], sharex=True, sharey=True)
         oimg = img[tuple(idx)].squeeze()
         prof = oimg[20]
         dp2 = np.gradient(np.gradient(prof))
         wh = dp2.argmax()
         cimg = ccImg[tuple(idx)].squeeze()
-        oim = ax[0].imshow(oimg, plt.cm.gray, origin='lower', interpolation='bilinear')
-        cim = ax[1].imshow(cimg, plt.cm.gray, origin='lower', interpolation='bilinear')
-        m = oimg[5:-5,wh-10:wh+10].mean()
-        std = oimg[5:-5,wh-10:wh+10].std()
-        oim.set_clim(m-std*1.5, m+std*1.5)
-        cim.set_clim(m-std*1.5, m+std*1.5)
-        ax[0].set_xlim(wh-10,wh+10)
-        ax[0].set_aspect(adjustable='box', aspect='auto')
-        ax[1].set_aspect(adjustable='box', aspect='auto')
-        ax[0].set_xlabel('Wavelength (pix)')
-        ax[1].set_xlabel('Wavelength (pix)')
-        ax[0].set_ylabel('Slit (pix)')
-        ax[0].set_title('Original')
-        ax[1].set_title('Curvature corrected')
-        fig.tight_layout()
-        fig.show()
-    return ccImg
+
+        return ccImg, oimg, cimg, wh
+    else:
+        return ccImg
     
 class calFlat:
     def __init__(self, fflat, ffoc=None, tilt=None, autorun=True, shiftcor=True, save=True, show=False, maxiter=10, msk=None):
@@ -432,75 +475,75 @@ class calFlat:
 
         self.sdir = join(dirname(fdir), 'proc', 'cal')
         # get tilt angle in degree
-        if tilt is None:
-            if ffoc is not None:
-                foc = fits.getdata(ffoc)
-                self.mfoc = foc.mean(0)
-                self.tilt = get_tilt(self.mfoc, show=show)
+        # if tilt is None:
+        #     if ffoc is not None:
+        #         foc = fits.getdata(ffoc)
+        #         self.mfoc = foc.mean(0)
+        #         self.tilt = get_tilt(self.mfoc, show=show)
 
-            else:
-                self.tilt = get_tilt(10**self.mlogRF, tilt=tilt, show=show)
+        #     else:
+        #         self.tilt = get_tilt(10**self.mlogRF, tilt=tilt, show=show)
 
-        print(f"Tilt: {self.tilt:.3f} degree")
+        # print(f"Tilt: {self.tilt:.3f} degree")
         
 
         
-        if autorun:
-            self.rlRF = tilt_correction(self.logRF, self.tilt, cubic=True)
-            # get slit pattern
-            self.Slit = self.make_slit_pattern(cubic=True, show=show, shiftcor=shiftcor)
-            # remove the slit pattern
-            if self.shiftcor:
-                self.logF = np.zeros((self.nf, self.ny, self.nw))
-                sh = np.zeros((2,1))
-                for i in range(self.nf):
-                        sh[0,0] = self.shyA[i]
-                        sslit = shift(self.Slit, -sh, missing=-1, cubic=True)
-                        self.logF[i] = self.rlRF[i] - np.log10(sslit)
-            else:
-                self.logF = self.rlRF - np.log10(self.Slit)
+        # if autorun:
+        #     self.rlRF = tilt_correction(self.logRF, self.tilt, cubic=True)
+        #     # get slit pattern
+        #     self.Slit = self.make_slit_pattern(cubic=True, show=show, shiftcor=shiftcor)
+        #     # remove the slit pattern
+        #     if self.shiftcor:
+        #         self.logF = np.zeros((self.nf, self.ny, self.nw))
+        #         sh = np.zeros((2,1))
+        #         for i in range(self.nf):
+        #                 sh[0,0] = self.shyA[i]
+        #                 sslit = shift(self.Slit, -sh, missing=-1, cubic=True)
+        #                 self.logF[i] = self.rlRF[i] - np.log10(sslit)
+        #     else:
+        #         self.logF = self.rlRF - np.log10(self.Slit)
 
-            # curvature correction
-            self.coeff = coeff = get_curve_par(self.logF, show=show)
-            self.logF = curvature_correction(self.logF, coeff, show=show)
-            plt.pause(0.1)
+        #     # curvature correction
+        #     self.coeff = coeff = get_curve_par(self.logF, show=show)
+        #     self.logF = curvature_correction(self.logF, coeff, show=show)
+        #     plt.pause(0.1)
 
-            # fringe subtraction
-            self.atlas_subtraction()
+        #     # fringe subtraction
+        #     self.atlas_subtraction()
             
 
-            self.Flat = self.gain_calib(maxiter=maxiter, msk=msk, show=show)
+        #     self.Flat = self.gain_calib(maxiter=maxiter, msk=msk, show=show)
 
-            # corrected flat pattern
-            self.cFlat = 10**(self.logF - np.log10(self.Flat))
-            if save:
-                self.saveFits(self.sdir)
+        #     # corrected flat pattern
+        #     self.cFlat = 10**(self.logF - np.log10(self.Flat))
+        #     if save:
+        #         self.saveFits(self.sdir)
         
             
-            if show:
-                fig, ax = plt.subplots(2, figsize=[7,7], sharex=True, sharey=True)
-                im0 = ax[0].imshow(10**self.logRF[3], plt.cm.gray, origin='lower', interpolation='bilinear')
-                m = (10**self.logRF[3]).mean()
-                std = (10**self.logRF[3]).std()
-                im0.set_clim(m-std, m+std)
-                ax[0].set_ylabel("Slit (pix)")
-                ax[0].set_title("Raw Data")
-                logf = np.log10(self.Flat)
-                im = ax[1].imshow(self.cFlat[3], plt.cm.gray, origin='lower', interpolation='bilinear')
-                # im.set_clim(self.cFlat[3][10:-10,10:-10].min(),self.cFlat[3][10:-10,10:-10].max())
-                m = self.cFlat[3][10:-10,10:-10].mean()
-                std = self.cFlat[3][10:-10,10:-10].std()
-                self.im = im
-                im.set_clim(m-std, m+std)
-                ax[1].set_xlabel("Wavelength (pix)")
-                ax[1].set_ylabel("Slit (pix)")
-                ax[1].set_title("Flat correction")
-                fig.tight_layout()
-                fig.show()
-                try:
-                    fig.canvas.manager.window.move(600,0)
-                except:
-                    pass
+        #     if show:
+        #         fig, ax = plt.subplots(2, figsize=[7,7], sharex=True, sharey=True)
+        #         im0 = ax[0].imshow(10**self.logRF[3], plt.cm.gray, origin='lower', interpolation='bilinear')
+        #         m = (10**self.logRF[3]).mean()
+        #         std = (10**self.logRF[3]).std()
+        #         im0.set_clim(m-std, m+std)
+        #         ax[0].set_ylabel("Slit (pix)")
+        #         ax[0].set_title("Raw Data")
+        #         logf = np.log10(self.Flat)
+        #         im = ax[1].imshow(self.cFlat[3], plt.cm.gray, origin='lower', interpolation='bilinear')
+        #         # im.set_clim(self.cFlat[3][10:-10,10:-10].min(),self.cFlat[3][10:-10,10:-10].max())
+        #         m = self.cFlat[3][10:-10,10:-10].mean()
+        #         std = self.cFlat[3][10:-10,10:-10].std()
+        #         self.im = im
+        #         im.set_clim(m-std, m+std)
+        #         ax[1].set_xlabel("Wavelength (pix)")
+        #         ax[1].set_ylabel("Slit (pix)")
+        #         ax[1].set_title("Flat correction")
+        #         fig.tight_layout()
+        #         fig.show()
+        #         try:
+        #             fig.canvas.manager.window.move(600,0)
+        #         except:
+        #             pass
 
     def make_slit_pattern(self, shiftcor=True, cubic=True, show=False):
         """
