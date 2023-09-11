@@ -117,8 +117,8 @@ def cal_fringeGauss(wvlet, filterRange=[0,-1]):
     fringe_wvlet = np.zeros(shape, dtype=complex)
 
     for ii in range(shape[0]):
-        if ii % 10 == 0:
-            print(f"calculate {ii}-th row")
+        # if ii % 10 == 0:
+        #     print(f"calculate {ii}-th row")
         wh = None
         for jj in range(shape[2]):
             wv = Awvlet[ii,:,jj]
@@ -134,7 +134,7 @@ def cal_fringeGauss(wvlet, filterRange=[0,-1]):
                 coeff[:,ii,jj] = cp
             except:
                 print(f"catch err at {ii},:,{jj}")
-                return x, Awvlet, freq, coeff
+                return None
 
     fringe_pwr = Gaussian(x[None,:,None], *coeff[:,:,None,:])
     fringe_wvlet = fringe_pwr*(np.cos(freq)+1j*np.sin(freq))
@@ -941,7 +941,7 @@ class calFlat:
             aprof[i] = testI[2]
 
 
-        self.mlf = np.mean(self.logF,1)
+        self.mlf = self.logF[:,5:-5].mean(1)
         ap =  aprof
         self.lprof = lprof = np.median(self.logF[:,5:-5],1)
         rmin = ap[self.nf//2].argmin()
@@ -960,6 +960,7 @@ class calFlat:
 
         self.ap = ap
         self.rmFlat = self.logF - ap[:,None,:]
+        self.rmFlat -= self.rmFlat[:,5:-5,5:-5].mean((1,2))[:,None,None]
 
     def get_spectrumMaskRange(self, data):
         prof = self.logF[:,5:-5,5:-5].mean(1)
