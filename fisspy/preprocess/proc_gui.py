@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
-from os.path import join, dirname, basename
+from os.path import join, dirname, basename, isdir
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
@@ -8,6 +8,8 @@ from fisspy.analysis.wavelet import Wavelet
 from glob import glob
 from astropy.io import fits
 from scipy.optimize import curve_fit
+from astropy.time import Time
+from os import makedirs
 
 class prepGUI:
     def __init__(self, basedir, ffocA=None, ffocB=None):
@@ -21,6 +23,8 @@ class prepGUI:
         self.font_third = "#75b798"
         self.font_err = "#ea868f"
         self.border = "#5a626a"
+        self.btn_1 = "#997404"
+        self.btn_2 = "#ea868f"
 
         plt.rcParams['text.color'] = self.font_normal
         plt.rcParams['axes.labelcolor'] = self.font_normal
@@ -46,6 +50,10 @@ class prepGUI:
         self.ffocB = ffocB
         self.fflatL = glob(join(self.rcaldir, '*_Flat.fts'))
         self.fflatGBL = [None] * len(self.fflatL)
+
+        self.xFringe = None
+        self.yFringe = None
+
         for i,f in enumerate(self.fflatL):
             self.fflatGBL[i] = basename(f)
 
@@ -62,14 +70,13 @@ class prepGUI:
 
         self.List_step = ["Step 0: Input File",
                           "Step 1: Tilt Correction",
-                          "Step 2: Curvature Correction",
+                          "Step 2: 1st Curvature Correction",
                           "Step 3: Fringe Subtraction",
-                          "Step 4: Re-curve Correction",
+                          "Step 4: 2nd Curvature Correction",
                           "Step 5: Make Flat",
-                          "Step 6: Check Flat",
-                          "Step 7: Another Flat ?",
-                          "Step 8: Run Preproccess",
-                          "Step 9: PCA Compression"]
+                          "Step 6: Save Flat",
+                          "Step 7: Run Preproccess",
+                          "Step 8: PCA Compression"]
         
         self.List_subStep = ["3-1: Atlas Subtraction",
                              "3-2: Vertical Fringe",
@@ -96,8 +103,25 @@ class prepGUI:
         ax_s2_2.set_position([0.65,0.07,0.14,0.86])
         ax_s2_3.set_position([0.83,0.07,0.14,0.86])
 
-        self.ax = [[ax_s0], [ax_s1_1, ax_s1_2], [ax_s2_1, ax_s2_2, ax_s2_3]]
-        
+        ax_s4_1 = self.fig.add_subplot(131)
+        ax_s4_2 = self.fig.add_subplot(132)
+        ax_s4_3 = self.fig.add_subplot(133, sharex=ax_s4_2, sharey=ax_s4_2)
+        ax_s4_1.set_position([0.06,0.2,0.5,0.6])
+        ax_s4_2.set_position([0.65,0.07,0.14,0.86])
+        ax_s4_3.set_position([0.83,0.07,0.14,0.86])
+
+        ax_s5 = self.fig.add_subplot(111)
+        ax_s5.set_position([0.06,0.07,0.88,0.86])
+
+        ax_s6 = self.fig.add_subplot(111)
+        ax_s6.set_position([0.06,0.07,0.88,0.86])
+
+        ax_s7 = self.fig.add_subplot(111)
+        ax_s7.set_position([0.06,0.07,0.88,0.86])
+
+        self.ax = [[ax_s0], [ax_s1_1, ax_s1_2], [ax_s2_1, ax_s2_2, ax_s2_3], None, [ax_s4_1, ax_s4_2, ax_s4_3], [ax_s5], [ax_s6], [ax_s7]]
+    
+
         ax_s3_1_1 = self.fig.add_subplot(111)
         ax_s3_1_1.set_position([0.06,0.07,0.88,0.86])
 
@@ -121,12 +145,17 @@ class prepGUI:
             ax.set_visible(True)
         self.initWidget()
         # self.fig.canvas.mpl_connect()
+        self.s2 = None
         self.fig.show()
+        plt.pause(0.01)
+        self.List_VL[0].setGeometry(QtCore.QRect(10,85,280,350))
+        plt.pause(0.01)
 
     def ax_hide(self):
-        for lax in self.ax:
-            for ax in lax:
-                ax.set_visible(False)
+        for i, lax in enumerate(self.ax):
+            if i != 3:
+                for ax in lax:
+                    ax.set_visible(False)
         for lax in self.ax_sub:
             for ax in lax:
                 ax.set_visible(False)
@@ -146,7 +175,7 @@ class prepGUI:
         self.log = f"<font color='{self.font_primary}'>"+self.List_step[num] + '</font><br><br>'
         self._writeLog()
         self.stepNum = num
-        if num != 3:
+        if num != 3 and num !=7:
             for ax in self.ax[num]:
                 ax.set_visible(True)
 
@@ -177,14 +206,13 @@ class prepGUI:
         
         for ax in self.ax_sub[num]:
             ax.set_visible(True)
+            if num == 1 or num == 3:
+                break
         
         self.subStepNum = num
         self.fig.canvas.draw_idle()
         self.List_subVL[num].setGeometry(QtCore.QRect(10,85,280,350))
         self.fig.set_figheight(h)
-
-    def _onKey(self, event):
-        None
 
     def initWidget(self):
         self.log = ""
@@ -203,7 +231,6 @@ class prepGUI:
         # figure window to variable
         self.root = self.fig.canvas.manager.window
         self.dock = QtWidgets.QDockWidget("FISS Process Control Panel", self.root)
-
         
         # create pannel and layout
         self.panel = QtWidgets.QWidget()
@@ -247,7 +274,7 @@ class prepGUI:
         # self.vboxMain.addWidget(self.CB_Step)
 
         # set step widgets
-        self.StepWidgets = [None]*4#self.nStep
+        self.StepWidgets = [None]*7#self.nStep
         self.subStepWidgets = [None]*4
 
         # create Step0 Widget
@@ -308,9 +335,9 @@ class prepGUI:
             self.L_s1_get_tilt.setFont(self.fNormal)
 
             self.B_s1_run = QtWidgets.QPushButton()
-            self.B_s1_run.setText("Auto Run")
+            self.B_s1_run.setText("Calculate")
             self.B_s1_run.setFont(self.fNormal)
-            self.B_s1_run.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s1_run.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
             
             self.HL_s1 = QtWidgets.QHBoxLayout()
             self.L_s1_tilt = QtWidgets.QLabel()
@@ -362,7 +389,7 @@ class prepGUI:
             self.B_s2_run = QtWidgets.QPushButton()
             self.B_s2_run.setText("Calculate")
             self.B_s2_run.setFont(self.fNormal)
-            self.B_s2_run.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s2_run.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
 
             self.HL0_s2.addWidget(self.L_s2_get_curve)
             self.HL0_s2.addWidget(self.B_s2_run)
@@ -400,17 +427,21 @@ class prepGUI:
             self.B_s2_Apply.setFont(self.fNormal)
             self.B_s2_Apply.setStyleSheet(f"background-color: {self.bg_second};")
 
-            self.HL_s2_coeff = QtWidgets.QHBoxLayout()
-
+            self.HL_s2_p0 = QtWidgets.QHBoxLayout()
+            self.HL_s2_p1 = QtWidgets.QHBoxLayout()
+            self.HL_s2_p2 = QtWidgets.QHBoxLayout()
             
-            self.HL_s2_coeff.addWidget(self.L_s2_p0)
-            self.HL_s2_coeff.addWidget(self.LE_s2_p0)
-            self.HL_s2_coeff.addWidget(self.L_s2_p1)
-            self.HL_s2_coeff.addWidget(self.LE_s2_p1)
-            self.HL_s2_coeff.addWidget(self.L_s2_p2)
-            self.HL_s2_coeff.addWidget(self.LE_s2_p2)
+            self.HL_s2_p0.addWidget(self.L_s2_p0)
+            self.HL_s2_p0.addWidget(self.LE_s2_p0)
+            self.HL_s2_p1.addWidget(self.L_s2_p1)
+            self.HL_s2_p1.addWidget(self.LE_s2_p1)
+            self.HL_s2_p2.addWidget(self.L_s2_p2)
+            self.HL_s2_p2.addWidget(self.LE_s2_p2)
+
             self.VL_s2.addLayout(self.HL0_s2)
-            self.VL_s2.addLayout(self.HL_s2_coeff)
+            self.VL_s2.addLayout(self.HL_s2_p0)
+            self.VL_s2.addLayout(self.HL_s2_p1)
+            self.VL_s2.addLayout(self.HL_s2_p2)
             self.VL_s2.addWidget(self.B_s2_Apply)
 
             self.vboxCtrl.addLayout(self.VL_s2)
@@ -432,7 +463,7 @@ class prepGUI:
             self.B_s3_1_run = QtWidgets.QPushButton()
             self.B_s3_1_run.setText("Run")
             self.B_s3_1_run.setFont(self.fNormal)
-            self.B_s3_1_run.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s3_1_run.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
 
             # frame change
             self.HL_s3_1_frame = QtWidgets.QHBoxLayout()
@@ -473,7 +504,7 @@ class prepGUI:
 
             self.B_s3_1_run.clicked.connect(self.s3_1_Run)
 
-        # create Step3-2
+        # create Step3-2 y Fringe
         if True:
             self.VL_s3_2 = QtWidgets.QVBoxLayout()
             self.L_s3_2_subStep = QtWidgets.QLabel()
@@ -490,7 +521,7 @@ class prepGUI:
             self.B_s3_wvCal = QtWidgets.QPushButton()
             self.B_s3_wvCal.setText("Calculate")
             self.B_s3_wvCal.setFont(self.fNormal)
-            self.B_s3_wvCal.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s3_wvCal.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
             self.B_s3_wvCal.clicked.connect(self.s3_2_wvCal)
 
             self.B_s3_wvShow = QtWidgets.QPushButton()
@@ -550,7 +581,7 @@ class prepGUI:
             self.B_s3_2_simple = QtWidgets.QPushButton()
             self.B_s3_2_simple.setText("Calculate")
             self.B_s3_2_simple.setFont(self.fNormal)
-            self.B_s3_2_simple.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s3_2_simple.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
             self.B_s3_2_simple.clicked.connect(self.s3_2_simple)
             self.B_s3_2_simple.setEnabled(False)
 
@@ -631,7 +662,7 @@ class prepGUI:
             self.subStepWidgets[1] = [self.L_s3_2_subStep, self.L_s3_2_wvlet, self.B_s3_wvCal, self.B_s3_wvShow, self.L_s3_2_FR, self.L_s3_2_FRmin, self.LE_s3_2_FRmin, self.L_s3_2_FRmax, self.LE_s3_2_FRmax, self.B_s3_2_FRapply, self.L_s3_2_calFringe, self.B_s3_2_simple, self.B_s3_2_FringeShow, self.L_s3_2_res, self.B_s3_2_resShow, self.B_s3_2_blink, self.L_s3_2_frame, self.LE_s3_2_frame, self.L_s3_2_nframe, self.B_s3_2_pf, self.B_s3_2_nf]
             self.imFy = None
 
-        # create Step3-3
+        # create Step3-3 Data mask
         if True:
             self.VL_s3_3 = QtWidgets.QVBoxLayout()
             self.L_s3_3_subStep = QtWidgets.QLabel()
@@ -649,7 +680,7 @@ class prepGUI:
             self.B_s3_3_GMW = QtWidgets.QPushButton()
             self.B_s3_3_GMW.setText("Run")
             self.B_s3_3_GMW.setFont(self.fNormal)
-            self.B_s3_3_GMW.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s3_3_GMW.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
             self.B_s3_3_GMW.clicked.connect(self.s3_3_Run)
 
             self.HL_s3_3_GMW.addWidget(self.L_s3_3_GMW)
@@ -692,6 +723,21 @@ class prepGUI:
             self.HL_s3_3_show.addWidget(self.L_s3_3_res)
             self.HL_s3_3_show.addWidget(self.B_s3_3_Blink)
 
+            # remove the mask
+            self.HL_s3_3_reset = QtWidgets.QHBoxLayout()
+            self.L_s3_3_reset = QtWidgets.QLabel()
+            self.L_s3_3_reset.setText("Remove the mask?")
+            self.L_s3_3_reset.setFont(self.fNormal)
+
+            self.B_s3_3_reset = QtWidgets.QPushButton()
+            self.B_s3_3_reset.setText("Remove")
+            self.B_s3_3_reset.setFont(self.fNormal)
+            self.B_s3_3_reset.setStyleSheet(f"background-color: {self.btn_2}; color:{self.bg_primary};")
+            self.B_s3_3_reset.clicked.connect(self.s3_3_reset)
+
+            self.HL_s3_3_reset.addWidget(self.L_s3_3_reset)
+            self.HL_s3_3_reset.addWidget(self.B_s3_3_reset)
+
             # frame change
             self.HL_s3_3_frame = QtWidgets.QHBoxLayout()
             self.L_s3_3_frame = QtWidgets.QLabel()
@@ -726,18 +772,19 @@ class prepGUI:
             self.VL_s3_3.addLayout(self.HL_s3_3_GMW)
             self.VL_s3_3.addLayout(self.HL_s3_3_MW)
             self.VL_s3_3.addLayout(self.HL_s3_3_show)
+            self.VL_s3_3.addLayout(self.HL_s3_3_reset)
             self.VL_s3_3.addLayout(self.HL_s3_3_frame)
 
             self.vboxCtrl.addLayout(self.VL_s3_3)
-            self.subStepWidgets[2] = [self.L_s3_3_subStep, self.L_s3_3_GMW, self.B_s3_3_GMW, self.L_s3_3_MW, self.LE_s3_3_MW, self.B_s3_3_Apply, self.L_s3_3_res, self.B_s3_3_Blink, self.L_s3_3_frame, self.LE_s3_3_frame, self.L_s3_3_nframe, self.B_s3_3_pf, self.B_s3_3_nf]
+            self.subStepWidgets[2] = [self.L_s3_3_subStep, self.L_s3_3_GMW, self.B_s3_3_GMW, self.L_s3_3_MW, self.LE_s3_3_MW, self.B_s3_3_Apply, self.L_s3_3_res, self.B_s3_3_Blink, self.L_s3_3_frame, self.LE_s3_3_frame, self.L_s3_3_nframe, self.B_s3_3_pf, self.B_s3_3_nf, self.L_s3_3_reset, self.B_s3_3_reset]
 
             self.im_s3_3 = None
         
-        # create Step3-4
+        # create Step3-4 x Fringe
         if True:
             self.VL_s3_4 = QtWidgets.QVBoxLayout()
             self.L_s3_4_subStep = QtWidgets.QLabel()
-            self.L_s3_4_subStep.setText(self.List_subStep[1])
+            self.L_s3_4_subStep.setText(self.List_subStep[3])
             self.L_s3_4_subStep.setFont(self.fNormal)
             self.L_s3_4_subStep.setStyleSheet(f"color: {self.font_third};")
             self.L_s3_4_subStep.setWordWrap(True)
@@ -750,7 +797,7 @@ class prepGUI:
             self.B_s3_4_wvCal = QtWidgets.QPushButton()
             self.B_s3_4_wvCal.setText("Calculate")
             self.B_s3_4_wvCal.setFont(self.fNormal)
-            self.B_s3_4_wvCal.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s3_4_wvCal.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
             self.B_s3_4_wvCal.clicked.connect(self.s3_4_wvCal)
 
             self.B_s3_4_wvShow = QtWidgets.QPushButton()
@@ -810,7 +857,7 @@ class prepGUI:
             self.B_s3_4_simple = QtWidgets.QPushButton()
             self.B_s3_4_simple.setText("Cal (simple)")
             self.B_s3_4_simple.setFont(self.fNormal)
-            self.B_s3_4_simple.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s3_4_simple.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
             self.B_s3_4_simple.clicked.connect(self.s3_4_simple)
             self.B_s3_4_simple.setEnabled(False)
 
@@ -855,6 +902,22 @@ class prepGUI:
             self.HL_s3_4_res.addWidget(self.B_s3_4_resShow)
             self.HL_s3_4_res.addWidget(self.B_s3_4_blink)
 
+
+            # reset
+            self.HL_s3_4_reset = QtWidgets.QHBoxLayout()
+            self.L_s3_4_reset = QtWidgets.QLabel()
+            self.L_s3_4_reset.setText("Reset?")
+            self.L_s3_4_reset.setFont(self.fNormal)
+
+            self.B_s3_4_reset = QtWidgets.QPushButton()
+            self.B_s3_4_reset.setText("Reset")
+            self.B_s3_4_reset.setFont(self.fNormal)
+            self.B_s3_4_reset.setStyleSheet(f"background-color: {self.btn_2}; color:{self.bg_primary};")
+            self.B_s3_4_reset.clicked.connect(self.s3_4_reset)
+
+            self.HL_s3_4_reset.addWidget(self.L_s3_4_reset)
+            self.HL_s3_4_reset.addWidget(self.B_s3_4_reset)
+
             # frame change
             self.HL_s3_4_frame = QtWidgets.QHBoxLayout()
             self.L_s3_4_frame = QtWidgets.QLabel()
@@ -892,19 +955,244 @@ class prepGUI:
             self.VL_s3_4.addLayout(self.HL_xFringe)
             self.VL_s3_4.addWidget(self.L_s3_4_res)
             self.VL_s3_4.addLayout(self.HL_s3_4_res)
+            self.VL_s3_4.addLayout(self.HL_s3_4_reset)
             self.VL_s3_4.addLayout(self.HL_s3_4_frame)
 
             self.vboxCtrl.addLayout(self.VL_s3_4)
 
-            self.subStepWidgets[3] = [self.L_s3_4_subStep, self.L_s3_4_wvlet, self.B_s3_4_wvCal, self.B_s3_4_wvShow, self.L_s3_4_FR, self.L_s3_4_FRmin, self.LE_s3_4_FRmin, self.L_s3_4_FRmax, self.LE_s3_4_FRmax, self.B_s3_4_FRapply, self.L_s3_4_calFringe, self.B_s3_4_simple, self.B_s3_4_gauss, self.B_s3_4_FringeShow, self.L_s3_4_res, self.B_s3_4_resShow, self.B_s3_4_blink, self.L_s3_4_frame, self.LE_s3_4_frame, self.L_s3_4_nframe, self.B_s3_4_pf, self.B_s3_4_nf]
+            self.subStepWidgets[3] = [self.L_s3_4_subStep, self.L_s3_4_wvlet, self.B_s3_4_wvCal, self.B_s3_4_wvShow, self.L_s3_4_FR, self.L_s3_4_FRmin, self.LE_s3_4_FRmin, self.L_s3_4_FRmax, self.LE_s3_4_FRmax, self.B_s3_4_FRapply, self.L_s3_4_calFringe, self.B_s3_4_simple, self.B_s3_4_gauss, self.B_s3_4_FringeShow, self.L_s3_4_res, self.B_s3_4_resShow, self.B_s3_4_blink, self.L_s3_4_frame, self.LE_s3_4_frame, self.L_s3_4_nframe, self.B_s3_4_pf, self.B_s3_4_nf, self.L_s3_4_reset, self.B_s3_4_reset]
             self.imFx = None
 
+        # create Step4 2nd curvature correciton
+        if True:
+            self.VL_s4  = QtWidgets.QVBoxLayout()
+            self.HL0_s4 = QtWidgets.QHBoxLayout()
 
-        self.List_VL = [self.VL_s0, self.VL_s1, self.VL_s2]
+            self.L_s4_get_curve = QtWidgets.QLabel()
+            self.L_s4_get_curve.setText("Get curve coeff: ")
+            self.L_s4_get_curve.setFont(self.fNormal)
+
+            self.B_s4_run = QtWidgets.QPushButton()
+            self.B_s4_run.setText("Calculate")
+            self.B_s4_run.setFont(self.fNormal)
+            self.B_s4_run.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
+
+            self.HL0_s4.addWidget(self.L_s4_get_curve)
+            self.HL0_s4.addWidget(self.B_s4_run)
+
+
+            self.L_s4_p0 = QtWidgets.QLabel()
+            self.L_s4_p0.setText("p0: ")
+            self.L_s4_p0.setFont(self.fNormal)
+
+            self.LE_s4_p0 = QtWidgets.QLineEdit()
+            self.LE_s4_p0.setText("0")
+            self.LE_s4_p0.setStyleSheet(f"background-color: {self.bg_second}; border: 1px solid {self.font_normal};")
+            self.LE_s4_p0.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+
+            self.L_s4_p1 = QtWidgets.QLabel()
+            self.L_s4_p1.setText("p1: ")
+            self.L_s4_p1.setFont(self.fNormal)
+
+            self.LE_s4_p1 = QtWidgets.QLineEdit()
+            self.LE_s4_p1.setText("0")
+            self.LE_s4_p1.setStyleSheet(f"background-color: {self.bg_second}; border: 1px solid {self.font_normal};")
+            self.LE_s4_p1.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+
+            self.L_s4_p2 = QtWidgets.QLabel()
+            self.L_s4_p2.setText("p2: ")
+            self.L_s4_p2.setFont(self.fNormal)
+
+            self.LE_s4_p2 = QtWidgets.QLineEdit()
+            self.LE_s4_p2.setText("0")
+            self.LE_s4_p2.setStyleSheet(f"background-color: {self.bg_second}; border: 1px solid {self.font_normal};")
+            self.LE_s4_p2.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+
+            self.B_s4_Apply = QtWidgets.QPushButton()
+            self.B_s4_Apply.setText("Apply")
+            self.B_s4_Apply.setFont(self.fNormal)
+            self.B_s4_Apply.setStyleSheet(f"background-color: {self.bg_second};")
+
+            self.HL_s4_p0 = QtWidgets.QHBoxLayout()
+            self.HL_s4_p1 = QtWidgets.QHBoxLayout()
+            self.HL_s4_p2 = QtWidgets.QHBoxLayout()
+            
+            self.HL_s4_p0.addWidget(self.L_s4_p0)
+            self.HL_s4_p0.addWidget(self.LE_s4_p0)
+            self.HL_s4_p1.addWidget(self.L_s4_p1)
+            self.HL_s4_p1.addWidget(self.LE_s4_p1)
+            self.HL_s4_p2.addWidget(self.L_s4_p2)
+            self.HL_s4_p2.addWidget(self.LE_s4_p2)
+
+            self.VL_s4.addLayout(self.HL0_s4)
+            self.VL_s4.addLayout(self.HL_s4_p0)
+            self.VL_s4.addLayout(self.HL_s4_p1)
+            self.VL_s4.addLayout(self.HL_s4_p2)
+            self.VL_s4.addWidget(self.B_s4_Apply)
+
+            self.vboxCtrl.addLayout(self.VL_s4)
+
+            self.StepWidgets[4] = [self.L_s4_get_curve, self.B_s4_run, self.L_s4_p0, self.LE_s4_p0, self.L_s4_p1, self.LE_s4_p1, self.L_s4_p2, self.LE_s4_p2, self.B_s4_Apply]
+
+            self.B_s4_run.clicked.connect(self.s4_Run)
+            self.B_s4_Apply.clicked.connect(self.s4_Apply)
+
+        # create Step5 makeFlat
+        if True:
+            self.VL_s5  = QtWidgets.QVBoxLayout()
+            self.HL_s5  = QtWidgets.QHBoxLayout()
+
+            self.L_s5_label = QtWidgets.QLabel()
+            self.L_s5_label.setText("Make Flat: ")
+            self.L_s5_label.setFont(self.fNormal)
+            self.B_s5_Run = QtWidgets.QPushButton()
+            self.B_s5_Run.setText("Run")
+            self.B_s5_Run.setFont(self.fNormal)
+            self.B_s5_Run.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
+            self.B_s5_Run.clicked.connect(self.s5_Run)
+            self.B_s5_Show = QtWidgets.QPushButton()
+            self.B_s5_Show.setText("Show")
+            self.B_s5_Show.setFont(self.fNormal)
+            self.B_s5_Show.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s5_Show.clicked.connect(self.s5_Show)
+            
+            self.HL_s5.addWidget(self.L_s5_label)
+            self.HL_s5.addWidget(self.B_s5_Run)
+            self.HL_s5.addWidget(self.B_s5_Show)
+
+            self.HL_s5_cFlat = QtWidgets.QHBoxLayout()
+            self.L_s5_cFlat = QtWidgets.QLabel()
+            self.L_s5_cFlat.setText("Flat-fielded Flat: ")
+            self.L_s5_cFlat.setFont(self.fNormal)
+            self.B_s5_cFlat = QtWidgets.QPushButton()
+            self.B_s5_cFlat.setText("Show")
+            self.B_s5_cFlat.setFont(self.fNormal)
+            self.B_s5_cFlat.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s5_cFlat.clicked.connect(self.s5_cFlat)
+
+            self.B_s5_Blink = QtWidgets.QPushButton()
+            self.B_s5_Blink.setText("Blink")
+            self.B_s5_Blink.setFont(self.fNormal)
+            self.B_s5_Blink.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s5_Blink.clicked.connect(self.s5_Blink)
+
+            self.HL_s5_cFlat.addWidget(self.L_s5_cFlat)
+            self.HL_s5_cFlat.addWidget(self.B_s5_cFlat)
+            self.HL_s5_cFlat.addWidget(self.B_s5_Blink)
+
+            self.HL_s5_msFlat = QtWidgets.QHBoxLayout()
+            self.L_s5_msFlat = QtWidgets.QLabel()
+            self.L_s5_msFlat.setText("mean subtracted: ")
+            self.L_s5_msFlat.setFont(self.fNormal)
+            self.B_s5_msFlat = QtWidgets.QPushButton()
+            self.B_s5_msFlat.setText("Show")
+            self.B_s5_msFlat.setFont(self.fNormal)
+            self.B_s5_msFlat.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s5_msFlat.clicked.connect(self.s5_msShow)
+
+            self.HL_s5_msFlat.addWidget(self.L_s5_msFlat)
+            self.HL_s5_msFlat.addWidget(self.B_s5_msFlat)
+
+             # frame change
+            self.HL_s5_frame = QtWidgets.QHBoxLayout()
+            self.L_s5_frame = QtWidgets.QLabel()
+            self.L_s5_frame.setText("Frame:")
+            self.L_s5_frame.setFont(self.fNormal)
+            self.LE_s5_frame = QtWidgets.QLineEdit()
+            self.LE_s5_frame.setText("")
+            self.LE_s5_frame.setStyleSheet(f"background-color: {self.bg_second}; border: 1px solid {self.font_normal};")
+            self.LE_s5_frame.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+            self.L_s5_nframe = QtWidgets.QLabel()
+            self.L_s5_nframe.setText("/?")
+            self.L_s5_nframe.setFont(self.fNormal)
+            self.B_s5_pf = QtWidgets.QPushButton()
+            self.B_s5_pf.setText("<")
+            self.B_s5_pf.setFont(self.fNormal)
+            self.B_s5_pf.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s5_pf.clicked.connect(self.s5_pf)
+            self.B_s5_nf = QtWidgets.QPushButton()
+            self.B_s5_nf.setText(">")
+            self.B_s5_nf.setFont(self.fNormal)
+            self.B_s5_nf.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s5_nf.clicked.connect(self.s5_nf)
+
+            self.HL_s5_frame.addWidget(self.L_s5_frame)
+            self.HL_s5_frame.addWidget(self.LE_s5_frame)
+            self.HL_s5_frame.addWidget(self.L_s5_nframe)
+            self.HL_s5_frame.addWidget(self.B_s5_pf)
+            self.HL_s5_frame.addWidget(self.B_s5_nf)
+            
+            self.VL_s5.addLayout(self.HL_s5)
+            self.VL_s5.addLayout(self.HL_s5_cFlat)
+            self.VL_s5.addLayout(self.HL_s5_msFlat)
+            self.VL_s5.addLayout(self.HL_s5_frame)
+
+            self.vboxCtrl.addLayout(self.VL_s5)
+
+            self.StepWidgets[5] = [self.L_s5_label, self.B_s5_Run, self.B_s5_Show, self.L_s5_cFlat, self.B_s5_cFlat, self.B_s5_Blink, self.L_s5_msFlat, self.B_s5_msFlat, self.L_s5_frame, self.LE_s5_frame, self.L_s5_nframe, self.B_s5_pf, self.B_s5_nf]
+
+        # create Step6 Save Flat
+        if True:
+            self.VL_s6 = QtWidgets.QVBoxLayout()
+            self.HL_s6 = QtWidgets.QHBoxLayout()
+
+            self.L_s6_save = QtWidgets.QLabel()
+            self.L_s6_save.setText("Save Flat: ")
+            self.L_s6_save.setFont(self.fNormal)
+
+            self.B_s6_save = QtWidgets.QPushButton()
+            self.B_s6_save.setText("Save")
+            self.B_s6_save.setFont(self.fNormal)
+            self.B_s6_save.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
+            self.B_s6_save.clicked.connect(self.s6_save)
+
+            self.HL_s6.addWidget(self.L_s6_save)
+            self.HL_s6.addWidget(self.B_s6_save)
+
+            self.L_s6_ask = QtWidgets.QLabel()
+            self.L_s6_ask.setText("Are there any flat Files?")
+            self.L_s6_ask.setFont(self.fNormal)
+
+            self.B_s6_yes = QtWidgets.QPushButton()
+            self.B_s6_yes.setText("Yes (go to Step0)")
+            self.B_s6_yes.setFont(self.fNormal)
+            self.B_s6_yes.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s6_yes.clicked.connect(self.s6_yes)
+
+            self.B_s6_No = QtWidgets.QPushButton()
+            self.B_s6_No.setText("No (Next Step)")
+            self.B_s6_No.setFont(self.fNormal)
+            self.B_s6_No.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s6_No.clicked.connect(self.Next)
+
+            self.VL_s6.addLayout(self.HL_s6)
+            self.VL_s6.addWidget(self.L_s6_ask)
+            self.VL_s6.addWidget(self.B_s6_yes)
+            self.VL_s6.addWidget(self.B_s6_No)
+
+            self.vboxCtrl.addLayout(self.VL_s6)
+
+            self.StepWidgets[6] = [self.L_s6_save, self.B_s6_save, self.L_s6_ask, self.B_s6_yes, self.B_s6_No]
+
+        # create Step7 Run Preprocess
+        if True:
+            self.VL_s7 = QtWidgets.QVBoxLayout()
+            self.B_s7_Run = QtWidgets.QPushButton()
+            self.B_s7_Run.setText("Run")
+            self.B_s7_Run.setFont(self.fNormal)
+            self.B_s7_Run.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
+            self.B_s7_Run.clicked.connect(self.s7_Run)
+
+            self.VL_s7.addWidget(self.B_s7_Run)
+            self.vboxCtrl.addLayout(self.VL_s7)
+
+
+        self.List_VL = [self.VL_s0, self.VL_s1, self.VL_s2, None, self.VL_s4, self.VL_s5, self.VL_s6, self.VL_s7]
         self.List_subVL = [self.VL_s3_1, self.VL_s3_2, self.VL_s3_3, self.VL_s3_4]
 
-        for vl in self.List_VL:
-            vl.setAlignment(QtCore.Qt.AlignTop)
+        for i,vl in enumerate(self.List_VL):
+            if i != 3:
+                vl.setAlignment(QtCore.Qt.AlignTop)
         for vl in self.List_subVL:
             vl.setAlignment(QtCore.Qt.AlignTop)
         # add Widget in control vbox
@@ -1000,6 +1288,10 @@ class prepGUI:
         self.L_s3_4_nframe.setText(f"/{self.CF.nf}")
         self.LE_s3_4_frame.textChanged.connect(self._txtCH_LE_s3_4)
 
+        self.LE_s5_frame.setText(f"{self.frameNum+1}")
+        self.L_s5_nframe.setText(f"/{self.CF.nf}")
+        self.LE_s5_frame.textChanged.connect(self._txtCH_LE_s5)
+
         # add layout
         self.vboxAll.addLayout(self.vboxMain)
         self.vboxAll.addLayout(self.vboxCtrl)
@@ -1060,7 +1352,7 @@ class prepGUI:
         elif self.stepNum == 3 and self.subStepNum != self.nsubStep-1:
             self.subStep(self.subStepNum+1)
         elif self.stepNum == 3 and self.subStepNum == self.nsubStep-1:
-            for wg in self.subStepWidgets[self.stepNum]:
+            for wg in self.subStepWidgets[self.subStepNum]:
                 wg.setVisible(False)
             self.step(self.stepNum+1)
         elif self.stepNum < self.nStep-1:
@@ -1076,7 +1368,7 @@ class prepGUI:
             for wg in self.StepWidgets[self.stepNum]:
                 wg.setVisible(False)
             self.stepNum -= 1
-            self.subStep(self.subStepNum-1)
+            self.subStep(self.subStepNum)
         elif self.stepNum == 3 and self.subStepNum == 0:
             for wg in self.subStepWidgets[self.subStepNum]:
                 wg.setVisible(False)
@@ -1125,7 +1417,8 @@ class prepGUI:
         self._writeLog()
         self.LE_s1_tilt.setText(f"{self.CF.tilt:.3f}")
         self.CF.rlRF = proc_base.tilt_correction(self.CF.logRF, self.CF.tilt, cubic=True)
-
+        self.log += f"> Done.<br>"
+        self._writeLog()
         # draw results
         dy_img = np.gradient(img, axis=0)
         wp = 40
@@ -1167,6 +1460,8 @@ class prepGUI:
         self.LE_s2_p0.setText(f"{self.CF.coeff[0]:.3e}")
         self.LE_s2_p1.setText(f"{self.CF.coeff[1]:.3e}")
         self.LE_s2_p2.setText(f"{self.CF.coeff[2]:.3e}")
+        self.log += f"> Done.<br>"
+        self._writeLog()
         self.s2_make()
     
     def s2_make(self):
@@ -1223,7 +1518,8 @@ class prepGUI:
         self._writeLog()
 
         self.CF.atlas_subtraction()
-        
+        self.log += f"> Done.<br>"
+        self._writeLog()
         for ax in self.ax_sub[0]:
             ax.cla()
 
@@ -1280,7 +1576,7 @@ class prepGUI:
         self.ax_sub[1][1].set_visible(False)
         nfreq = self.wvlet_y[self.frameNum].wavelet.shape[1]
         self.ax_sub[1][0].cla()
-        data = np.abs(self.wvlet_y[self.frameNum].wavelet.mean((0,2)))
+        data = np.abs(self.wvlet_y[self.frameNum].wavelet).mean((0,2))
         ymax = data[:nfreq-10].max()*1.1
         self.ax_sub[1][0].plot(data)
         self.ax_sub[1][0].set_ylim(0,ymax)
@@ -1305,13 +1601,15 @@ class prepGUI:
         self.YFshow = True
         self.log += "> Calculate Fringe Patterns.<br>"
         self._writeLog()
-        self.yFringe = [None]*self.CF.nf
-        self.s1 = [None]*self.CF.nf
-        self.ms1 = [None]*self.CF.nf
+        self.yFringe = np.zeros([self.CF.nf,self.CF.ny,self.CF.nw])
+        self.s1 = np.zeros([self.CF.nf,self.CF.ny,self.CF.nw])
+        self.ms1 = np.zeros([self.CF.nf,self.CF.ny,self.CF.nw])
         for i in range(self.CF.nf):
             self.yFringe[i] = proc_base.cal_fringeSimple(self.wvlet_y[i], [self.yf_min, self.yf_max]).T
+            self.yFringe[i] -= self.yFringe[i][5:-5,5:-5].mean()
             self.s1[i] = self.CF.rmFlat[i] - self.yFringe[i]
-            self.ms1[i] = self.CF.rmFlat[i] - self.yFringe[i]
+            
+        self.ms1 = self.s1.copy()
         self.log += "> Done.<br>"
         self._writeLog()
         if self.imFy is None:
@@ -1411,9 +1709,13 @@ class prepGUI:
 
         self.msk_width = int(np.median(w))
         self.LE_s3_3_MW.setText(f"{self.msk_width}")
-        self.ms1 = [None]*self.CF.nf        
+        self.ms1 = self.s1.copy()
         for i in range(self.CF.nf):
-            self.ms1[i] = proc_base.data_mask_and_fill(self.s1[i], [self.cpos[i]-self.msk_width, self.cpos[i]+self.msk_width])
+            mskMin = self.cpos[i]-self.msk_width
+            mskMin = mskMin if mskMin >= 0 else 0
+            mskMax = self.cpos[i]+self.msk_width
+            mskMax = mskMax if mskMax <= self.CF.nw-1 else self.CF.nw-1
+            self.ms1[i] = proc_base.data_mask_and_fill(self.s1[i], [mskMin, mskMax])
 
         self.mskShow = True
         if self.im_s3_3 is None:
@@ -1436,7 +1738,11 @@ class prepGUI:
         self.msk_wdith = int(self.LE_s3_3_MW.text())
 
         for i in range(self.CF.nf):
-            self.ms1[i] = proc_base.data_mask_and_fill(self.s1[i], [self.cpos[i]-self.msk_width, self.cpos[i]+self.msk_width])
+            mskMin = self.cpos[i]-self.msk_width
+            mskMin = mskMin if mskMin >= 0 else 0
+            mskMax = self.cpos[i]+self.msk_width
+            mskMax = mskMax if mskMax <= self.CF.nw-1 else self.CF.nw-1
+            self.ms1[i] = proc_base.data_mask_and_fill(self.s1[i], [mskMin, mskMax])
 
         self.p_s3_3_mskMin.set_xdata([self.cpos[self.frameNum]-5-self.msk_width, self.cpos[self.frameNum]-5-self.msk_width])
         self.p_s3_3_mskMax.set_xdata([self.cpos[self.frameNum]-5+self.msk_width, self.cpos[self.frameNum]-5+self.msk_width])
@@ -1448,6 +1754,22 @@ class prepGUI:
 
     def s3_3_Blink(self):
         self.mskShow = not self.mskShow
+
+        if self.mskShow == True:
+            self.im_s3_3.set_data(self.ms1[self.frameNum][5:-5,5:-5])
+            self.ax_sub[2][0].set_title('Masked Image')
+        else:
+            self.im_s3_3.set_data(self.s1[self.frameNum][5:-5,5:-5])
+            self.ax_sub[2][0].set_title('Original Image')
+
+        self.fig.canvas.draw_idle()
+
+    def s3_3_reset(self):
+        self.log += f"> Remove the mask.<br>"
+        self._writeLog()
+        self.msk_wdith = 0
+        self.LE_s3_3_MW.setText("0")
+        self.ms1 = self.s1.copy()
 
         if self.mskShow == True:
             self.im_s3_3.set_data(self.ms1[self.frameNum][5:-5,5:-5])
@@ -1495,9 +1817,22 @@ class prepGUI:
         self.log += "> Wavelet calculation.<br>"
         self._writeLog()
         self.wvlet_x = [None]*self.CF.nf
-
+        w = np.zeros(self.CF.nf)
+        xwh = np.zeros(self.CF.nf, dtype=int)
+        x = np.arange(14)
         for i in range(self.CF.nf):
             self.wvlet_x[i] = Wavelet(self.ms1[i][5:-5,5:-5], dt=1, axis=1, dj=0.05, param=12)
+            data = np.abs(self.wvlet_x[i].wavelet).mean((0,2))
+            xwh[i] = data[:-20].argmax()
+            hmax = data[:-20].max()/2
+            t = x[data[xwh[i]-7:xwh[i]+7] >= hmax]
+            w[i] = (t.max() - t.min())/2
+
+        self.xF_hw = int(w.mean()*3)
+        self.xF_c = int(xwh.mean())
+
+            
+
 
         self.log += "> Done.<br>"
         self._writeLog()
@@ -1515,10 +1850,10 @@ class prepGUI:
         self.ax_sub[3][1].set_visible(False)
         nfreq = self.wvlet_x[self.frameNum].wavelet.shape[1]
         self.ax_sub[3][0].cla()
-        data = np.abs(self.wvlet_x[self.frameNum].wavelet.mean((0,2)))
-        xwh = data[:nfreq-20].argmax()
-        self.xf_min = xwh-4
-        self.xf_max = xwh+4
+        data = np.abs(self.wvlet_x[self.frameNum].wavelet).mean((0,2))
+        # xwh = data[:nfreq-20].argmax()
+        self.xf_min = self.xF_c - self.xF_hw
+        self.xf_max = self.xF_c + self.xF_hw
         self.LE_s3_4_FRmin.setText(f"{self.xf_min}")
         self.LE_s3_4_FRmax.setText(f"{self.xf_max}")
         ymax = data[:nfreq-10].max()*1.1
@@ -1546,22 +1881,23 @@ class prepGUI:
         self.xwvShow = False
         self.log += "> Calculate Fringe Patterns in simple way.<br>"
         self._writeLog()
-        self.xFringe = [None]*self.CF.nf
+        self.xFringe = np.zeros([self.CF.nf,self.CF.ny,self.CF.nw])
         self.s2 = np.zeros((self.CF.nf, self.CF.ny, self.CF.nw))
         for i in range(self.CF.nf):
-            self.xFringe[i] = proc_base.cal_fringeSimple(self.wvlet_x[i], [self.xf_min, self.xf_max])
-            self.s2[i][5:-5,5:-5] = self.s1[i][5:-5,5:-5] - self.xFringe[i]
+            self.xFringe[i][5:-5,5:-5] = proc_base.cal_fringeSimple(self.wvlet_x[i], [self.xf_min, self.xf_max])
+            self.xFringe[i][5:-5,5:-5] -= self.xFringe[i][5:-5,5:-5].mean()
+            self.s2[i][5:-5,5:-5] = self.s1[i][5:-5,5:-5] - self.xFringe[i][5:-5,5:-5]
         self.log += "> Done.<br>"
         self._writeLog()
         if self.imFx is None:
-            self.imFx = self.ax_sub[3][1].imshow(self.xFringe[self.frameNum], plt.cm.gray, origin='lower')
-            self.ax_sub[3][1].set_title('Fringe Pattern')
+            self.imFx = self.ax_sub[3][1].imshow(self.xFringe[self.frameNum][5:-5,5:-5], plt.cm.gray, origin='lower')
+            self.ax_sub[3][1].set_title('Fringe Pattern (x-dir)')
             self.ax_sub[3][1].set_xlabel('Wavelength (pix)')
             self.ax_sub[3][1].set_ylabel('Slit (pix)')
         else:
-            self.ax_sub[3][1].set_title('Fringe Pattern')
-            self.imFx.set_data(self.xFringe[self.frameNum])
-            self.imFx.set_clim(self.xFringe[self.frameNum].min(),self.xFringe[self.frameNum].max())
+            self.ax_sub[3][1].set_title('Fringe Pattern (x-dir)')
+            self.imFx.set_data(self.xFringe[self.frameNum][5:-5,5:-5])
+            self.imFx.set_clim(self.xFringe[self.frameNum][5:-5,5:-5].min(),self.xFringe[self.frameNum].max())
         self.fig.canvas.draw_idle()
         self.B_s3_4_FringeShow.setEnabled(True)
         self.B_s3_4_resShow.setEnabled(True)
@@ -1606,8 +1942,8 @@ class prepGUI:
         self.ax_sub[3][0].set_visible(False)
         self.ax_sub[3][1].set_visible(True)
         self.ax_sub[3][1].set_title('Fringe Pattern (x-dir)')
-        self.imFx.set_data(self.xFringe[self.frameNum])
-        self.imFx.set_clim(self.xFringe[self.frameNum].min(),self.xFringe[self.frameNum].max())
+        self.imFx.set_data(self.xFringe[self.frameNum][5:-5,5:-5])
+        self.imFx.set_clim(self.xFringe[self.frameNum][5:-5,5:-5].min(),self.xFringe[self.frameNum][5:-5,5:-5].max())
         self.fig.canvas.draw_idle()
 
     def s3_4_resShow(self):
@@ -1635,7 +1971,22 @@ class prepGUI:
             self.imFx.set_data(self.CF.rmFlat[self.frameNum][5:-5,5:-5])
         
         self.fig.canvas.draw_idle()
+
+    def s3_4_reset(self):
+        self.log += f"> Reset.<br>"
+        self._writeLog()
         
+        
+        self.ms1 = self.s1.copy()
+        self.s2 = None
+        self.xFringe = None
+
+        self.ax_sub[3][0].cla()
+        self.ax_sub[3][1].cla()
+
+        self.fig.canvas.draw_idle()
+
+
     def s3_4_pf(self):
         if self.frameNum <= 0:
             self.frameNum = 0
@@ -1669,11 +2020,379 @@ class prepGUI:
         elif self.xwvShow:
             self.ax_sub[3][0].set_visible(True)
             self.ax_sub[3][1].set_visible(False)
-            data = np.abs(self.wvlet_x[self.frameNum].wavelet.mean((0,2)))
+            data = np.abs(self.wvlet_x[self.frameNum].wavelet).mean((0,2))
             self.pwvx.set_ydata(data)
         else:
             data = self.CF.rmFlat[self.frameNum][5:-5,5:-5]
             self.imFx.set_data(data)
 
-        
         self.fig.canvas.draw_idle()
+
+    def s4_Run(self):
+        self.log += "> Calculate curvature coefficient automatically.<br>"
+        if self.s2 is None:
+            self.FS_logF = self.CF.logF - self.yFringe
+        else:
+            self.FS_logF = self.CF.logF - self.yFringe - self.xFringe
+        self._writeLog()
+        self.CF.coeff2, self.dw2 = proc_base.get_curve_par(self.FS_logF)
+        self.LE_s4_p0.setText(f"{self.CF.coeff2[0]:.3e}")
+        self.LE_s4_p1.setText(f"{self.CF.coeff2[1]:.3e}")
+        self.LE_s4_p2.setText(f"{self.CF.coeff2[2]:.3e}")
+        self.s4_make()
+    
+    def s4_make(self):
+        
+        self.CF.logF2, oimg, cimg, wh = proc_base.curvature_correction(self.FS_logF, self.CF.coeff2, show=True)
+
+        y = np.arange(self.CF.rlRF.shape[1])
+        wf = np.polyval(self.CF.coeff2, y)
+
+        for ax in self.ax[4]:
+            ax.cla()
+
+        p1 = f"$+{self.CF.coeff2[1]:.2e}x$" if np.sign(self.CF.coeff2[1]) == 1 else f"${self.CF.coeff2[1]:.2e}x$"
+        p2 = f"$+{self.CF.coeff2[2]:.2e}" if np.sign(self.CF.coeff2[2]) == 1 else f"${self.CF.coeff2[2]:.2e}"
+        eq = f"$y = {self.CF.coeff2[0]:.2e}x^2${p1}{p2}"
+        eq = eq.replace('e','^{')
+        eq = eq.replace('x','}x')
+        eq = eq + '}$'
+        self.ax[4][0].scatter(y, self.dw2, marker='+')
+        self.ax[4][0].plot(y, wf, color='r', label=eq)
+        self.ax[4][0].set_xlabel('Slit (pix)')
+        self.ax[4][0].set_ylabel('dw (pix)')
+        self.ax[4][0].set_title('Curvature')
+        self.ax[4][0].legend()
+
+        m = oimg[5:-5,wh-10:wh+10].mean()
+        std = oimg[5:-5,wh-10:wh+10].std()
+        oim = self.ax[4][1].imshow(oimg, plt.cm.gray, origin='lower', interpolation='bilinear')
+        cim = self.ax[4][2].imshow(cimg, plt.cm.gray, origin='lower', interpolation='bilinear')
+
+        oim.set_clim(m-std*1.5, m+std*1.5)
+        cim.set_clim(m-std*1.5, m+std*1.5)
+
+        self.ax[4][1].set_xlim(wh-10,wh+10)
+        self.ax[4][1].set_aspect(adjustable='box', aspect='auto')
+        self.ax[4][2].set_aspect(adjustable='box', aspect='auto')
+        self.ax[4][1].set_xlabel('Wavelength (pix)')
+        self.ax[4][2].set_xlabel('Wavelength (pix)')
+        self.ax[4][1].set_ylabel('Slit (pix)')
+        self.ax[4][1].set_title('Original')
+        self.ax[4][2].set_title('Corrected')
+
+        self.fig.canvas.draw_idle()
+
+    def s4_Apply(self):
+        self.log += "> Apply coefficient.<br>"
+        self._writeLog()
+        self.CF.coeff2[0] = float(self.LE_s4_p0.text())
+        self.CF.coeff2[1] = float(self.LE_s4_p1.text())
+        self.CF.coeff2[2] = float(self.LE_s4_p2.text())
+        self.s2_make()
+
+    def s5_Run(self):
+        self.log += "> Make Flat running.<br>"
+        self._writeLog()
+        self.CF.Flat = self.CF.gain_calib(self.CF.logF2)
+        self.s5_img()
+
+        self.clogF = self.CF.logF2 - np.log10(self.CF.Flat)
+        self.ms_cF = 10**(self.clogF - self.clogF[:,5:-5].mean(1)[:,None,:])
+
+        self.log += "> Done.<br>"
+        self._writeLog()
+
+    def s5_img(self):
+        # draw results
+        self.im_s5 = self.ax[5][0].imshow(self.CF.Flat[5:-5,5:-5], plt.cm.gray, origin='lower', interpolation='bilinear')
+
+        self.ax[5][0].set_xlabel('Wavelength (pix)')
+        self.ax[5][0].set_ylabel('Slit (pix)')
+        self.ax[5][0].set_title('Flat Image')
+
+        # self.fig.tight_layout(w_pad=0.1)
+        self.fig.canvas.draw_idle()
+
+    def s5_Show(self):
+        self.showFlat = True
+        self.showCFlat = False
+        self.showMSFlat = False
+
+        self.im_s5.set_data(self.CF.Flat[5:-5,5:-5])
+        self.im_s5.set_clim(self.CF.Flat[5:-5,5:-5].min(), self.CF.Flat[5:-5,5:-5].max())
+        self.ax[5][0].set_title('Flat Image')
+        self.fig.canvas.draw_idle()
+
+    def s5_cFlat(self):
+        self.showFlat = False
+        self.showCFlat = True
+        self.showMSFlat = False
+
+        self.im_s5.set_data(self.clogF[self.frameNum,5:-5,5:-5])
+        self.im_s5.set_clim(self.clogF[self.frameNum,5:-5,5:-5].min(), self.clogF[self.frameNum,5:-5,5:-5].max())
+        self.ax[5][0].set_title('Flat-fielded Image')
+        self.fig.canvas.draw_idle()
+
+    def s5_Blink(self):
+        self.showCFlat = not self.showCFlat
+
+        if not self.showFlat and not self.showMSFlat:
+            if self.showCFlat:
+                self.im_s5.set_data(self.clogF[self.frameNum,5:-5,5:-5])
+                self.ax[5][0].set_title('Flat-fielded Image')
+            else:
+                self.im_s5.set_data(self.CF.logF[self.frameNum,5:-5,5:-5])
+                self.ax[5][0].set_title('Original Image')
+        self.fig.canvas.draw_idle()
+
+    def s5_msShow(self):
+        self.showFlat = False
+        self.showCFlat = False
+        self.showMSFlat = True
+
+        self.im_s5.set_data(self.ms_cF[self.frameNum,5:-5,5:-5])
+        m = self.ms_cF[self.frameNum,5:-5,5:-5].mean()
+        std = self.ms_cF[self.frameNum,5:-5,5:-5].std()
+        self.im_s5.set_clim(m-std*2, m+std*2)
+        self.ax[5][0].set_title('Flat-fielded Image')
+        self.fig.canvas.draw_idle()
+
+    def s5_pf(self):
+        if self.frameNum <= 0:
+            self.frameNum = 0
+        elif self.frameNum >= self.CF.nf:
+            self.frameNum = self.CF.nf-1
+        else:
+            self.frameNum -= 1
+        self.LE_s5_frame.setText(f"{self.frameNum+1}")
+
+    def s5_nf(self):
+        if self.frameNum < 0:
+            self.frameNum = 0
+        elif self.frameNum >= self.CF.nf-1:
+            self.frameNum = self.CF.nf -1
+        else:
+            self.frameNum += 1
+        self.LE_s5_frame.setText(f"{self.frameNum+1}")
+
+    def _txtCH_LE_s5(self):
+        self.frameNum = int(self.LE_s5_frame.text())-1
+        if self.frameNum < 0:
+            self.frameNum = 0
+        elif self.frameNum >= self.CF.nf:
+            self.frameNum = self.CF.nf -1
+
+        if self.showMSFlat:
+            data = self.ms_cF[self.frameNum,5:-5,5:-5]
+        elif self.showCFlat:
+            data = self.clogF[self.frameNum,5:-5,5:-5]
+        else:
+            data = self.CF.logF[self.frameNum,5:-5,5:-5]
+        self.im_s5.set_data(data)
+        self.fig.canvas.draw_idle()
+
+    def s6_save(self):
+        ofname = self.fflatGBL[self.fidx]
+        flatName = ofname.replace('FISS','FISS_FLAT').replace('_Flat','')
+        xFringeName = ofname.replace('FISS','FISS_xFringe').replace('_Flat','')
+        yFringeName = ofname.replace('FISS','FISS_yFringe').replace('_Flat','')
+
+        if not isdir(self.pcaldir):
+            makedirs(self.pcaldir)
+
+        # header preset
+        self.h = self.CF.h
+        if self.h['STRTIME'].find('.') < 10:
+            self.h['STRTIME'] = self.h['STRTIME'].replace('-', 'T').replace('.', '-')
+        if self.h['ENDTIME'].find('.') < 10:
+            self.h['ENDTIME'] = self.h['ENDTIME'].replace('-', 'T').replace('.', '-')
+
+        obstime = (Time(self.h['STRTIME']).jd + Time(self.h['ENDTIME']).jd)/2
+        obstime = Time(obstime, format='jd').isot
+
+        # save Flat
+        self.log += "> Save Flat Image.<br>"
+        self._writeLog()
+        flatHDU = fits.PrimaryHDU(self.CF.Flat)
+        flatHDU.header['EXPTIME'] = (self.h['EXPTIME'], 'Second')
+        flatHDU.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
+        flatHDU.header['DATE'] = (self.h['DATE'], 'File Creation Date (UT)')
+        flatHDU.header['STRTIME'] = (self.h['STRTIME'], 'Scan Start Time')
+        flatHDU.header['ENDTIME'] = (self.h['ENDTIME'], 'Scan Finish Time')
+        flatHDU.header['TILT'] = (self.CF.tilt, 'Degree')
+        flatHDU.header['COEF1_0'] = (self.CF.coeff[0], 'Curvature correction coeff p0')
+        flatHDU.header['COEF1_1'] = (self.CF.coeff[1], 'Curvature correction coeff p1')
+        flatHDU.header['COEF1_2'] = (self.CF.coeff[2], 'Curvature correction coeff p2')
+        flatHDU.header['COEF2_0'] = (self.CF.coeff2[0], '2nd Curvature correction coeff p0')
+        flatHDU.header['COEF2_1'] = (self.CF.coeff2[1], '2nd Curvature correction coeff p1')
+        flatHDU.header['COEF2_2'] = (self.CF.coeff2[2], '2nd Curvature correction coeff p2')
+        flatHDU.header['CCDNAME'] = (self.h['CCDNAME'], 'Prodctname of CCD')
+
+        try:
+            flatHDU.header['WAVELEN'] = (self.h['WAVELEN'], 'Angstrom')
+        except:
+            pass
+        try:
+            flatHDU.header['GRATWVLN'] = (self.h['GRATWVLN'], 'Angstrom')
+        except:
+            pass
+        for comment in self.h['COMMENT']:
+            flatHDU.header.add_comment(comment)
+
+        flatHDU.header.add_comment('Tilt Corrected')
+        flatHDU.header.add_comment('1st Curvature Corrected')
+        flatHDU.header.add_comment('2nd Curvature Corrected')
+        if self.yFringe is not None:
+            flatHDU.header.add_comment('y-dir Fringe Subtractd')
+        if self.xFringe is not None:
+            flatHDU.header.add_comment('x-dir Fringe Subtractd')
+
+        flatHDU.writeto(join(self.pcaldir, flatName), overwrite=True)
+
+        if self.yFringe is not None:
+            self.log += "> Save y-dir Fringe Pattern.<br>"
+            self._writeLog()
+            yf = 10 ** self.yFringe[self.CF.nf//2]
+            yFringeHDU = fits.PrimaryHDU(yf)
+            yFringeHDU.header['EXPTIME'] = (self.h['EXPTIME'], 'Second')
+            yFringeHDU.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
+            yFringeHDU.header['DATE'] = (self.h['DATE'], 'File Creation Date (UT)')
+            yFringeHDU.header.add_comment('Tilt Corrected')
+            yFringeHDU.header.add_comment('1st Curvature Corrected')
+            yFringeHDU.writeto(join(self.pcaldir, yFringeName), overwrite=True)
+        if self.xFringe is not None:
+            self.log += "> Save x-dir Fringe Pattern.<br>"
+            self._writeLog()
+            xf = 10 ** self.xFringe[self.CF.nf//2]
+            xFringeHDU = fits.PrimaryHDU(xf)
+            xFringeHDU.header['EXPTIME'] = (self.h['EXPTIME'], 'Second')
+            xFringeHDU.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
+            xFringeHDU.header['DATE'] = (self.h['DATE'], 'File Creation Date (UT)')
+            xFringeHDU.header.add_comment('Tilt Corrected')
+            xFringeHDU.header.add_comment('1st Curvature Corrected')
+            xFringeHDU.writeto(join(self.pcaldir, xFringeName), overwrite=True)
+
+        self.fflatL.pop(self.fidx)
+        self.fflatGBL.pop(self.fidx)
+
+        if len(self.fflatL) != 0:
+            self.B_s6_yes.setStyleSheet(f"background-color: {self.btn_1};")
+        else:
+            self.B_s6_yes.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s6_No.setStyleSheet(f"background-color: {self.btn_1};")
+        self.log += "> Done.<br>"
+        self._writeLog()
+
+    def s6_yes(self):
+        self.B_s6_yes.setStyleSheet(f"background-color: {self.bg_second};")
+
+    def s7_Run(self):
+        self.log += "> Run Preprocess.<br>"
+        self._writeLog()
+
+        lTarget = glob(join(self.procdir, '*'))
+        lTarget.sort()
+
+        lFlat_A = glob(join(self.pcaldir, 'FISS_FLAT*A.fts'))
+        lFlat_B = glob(join(self.pcaldir, 'FISS_FLAT*B.fts'))
+        lXF_A = glob(join(self.pcaldir, 'FISS_xFringe*A.fts'))
+        lXF_B = glob(join(self.pcaldir, 'FISS_xFringe*B.fts'))
+        lYF_A = glob(join(self.pcaldir, 'FISS_yFringe*A.fts'))
+        lYF_B = glob(join(self.pcaldir, 'FISS_yFringe*B.fts'))
+        lFlat_A.sort()
+        lFlat_B.sort()
+        lXF_A.sort()
+        lXF_B.sort()
+        lYF_A.sort()
+        lYF_B.sort()
+
+        h0_A = fits.getheader(lFlat_A[0])
+        nw_A = h0_A['naxis1']
+        ny_A = h0_A['naxis2']
+        nf_A = len(lFlat_A)
+        Flat_A = np.zeros((nf_A, ny_A, nw_A),dtype=float)
+        hA = [None] * len(lFlat_A)
+        hB = [None] * len(lFlat_B)
+
+        h0_B = fits.getheader(lFlat_A[0])
+        nw_B = h0_B['naxis1']
+        ny_B = h0_B['naxis2']
+        nf_B = len(lFlat_B)
+        Flat_B = np.zeros((nf_B, ny_B, nw_B),dtype=float)
+
+        lFlatT_A = np.zeros(len(nf_A))
+        for i, f in enumerate(lFlat_A):
+            lFlatT_A[i] = Time(proc_base.fname2isot(f)).jd
+            opn = fits.open(f)[0]
+            hA[i] = opn.header
+            Flat_A[i] = opn.data
+
+        lFlatT_B = np.zeros(len(nf_B))
+        for i, f in enumerate(lFlat_B):
+            lFlatT_B[i] = Time(proc_base.fname2isot(f)).jd
+            opn = fits.open(f)[0]
+            hB[i] = opn.header
+            Flat_B[i] = opn.data
+
+        
+        if len(lXF_A):
+            XF_A = np.zeros((len(lXF_A), ny_A, nw_A),dtype=float)
+            lXFT_A = np.zeros(len(lXF_A))
+            for i, f in enumerate(lXF_A):
+                lXFT_A[i] = Time(proc_base.fname2isot(f)).jd
+                XF_A[i] = fits.getdata(f)
+        if len(lXF_B):
+            XF_B = np.zeros((len(lXF_B), ny_B, nw_B),dtype=float)
+            lXFT_B = np.zeros(len(lXF_B))
+            for i, f in enumerate(lXF_B):
+                lXFT_B[i] = Time(proc_base.fname2isot(f)).jd
+                XF_B[i] = fits.getdata(f)
+        if len(lYF_A):
+            YF_A = np.zeros((len(lYF_A), ny_A, nw_A),dtype=float)
+            lYFT_A = np.zeros(len(lYF_A))
+            for i, f in enumerate(lYF_A):
+                lYFT_A[i] = Time(proc_base.fname2isot(f)).jd
+                YF_A[i] = fits.getdata(f)
+        if len(lYF_B):
+            YF_B = np.zeros((len(lYF_B), ny_B, nw_B),dtype=float)
+            lYFT_B = np.zeros(len(lYF_B))
+            for i, f in enumerate(lYF_B):
+                lYFT_B[i] = Time(proc_base.fname2isot(f)).jd
+                YF_B[i] = fits.getdata(f)
+
+        for dTarget in lTarget:
+            self.log += f"> Run for {basename(dTarget)} directory.<br>"
+            self._writeLog()
+            lDB_A = glob(join(dTarget, '*A_BiasDark.fts'))
+            lDB_A.sort()
+            lDB_B = glob(join(dTarget, '*B_BiasDark.fts'))
+            lDB_B.sort()
+
+            lRaw_A = glob(join(dTarget, '*A.fts'))
+            lRaw_A.sort()
+            nrA = len(lRaw_A)
+            lRaw_B = glob(join(dTarget, '*B.fts'))
+            lRaw_B.sort()
+            nrB = len(lRaw_B)
+
+            if nf_A:
+                lDBT_A = np.zeros(len(lDB_A))
+                dbid = np.arange(len(lDB_A))
+                lDB_data_A = [None] * len(lDB_A)
+                for i,f in enumerate(lDB_A):
+                    lDBT_A[i] = Time(proc_base.fname2isot(f)).jd
+                    lDB_data_A[i] = fits.getdata(f)
+                for i, f in enumerate(lRaw_A):
+                    opn = fits.open(f)[0]
+                    data = opn.data
+                    h = opn.header
+                    jd = Time(h['date']).jd
+                    db = lDB_data_A[dbid[(jd - lDBT_A) > 0][-1]]
+                    cdata = (data-db)/
+
+                
+
+
+        self.log += "> Done.<br>"
+        self._writeLog()

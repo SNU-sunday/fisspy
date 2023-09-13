@@ -14,6 +14,21 @@ from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 from fisspy.analysis.wavelet import Wavelet
 
+def fname2isot(f):
+    rf = basename(f).replace('_BiasDark', '')
+    sp = rf.split('_')
+    YY = sp[-3][:4]
+    MM = sp[-3][4:6]
+    DD = sp[-3][6:8]
+
+    hh = sp[-2][:2]
+    mm = sp[-2][2:4]
+    ss = sp[-2][4:]
+
+    return f"{YY}-{MM}-{DD}T{hh}:{mm}:{ss}"
+
+
+
 def multiGaussian(x, *pars):
     ng = len(pars)//3
     y = np.zeros((len(x)))
@@ -468,6 +483,7 @@ class calFlat:
         self.fflat = fflat
         self.shyA = None
         self.fsData = None
+        self.logF2 = None
         
         fdir = dirname(fflat)
         if not fdir:
@@ -604,7 +620,7 @@ class calFlat:
         return Slit
 
 
-    def gain_calib(self, maxiter=10, msk=None, show=False):
+    def gain_calib(self, idata, maxiter=10, msk=None, show=False):
         """
         Make the master flat following the technique decribed in Chae et al. (2013).
 
@@ -629,9 +645,13 @@ class calFlat:
         mode = 'interp'
         cval = 0.0
 
-        
+        if self.logF2 is None:
+            logF =  self.logF
+        else:
+            logF = self.logF2
+
         if msk is None:
-            self.der2 = np.gradient(np.gradient(self.logF, axis=2), axis=2)
+            self.der2 = np.gradient(np.gradient(logF, axis=2), axis=2)
             self.der2 -= self.der2[:,10:-10,10:-10].mean((1,2))[:,None, None]
             std = self.der2[:,10:-10,10:-10].std((1,2))[:,None,None]
             msk = np.exp(-0.5*np.abs((self.der2/std))**2)
@@ -641,7 +661,7 @@ class calFlat:
         self.msk = msk
         
         # self.rmFlat2 = self.rmFlat + self.mlf.max(0) # y direction vignetting is removed (that is not intended problems)
-        tt = self.logF
+        tt = idata
         self.C = (tt*msk).sum((1,2))/msk.sum((1,2))
         self.C -= self.C.mean()
 
@@ -669,17 +689,17 @@ class calFlat:
             self.xi[k] = xdum[tt[k, hy] == tt[k, hy, 5:-5].min()][0]
 
         for k in range(self.nf-1):
-            img1 = (self.logF[k+1] - Flat)[hy-10:hy+10].mean(0)*one
-            img2 = (self.logF[k] - Flat)[hy-10:hy+10].mean(0)*one
+            img1 = (logF[k+1] - Flat)[hy-10:hy+10].mean(0)*one
+            img2 = (logF[k] - Flat)[hy-10:hy+10].mean(0)*one
             sh = alignoffset(img1, img2)
             dx = int(np.round(sh[1]))
             if dx < 0:
-                img1 = (self.logF[k+1] - Flat)[hy-10:hy+10, :dx].mean(0)*one[:,:dx]
-                img2 = (self.logF[k] - Flat)[hy-10:hy+10, -dx:].mean(0)*one[:,-dx:]
+                img1 = (logF[k+1] - Flat)[hy-10:hy+10, :dx].mean(0)*one[:,:dx]
+                img2 = (logF[k] - Flat)[hy-10:hy+10, -dx:].mean(0)*one[:,-dx:]
                 sh, cor = alignoffset(img1, img2, cor=True)
             else:
-                img1 = (self.logF[k+1] - Flat)[hy-10:hy+10, dx:].mean(0)*one[:,dx:]
-                img2 = (self.logF[k] - Flat)[hy-10:hy+10, :-dx].mean(0)*one[:,:-dx]
+                img1 = (logF[k+1] - Flat)[hy-10:hy+10, dx:].mean(0)*one[:,dx:]
+                img2 = (logF[k] - Flat)[hy-10:hy+10, :-dx].mean(0)*one[:,:-dx]
                 sh, cor = alignoffset(img1, img2, cor=True)
             self.x[k+1] = self.x[k] + sh[1] + dx
             # print(f"k: {k+1}, x={self.x[k+1]}, cor={cor}")
@@ -689,9 +709,9 @@ class calFlat:
         self.dx = np.zeros([self.nf, self.ny])
         y = np.arange(self.ny)
         for k in range(self.nf):
-            self.ref = np.gradient(np.gradient((self.logF[k]-Flat)[hy-10:hy+10].mean(0), axis=0), axis=0)*one
+            self.ref = np.gradient(np.gradient((logF[k]-Flat)[hy-10:hy+10].mean(0), axis=0), axis=0)*one
             for j in range(self.ny):
-                img = np.gradient(np.gradient((self.logF[k] - Flat)[j], axis=0), axis=0)*one
+                img = np.gradient(np.gradient((logF[k] - Flat)[j], axis=0), axis=0)*one
                 sh = alignoffset(img[:,5:-5], self.ref[:,5:-5])
                 self.dx[k,j] = sh[1]
             self.dx[k] = piecewise_quadratic_fit(y, self.dx[k], 100)
