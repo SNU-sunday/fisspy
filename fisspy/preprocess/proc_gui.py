@@ -10,6 +10,7 @@ from astropy.io import fits
 from scipy.optimize import curve_fit
 from astropy.time import Time
 from os import makedirs
+from fisspy import cm
 
 class prepGUI:
     def __init__(self, basedir, ffocA=None, ffocB=None):
@@ -88,6 +89,20 @@ class prepGUI:
         
         self.fig = plt.figure(figsize=[17,7])
 
+        self.ax_pos = [[[0.06,0.07,0.88,0.86]],
+                       [[0.06,0.07,0.435,0.86], [0.555,0.07,0.435,0.86]],
+                       [[0.06,0.2,0.5,0.6], [0.65,0.07,0.14,0.86], [0.83,0.07,0.14,0.86]],
+                       [None],
+                       [[0.06,0.2,0.5,0.6], [0.65,0.07,0.14,0.86], [0.83,0.07,0.14,0.86]],
+                       [[0.06,0.07,0.88,0.86]],
+                       [[0.06,0.07,0.88,0.86]],
+                       [[0.06,0.07,0.88,0.86]]]
+        
+        self.ax_sub_pos = [[[0.06,0.07,0.88,0.86]],
+                           [[0.06,0.07,0.88,0.86], [0.06,0.07,0.88,0.86]],
+                           [[0.06,0.07,0.88,0.86]],
+                           [[0.06,0.07,0.88,0.86], [0.06,0.07,0.88,0.86]]]
+        
         ax_s0 = self.fig.add_subplot(111)
         ax_s0.set_position([0.06,0.07,0.88,0.86])
 
@@ -116,10 +131,24 @@ class prepGUI:
         ax_s6 = self.fig.add_subplot(111)
         ax_s6.set_position([0.06,0.07,0.88,0.86])
 
-        ax_s7 = self.fig.add_subplot(111)
-        ax_s7.set_position([0.06,0.07,0.88,0.86])
+        ax_s7_R1 = self.fig.add_subplot(111, title='-4 $\\AA$')
+        ax_s7_R2 = self.fig.add_subplot(111, sharex=ax_s7_R1, sharey=ax_s7_R1, title='-0.5 $\\AA$')
+        ax_s7_R3 = self.fig.add_subplot(111, sharex=ax_s7_R1, sharey=ax_s7_R1, xlabel='X (pix)', ylabel='Y (pix)', title='0.0 $\\AA$')
+        ax_s7_R4 = self.fig.add_subplot(111, sharex=ax_s7_R1, sharey=ax_s7_R1, title='+0.5 $\\AA$')
+        ax_s7_R1.set_axis_off()
+        ax_s7_R2.set_axis_off()
+        ax_s7_R3.set_axis_off()
+        ax_s7_R4.set_axis_off()
+        ax_s7_prof = self.fig.add_subplot(111, ylabel='Intensity (DN)', title='Profile')
+        ax_s7_spec = self.fig.add_subplot(111, sharex=ax_s7_prof, xlabel='Wavelength (pix)', ylabel='Slit (pix)', title='Spectrogram')
+        ax_s7_R1.set_position([0.06,0.54,0.17,0.4])
+        ax_s7_R2.set_position([0.29,0.54,0.17,0.4])
+        ax_s7_R3.set_position([0.06,0.07,0.17,0.4])
+        ax_s7_R4.set_position([0.29,0.07,0.17,0.4])
+        ax_s7_prof.set_position([0.56,0.57,0.38,0.36])
+        ax_s7_spec.set_position([0.56,0.07,0.38,0.36])
 
-        self.ax = [[ax_s0], [ax_s1_1, ax_s1_2], [ax_s2_1, ax_s2_2, ax_s2_3], None, [ax_s4_1, ax_s4_2, ax_s4_3], [ax_s5], [ax_s6], [ax_s7]]
+        self.ax = [[ax_s0], [ax_s1_1, ax_s1_2], [ax_s2_1, ax_s2_2, ax_s2_3], None, [ax_s4_1, ax_s4_2, ax_s4_3], [ax_s5], [ax_s6], [ax_s7_R1, ax_s7_R2, ax_s7_R3, ax_s7_R4, ax_s7_prof, ax_s7_spec]]
     
 
         ax_s3_1_1 = self.fig.add_subplot(111)
@@ -175,7 +204,7 @@ class prepGUI:
         self.log = f"<font color='{self.font_primary}'>"+self.List_step[num] + '</font><br><br>'
         self._writeLog()
         self.stepNum = num
-        if num != 3 and num !=7:
+        if num != 3:
             for ax in self.ax[num]:
                 ax.set_visible(True)
 
@@ -189,6 +218,7 @@ class prepGUI:
             else:
                 self.s1_data = 10**self.CF.logRF[3]
         self.List_VL[self.stepNum].setGeometry(QtCore.QRect(10,85,280,350))
+        plt.pause(0.01)
         self.fig.set_figheight(h)
 
     def subStep(self, num):
@@ -274,7 +304,7 @@ class prepGUI:
         # self.vboxMain.addWidget(self.CB_Step)
 
         # set step widgets
-        self.StepWidgets = [None]*7#self.nStep
+        self.StepWidgets = [None]*8#self.nStep
         self.subStepWidgets = [None]*4
 
         # create Step0 Widget
@@ -374,6 +404,8 @@ class prepGUI:
 
             self.StepWidgets[1] = [self.L_s1_get_tilt, self.B_s1_run, self.L_s1_tilt, self.LE_s1_tilt, self.L_s1_deg, self.B_s1_Apply]
 
+            self.B_s1_Apply.setEnabled(False)
+
             self.B_s1_run.clicked.connect(self.s1_Run)
             self.B_s1_Apply.clicked.connect(self.s1_Apply)
 
@@ -450,6 +482,8 @@ class prepGUI:
 
             self.B_s2_run.clicked.connect(self.s2_Run)
             self.B_s2_Apply.clicked.connect(self.s2_Apply)
+
+            self.B_s2_Apply.setEnabled(False)
 
         # create Step3-1 atlas subtraction
         if True:
@@ -706,6 +740,7 @@ class prepGUI:
             self.HL_s3_3_MW.addWidget(self.L_s3_3_MW)
             self.HL_s3_3_MW.addWidget(self.LE_s3_3_MW)
             self.HL_s3_3_MW.addWidget(self.B_s3_3_Apply)
+            self.B_s3_3_Apply.setEnabled(False)
 
             # show image
             self.HL_s3_3_show = QtWidgets.QHBoxLayout()
@@ -722,6 +757,7 @@ class prepGUI:
 
             self.HL_s3_3_show.addWidget(self.L_s3_3_res)
             self.HL_s3_3_show.addWidget(self.B_s3_3_Blink)
+            self.B_s3_3_Blink.setEnabled(False)
 
             # remove the mask
             self.HL_s3_3_reset = QtWidgets.QHBoxLayout()
@@ -1012,6 +1048,7 @@ class prepGUI:
             self.B_s4_Apply.setText("Apply")
             self.B_s4_Apply.setFont(self.fNormal)
             self.B_s4_Apply.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s4_Apply.setEnabled(False)
 
             self.HL_s4_p0 = QtWidgets.QHBoxLayout()
             self.HL_s4_p1 = QtWidgets.QHBoxLayout()
@@ -1059,6 +1096,7 @@ class prepGUI:
             self.HL_s5.addWidget(self.L_s5_label)
             self.HL_s5.addWidget(self.B_s5_Run)
             self.HL_s5.addWidget(self.B_s5_Show)
+            self.B_s5_Show.setEnabled(False)
 
             self.HL_s5_cFlat = QtWidgets.QHBoxLayout()
             self.L_s5_cFlat = QtWidgets.QLabel()
@@ -1079,6 +1117,8 @@ class prepGUI:
             self.HL_s5_cFlat.addWidget(self.L_s5_cFlat)
             self.HL_s5_cFlat.addWidget(self.B_s5_cFlat)
             self.HL_s5_cFlat.addWidget(self.B_s5_Blink)
+            self.B_s5_cFlat.setEnabled(False)
+            self.B_s5_Blink.setEnabled(False)
 
             self.HL_s5_msFlat = QtWidgets.QHBoxLayout()
             self.L_s5_msFlat = QtWidgets.QLabel()
@@ -1092,6 +1132,24 @@ class prepGUI:
 
             self.HL_s5_msFlat.addWidget(self.L_s5_msFlat)
             self.HL_s5_msFlat.addWidget(self.B_s5_msFlat)
+            self.B_s5_msFlat.setEnabled(False)
+
+            self.HL_s5_profile = QtWidgets.QHBoxLayout()
+            self.L_s5_profile = QtWidgets.QLabel()
+            self.L_s5_profile.setText("Profile: ")
+            self.L_s5_profile.setFont(self.fNormal)
+            self.B_s5_profile = QtWidgets.QPushButton()
+            self.B_s5_profile.setText("Show")
+            self.B_s5_profile.setFont(self.fNormal)
+            self.B_s5_profile.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s5_profile.clicked.connect(self.s5_profShow)
+
+            self.HL_s5_profile.addWidget(self.L_s5_profile)
+            self.HL_s5_profile.addWidget(self.B_s5_profile)
+            self.p_s5_ori = None
+            self.p_s5_ff = None
+            self.im_s5 = None
+
 
              # frame change
             self.HL_s5_frame = QtWidgets.QHBoxLayout()
@@ -1125,11 +1183,12 @@ class prepGUI:
             self.VL_s5.addLayout(self.HL_s5)
             self.VL_s5.addLayout(self.HL_s5_cFlat)
             self.VL_s5.addLayout(self.HL_s5_msFlat)
+            self.VL_s5.addLayout(self.HL_s5_profile)
             self.VL_s5.addLayout(self.HL_s5_frame)
 
             self.vboxCtrl.addLayout(self.VL_s5)
 
-            self.StepWidgets[5] = [self.L_s5_label, self.B_s5_Run, self.B_s5_Show, self.L_s5_cFlat, self.B_s5_cFlat, self.B_s5_Blink, self.L_s5_msFlat, self.B_s5_msFlat, self.L_s5_frame, self.LE_s5_frame, self.L_s5_nframe, self.B_s5_pf, self.B_s5_nf]
+            self.StepWidgets[5] = [self.L_s5_label, self.B_s5_Run, self.B_s5_Show, self.L_s5_cFlat, self.B_s5_cFlat, self.B_s5_Blink, self.L_s5_msFlat, self.B_s5_msFlat, self.L_s5_profile, self.B_s5_profile, self.L_s5_frame, self.LE_s5_frame, self.L_s5_nframe, self.B_s5_pf, self.B_s5_nf]
 
         # create Step6 Save Flat
         if True:
@@ -1185,6 +1244,8 @@ class prepGUI:
 
             self.VL_s7.addWidget(self.B_s7_Run)
             self.vboxCtrl.addLayout(self.VL_s7)
+
+            self.StepWidgets[7] = [self.B_s7_Run]
 
 
         self.List_VL = [self.VL_s0, self.VL_s1, self.VL_s2, None, self.VL_s4, self.VL_s5, self.VL_s6, self.VL_s7]
@@ -1411,6 +1472,7 @@ class prepGUI:
         self._writeLog()
         self.CF.tilt = proc_base.get_tilt(self.s1_data)
         self.s1_img(self.s1_data)
+        self.B_s1_Apply.setEnabled(True)
 
     def s1_img(self, img):
         self.log += f"> Tilt: {self.CF.tilt:.3f} degree.<br>"
@@ -1463,6 +1525,7 @@ class prepGUI:
         self.log += f"> Done.<br>"
         self._writeLog()
         self.s2_make()
+        self.B_s1_Apply.setEnabled(True)
     
     def s2_make(self):
         self.CF.logF, oimg, cimg, wh = proc_base.curvature_correction(self.CF.rlRF, self.CF.coeff, show=True)
@@ -1730,6 +1793,8 @@ class prepGUI:
             self.p_s3_3_mskMin.set_xdata([self.cpos[self.frameNum]-5-self.msk_width, self.cpos[self.frameNum]-5-self.msk_width])
             self.p_s3_3_mskMax.set_xdata([self.cpos[self.frameNum]-5+self.msk_width, self.cpos[self.frameNum]-5+self.msk_width])
         
+        self.B_s3_3_Apply.setEnabled(True)
+        self.B_s3_3_Blink.setEnabled(True)
         self.fig.canvas.draw_idle()
 
     def s3_3_Apply(self):
@@ -1840,7 +1905,6 @@ class prepGUI:
         self.B_s3_4_wvShow.setEnabled(True)
         self.B_s3_4_FRapply.setEnabled(True)
         self.B_s3_4_simple.setEnabled(True)
-        self.B_s3_4_gauss.setEnabled(True)
 
     def s3_4_wvShow(self):
         self.xwvShow = True
@@ -2040,6 +2104,7 @@ class prepGUI:
         self.LE_s4_p1.setText(f"{self.CF.coeff2[1]:.3e}")
         self.LE_s4_p2.setText(f"{self.CF.coeff2[2]:.3e}")
         self.s4_make()
+        self.B_s4_Apply.setEnabled(True)
     
     def s4_make(self):
         
@@ -2094,22 +2159,41 @@ class prepGUI:
     def s5_Run(self):
         self.log += "> Make Flat running.<br>"
         self._writeLog()
-        self.CF.Flat = self.CF.gain_calib(self.CF.logF2)
+        if self.s2 is None:
+            self.CF.Flat = self.CF.gain_calib(self.s1)
+        else: 
+            self.CF.Flat = self.CF.gain_calib(self.s2)  
+        # self.CF.Flat = self.CF.gain_calib(self.CF.logF2)
         self.s5_img()
 
         self.clogF = self.CF.logF2 - np.log10(self.CF.Flat)
         self.ms_cF = 10**(self.clogF - self.clogF[:,5:-5].mean(1)[:,None,:])
 
+        self.B_s5_Show.setEnabled(True)
+        self.B_s5_cFlat.setEnabled(True)
+        self.B_s5_Blink.setEnabled(True)
+        self.B_s5_msFlat.setEnabled(True)
         self.log += "> Done.<br>"
         self._writeLog()
 
     def s5_img(self):
         # draw results
-        self.im_s5 = self.ax[5][0].imshow(self.CF.Flat[5:-5,5:-5], plt.cm.gray, origin='lower', interpolation='bilinear')
+        if self.im_s5 is None:
+            self.im_s5 = self.ax[5][0].imshow(self.CF.Flat[5:-5,5:-5], plt.cm.gray, origin='lower', interpolation='bilinear')
+        else:
+            self.im_s5.set_data(self.CF.Flat)
 
+        self.im_s5.set_visible(True)
         self.ax[5][0].set_xlabel('Wavelength (pix)')
         self.ax[5][0].set_ylabel('Slit (pix)')
         self.ax[5][0].set_title('Flat Image')
+        self.ax[5][0].set_ylim(-0.5, self.CF.ny-10.5)
+        self.ax[5][0].set_aspect(aspect='auto')
+        
+        if self.p_s5_ori is not None:
+            self.p_s5_ori.set_visible(False)
+            self.p_s5_ff.set_visible(False)
+            self.s5_legend.set_visible(False)
 
         # self.fig.tight_layout(w_pad=0.1)
         self.fig.canvas.draw_idle()
@@ -2118,25 +2202,41 @@ class prepGUI:
         self.showFlat = True
         self.showCFlat = False
         self.showMSFlat = False
+        self.showProf = False
 
+        self.im_s5.set_visible(True)
         self.im_s5.set_data(self.CF.Flat[5:-5,5:-5])
         self.im_s5.set_clim(self.CF.Flat[5:-5,5:-5].min(), self.CF.Flat[5:-5,5:-5].max())
         self.ax[5][0].set_title('Flat Image')
+        self.ax[5][0].set_ylabel('Slit (pix)')
+        self.ax[5][0].set_ylim(-0.5, self.CF.ny-10.5)
+        if self.p_s5_ori is not None:
+            self.p_s5_ori.set_visible(False)
+            self.p_s5_ff.set_visible(False)
+            self.s5_legend.set_visible(False)
         self.fig.canvas.draw_idle()
 
     def s5_cFlat(self):
         self.showFlat = False
         self.showCFlat = True
         self.showMSFlat = False
+        self.showProf = False
 
+        self.im_s5.set_visible(True)
         self.im_s5.set_data(self.clogF[self.frameNum,5:-5,5:-5])
         self.im_s5.set_clim(self.clogF[self.frameNum,5:-5,5:-5].min(), self.clogF[self.frameNum,5:-5,5:-5].max())
         self.ax[5][0].set_title('Flat-fielded Image')
+        self.ax[5][0].set_ylabel('Slit (pix)')
+        self.ax[5][0].set_ylim(-0.5, self.CF.ny-10.5)
+        if self.p_s5_ori is not None:
+            self.p_s5_ori.set_visible(False)
+            self.p_s5_ff.set_visible(False)
+            self.s5_legend.set_visible(False)
         self.fig.canvas.draw_idle()
 
     def s5_Blink(self):
         self.showCFlat = not self.showCFlat
-
+        self.im_s5.set_visible(True)
         if not self.showFlat and not self.showMSFlat:
             if self.showCFlat:
                 self.im_s5.set_data(self.clogF[self.frameNum,5:-5,5:-5])
@@ -2144,19 +2244,52 @@ class prepGUI:
             else:
                 self.im_s5.set_data(self.CF.logF[self.frameNum,5:-5,5:-5])
                 self.ax[5][0].set_title('Original Image')
+        self.ax[5][0].set_ylabel('Slit (pix)')
         self.fig.canvas.draw_idle()
 
     def s5_msShow(self):
         self.showFlat = False
         self.showCFlat = False
         self.showMSFlat = True
-
+        self.showProf = False
+        self.im_s5.set_visible(True)
         self.im_s5.set_data(self.ms_cF[self.frameNum,5:-5,5:-5])
         m = self.ms_cF[self.frameNum,5:-5,5:-5].mean()
         std = self.ms_cF[self.frameNum,5:-5,5:-5].std()
         self.im_s5.set_clim(m-std*2, m+std*2)
         self.ax[5][0].set_title('Flat-fielded Image')
+        self.ax[5][0].set_ylabel('Slit (pix)')
+        self.ax[5][0].set_ylim(-0.5, self.CF.ny-10.5)
+        if self.p_s5_ori is not None:
+            self.p_s5_ori.set_visible(False)
+            self.p_s5_ff.set_visible(False)
+            self.s5_legend.set_visible(False)
         self.fig.canvas.draw_idle()
+
+    def s5_profShow(self):
+        self.showFlat = False
+        self.showCFlat = False
+        self.showMSFlat = False
+        self.showProf = True
+
+        self.im_s5.set_visible(False)
+        ori = self.CF.logF[self.frameNum, 5:-5, 5:-5].mean(0)
+        ff = self.clogF[self.frameNum, 5:-5, 5:-5].mean(0)
+        if self.p_s5_ori is None:
+            self.p_s5_ori = self.ax[5][0].plot(ori, label='original')[0]
+            self.p_s5_ff = self.ax[5][0].plot(ff, label='flat-fielded')[0]
+            self.s5_legend = self.ax[5][0].legend()
+        else:
+            self.p_s5_ori.set_ydata(ori)
+            self.p_s5_ff.set_ydata(ff)
+            self.s5_legend.set_visible(True)
+            self.p_s5_ori.set_visible(True)
+            self.p_s5_ff.set_visible(True)
+        self.ax[5][0].set_title('Profile')
+        self.ax[5][0].set_ylabel('Intensity (DN)')
+        self.ax[5][0].set_ylim(ff.min()*0.98, ff.max()*1.02)
+        self.fig.canvas.draw_idle()
+
 
     def s5_pf(self):
         if self.frameNum <= 0:
@@ -2183,13 +2316,23 @@ class prepGUI:
         elif self.frameNum >= self.CF.nf:
             self.frameNum = self.CF.nf -1
 
-        if self.showMSFlat:
+        if self.showProf:
+            ori = self.CF.logF[self.frameNum, 5:-5, 5:-5].mean(0)
+            ff = self.clogF[self.frameNum, 5:-5, 5:-5].mean(0)
+            self.p_s5_ori.set_ydata(ori)
+            self.p_s5_ff.set_ydata(ff)
+        elif self.showMSFlat:
             data = self.ms_cF[self.frameNum,5:-5,5:-5]
+            self.im_s5.set_data(data)
+            self.ax[5][0].set_ylabel('Slit (pix)')
         elif self.showCFlat:
             data = self.clogF[self.frameNum,5:-5,5:-5]
+            self.im_s5.set_data(data)
+            self.ax[5][0].set_ylabel('Slit (pix)')
         else:
             data = self.CF.logF[self.frameNum,5:-5,5:-5]
-        self.im_s5.set_data(data)
+            self.im_s5.set_data(data)
+            self.ax[5][0].set_ylabel('Slit (pix)')
         self.fig.canvas.draw_idle()
 
     def s6_save(self):
@@ -2201,8 +2344,13 @@ class prepGUI:
         if not isdir(self.pcaldir):
             makedirs(self.pcaldir)
 
-        # header preset
+        # reference wavelength value
         self.h = self.CF.h
+        wvpar = proc_base.wv_calib_atlas(self.clogF[self.CF.nf//2], self.h)
+        self.log += f"> crpix1: {wvpar[0]:.2f}<br> cdelt1: {wvpar[1]:.3f}<br>, crval1: {wvpar[2]:.3f}<br>"
+        self._writeLog()
+        # header preset
+        
         if self.h['STRTIME'].find('.') < 10:
             self.h['STRTIME'] = self.h['STRTIME'].replace('-', 'T').replace('.', '-')
         if self.h['ENDTIME'].find('.') < 10:
@@ -2215,6 +2363,9 @@ class prepGUI:
         self.log += "> Save Flat Image.<br>"
         self._writeLog()
         flatHDU = fits.PrimaryHDU(self.CF.Flat)
+        flatHDU.header['CRPIX1'] = (wvpar[0], 'reference pixel position')
+        flatHDU.header['CDELT1'] = (wvpar[1], 'angstrom/pixel')
+        flatHDU.header['CRVAL1'] = (wvpar[2], 'reference wavelength (angstrom)')
         flatHDU.header['EXPTIME'] = (self.h['EXPTIME'], 'Second')
         flatHDU.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
         flatHDU.header['DATE'] = (self.h['DATE'], 'File Creation Date (UT)')
@@ -2277,21 +2428,98 @@ class prepGUI:
         self.fflatGBL.pop(self.fidx)
 
         if len(self.fflatL) != 0:
-            self.B_s6_yes.setStyleSheet(f"background-color: {self.btn_1};")
+            self.B_s6_yes.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
         else:
-            self.B_s6_yes.setStyleSheet(f"background-color: {self.bg_second};")
-            self.B_s6_No.setStyleSheet(f"background-color: {self.btn_1};")
+            self.B_s6_yes.setStyleSheet(f"background-color: {self.bg_second}; color:{self.font_normal};")
+            self.B_s6_No.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
+
+        plt.pause(0.01)
+        self.List_VL[6].setGeometry(QtCore.QRect(10,85,280,350))
+        
         self.log += "> Done.<br>"
         self._writeLog()
+        plt.pause(0.2)
+        self.fig.canvas.draw_idle()
 
     def s6_yes(self):
+        self.Initialize()
         self.B_s6_yes.setStyleSheet(f"background-color: {self.bg_second};")
+        self.step(0)
+        plt.pause(0.1)
+
+    def Initialize(self):
+        self.subStepNum = -1
+        self.xFringe = None
+        self.yFringe = None
+        self.s1 = None
+        self.s2 = None
+        self.p_s5_ori = None
+        self.p_s5_ff = None
+        self.im_s5 = None
+        self.frameNum = 3
+        self.LE_s1_tilt.setText('0')
+        self.LE_s2_p0.setText('0')
+        self.LE_s2_p1.setText('0')
+        self.LE_s2_p2.setText('0')
+        self.LE_s4_p0.setText('0')
+        self.LE_s4_p1.setText('0')
+        self.LE_s4_p2.setText('0')
+        self.imFx = None
+        self.imFy = None
+        self.im_s3_3 = None
+
+        self.CB_s0_fflist.removeItem(self.fidx)
+        self.fidx = 0
+        self.CB_s0_fflist.setCurrentIndex(self.fidx)
+
+        self.B_s3_wvShow.setEnabled(False)
+        self.B_s3_2_FRapply.setEnabled(False)
+        self.B_s3_2_simple.setEnabled(False)
+        self.B_s3_2_FringeShow.setEnabled(False)
+        self.B_s3_2_resShow.setEnabled(False)
+        self.B_s3_2_blink.setEnabled(False)
+
+        self.B_s3_3_Apply.setEnabled(False)
+        self.B_s3_3_Blink.setEnabled(False)
+
+        self.B_s3_4_wvShow.setEnabled(False)
+        self.B_s3_4_FRapply.setEnabled(False)
+        self.B_s3_4_simple.setEnabled(False)
+        self.B_s3_4_FringeShow.setEnabled(False)
+        self.B_s3_4_resShow.setEnabled(False)
+        self.B_s3_4_blink.setEnabled(False)
+
+        self.B_s1_Apply.setEnabled(False)
+        self.B_s2_Apply.setEnabled(False)
+        self.B_s4_Apply.setEnabled(False)
+        self.B_s5_Show.setEnabled(False)
+        self.B_s5_cFlat.setEnabled(False)
+        self.B_s5_Blink.setEnabled(False)
+        self.B_s5_msFlat.setEnabled(False)
+        
+        for i, axl in enumerate(self.ax):
+            if not i == 3:
+                for j, ax in enumerate(axl):
+                    ax.cla()
+                    if not i == 7:
+                        ax.set_position(self.ax_pos[i][j])
+
+        for i, axls in enumerate(self.ax_sub):
+            for j, ax in enumerate(axls):
+                ax.cla()
+                ax.set_position(self.ax_sub_pos[i][j])
+        self.chFlat()
+        self.fig.canvas.draw_idle()
+
+    def s6_no(self):
+        self.Next()
+        plt.pause(0.1)
 
     def s7_Run(self):
         self.log += "> Run Preprocess.<br>"
         self._writeLog()
 
-        lTarget = glob(join(self.procdir, '*'))
+        lTarget = glob(join(self.rawdir, '*'))
         lTarget.sort()
 
         lFlat_A = glob(join(self.pcaldir, 'FISS_FLAT*A.fts'))
@@ -2306,34 +2534,38 @@ class prepGUI:
         lXF_B.sort()
         lYF_A.sort()
         lYF_B.sort()
-
-        h0_A = fits.getheader(lFlat_A[0])
-        nw_A = h0_A['naxis1']
-        ny_A = h0_A['naxis2']
         nf_A = len(lFlat_A)
-        Flat_A = np.zeros((nf_A, ny_A, nw_A),dtype=float)
-        hA = [None] * len(lFlat_A)
-        hB = [None] * len(lFlat_B)
-
-        h0_B = fits.getheader(lFlat_A[0])
-        nw_B = h0_B['naxis1']
-        ny_B = h0_B['naxis2']
         nf_B = len(lFlat_B)
-        Flat_B = np.zeros((nf_B, ny_B, nw_B),dtype=float)
+        init = True
 
-        lFlatT_A = np.zeros(len(nf_A))
-        for i, f in enumerate(lFlat_A):
-            lFlatT_A[i] = Time(proc_base.fname2isot(f)).jd
-            opn = fits.open(f)[0]
-            hA[i] = opn.header
-            Flat_A[i] = opn.data
+        if nf_A:
+            h0_A = fits.getheader(lFlat_A[0])
+            nw_A = h0_A['naxis1']
+            ny_A = h0_A['naxis2']
+            
+            Flat_A = np.zeros((nf_A, ny_A, nw_A),dtype=float)
+            hA = [None] * len(lFlat_A)
+            lFlatT_A = np.zeros(nf_A)
+            for i, f in enumerate(lFlat_A):
+                lFlatT_A[i] = Time(proc_base.fname2isot(f)).jd
+                opn = fits.open(f)[0]
+                hA[i] = opn.header
+                Flat_A[i] = opn.data
 
-        lFlatT_B = np.zeros(len(nf_B))
-        for i, f in enumerate(lFlat_B):
-            lFlatT_B[i] = Time(proc_base.fname2isot(f)).jd
-            opn = fits.open(f)[0]
-            hB[i] = opn.header
-            Flat_B[i] = opn.data
+        if nf_B:
+            h0_B = fits.getheader(lFlat_B[0])
+            nw_B = h0_B['naxis1']
+            ny_B = h0_B['naxis2']
+            nf_B = len(lFlat_B)
+            Flat_B = np.zeros((nf_B, ny_B, nw_B),dtype=float)
+            hB = [None] * len(lFlat_B)
+
+            lFlatT_B = np.zeros(nf_B)
+            for i, f in enumerate(lFlat_B):
+                lFlatT_B[i] = Time(proc_base.fname2isot(f)).jd
+                opn = fits.open(f)[0]
+                hB[i] = opn.header
+                Flat_B[i] = opn.data
 
         
         if len(lXF_A):
@@ -2377,21 +2609,293 @@ class prepGUI:
             nrB = len(lRaw_B)
 
             if nf_A:
-                lDBT_A = np.zeros(len(lDB_A))
-                dbid = np.arange(len(lDB_A))
-                lDB_data_A = [None] * len(lDB_A)
+                self.log += f"> Run for cam A.<br>"
+                self._writeLog()
+                lDBT = np.zeros(len(lDB_A))
+                dbID = np.arange(len(lDB_A))
+                flatID = np.arange(nf_A)
+                xfID = np.arange(len(lXF_A))
+                yfID = np.arange(len(lYF_A))
+                lDB_data = [None] * len(lDB_A)
                 for i,f in enumerate(lDB_A):
-                    lDBT_A[i] = Time(proc_base.fname2isot(f)).jd
-                    lDB_data_A[i] = fits.getdata(f)
+                    lDBT[i] = Time(proc_base.fname2isot(f)).jd
+                    lDB_data[i] = fits.getdata(f)
                 for i, f in enumerate(lRaw_A):
                     opn = fits.open(f)[0]
                     data = opn.data
                     h = opn.header
                     jd = Time(h['date']).jd
-                    db = lDB_data_A[dbid[(jd - lDBT_A) > 0][-1]]
-                    cdata = (data-db)/
+                    db = lDB_data[dbID[(jd - lDBT) > 0][-1]]
+                    wh = np.abs(jd - lFlatT_A).argmin()
+                    flat = Flat_A[wh]
+                    ft = lFlatT_A[wh]
+                    ch = hA[wh]
+                    tilt = ch['tilt']
+                    p1_0 = ch['coef1_0']
+                    p1_1 = ch['coef1_1']
+                    p1_2 = ch['coef1_2']
+                    p2_0 = ch['coef2_0']
+                    p2_1 = ch['coef2_1']
+                    p2_2 = ch['coef2_2']
 
-                
+                    data1 = data-db
+                    td = proc_base.tilt_correction(data1, tilt, cubic=True)
+                    cd1 = proc_base.curvature_correction(td, [p1_0, p1_1, p1_2])
+                    
+                    if len(lYF_A):
+                        why = yfID[np.abs(lYFT_A - ft)*24*3600 < 10]
+                        YF = YF_A[why]
+                        cd1 /= YF
+                    if len(lXF_A):
+                        whx = xfID[np.abs(lXFT_A - ft)*24*3600 < 10]
+                        XF = XF_A[whx]
+                        cd1 /= XF
+
+                    cd2 = proc_base.curvature_correction(cd1, [p2_0, p2_1, p2_2])
+
+                    cd2 /= flat
+                    cd2 = cd2[:,5:-5,5:-5].astype('int16')
+                    shape = cd2.shape
+
+                    if init:
+                        p0 = int(ch['crpix1']-5)
+                        p_4 = int(p0 - 4/ch['cdelt1'])
+                        p0_5 = int(p0 + 0.7/ch['cdelt1'])
+                        p_0_5 = int(p0 - 0.7/ch['cdelt1'])
+                        self.p_s7_prof = self.ax[7][4].plot(cd2[shape[0]//2,shape[1]//2])[0]
+                        self.ax[7][4].set_xlim(-0.5, shape[2]-0.5)
+
+                        self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cm.ha, origin='lower')
+
+                        self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cm.ha, origin='lower')
+
+                        self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cm.ha, origin='lower')
+                        m = cd2[:,:,p_0_5].mean()
+                        std = cd2[:,:,p_0_5].std()
+                        self.im_s7_R2.set_clim(m-std*2,m+std*2)
+
+                        self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cm.ha, origin='lower')
+                        m = cd2[:,:,p0].mean()
+                        std = cd2[:,:,p0].std()
+                        self.im_s7_R3.set_clim(m-std*2,m+std*2)
+
+                        self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cm.ha, origin='lower')
+                        m = cd2[:,:,p0_5].mean()
+                        std = cd2[:,:,p0_5].std()
+                        self.im_s7_R4.set_clim(m-std*2,m+std*2)
+                        init = False
+                    else:
+                        self.p_s7_prof.y_data(cd2[shape[0]//2,shape[1]//2])
+                        self.im_s7_spec.set_data(cd2[shape[0]//2])
+                        self.im_s7_R1.set_data(cd2[:,:,p_4].T)
+                        self.im_s7_R2.set_data(cd2[:,:,p_0_5].T)
+                        self.im_s7_R3.set_data(cd2[:,:,p0].T)
+                        self.im_s7_R4.set_data(cd2[:,:,p0_5].T)
+
+                    self.ax[7][4].set_title(f'Profile ({i+1}/{len(lRaw_A)})')
+                    self.fig.canvas.draw_idle()
+
+                    
+                    # save fits
+                    fn = basename(f)
+                    fn = fn.replace('A.fts', 'A1.fts')
+                    dname = join(self.procdir, basename(dTarget))
+                    if not isdir(dname):
+                        makedirs(dname)
+                    fn = join(dname, fn)
+                    
+                    if ch['STRTIME'].find('.') < 10:
+                        ch['STRTIME'] = ch['STRTIME'].replace('-', 'T').replace('.', '-')
+                    if ch['ENDTIME'].find('.') < 10:
+                        ch['ENDTIME'] = ch['ENDTIME'].replace('-', 'T').replace('.', '-')
+                    obstime = (Time(ch['STRTIME']).jd + Time(ch['ENDTIME']).jd)/2
+                    obstime = Time(obstime, format='jd').isot
+
+                    hdu = fits.PrimaryHDU(cd2)
+                    hdu.header['CRPIX1'] = (ch['crpix1']-5, 'reference pixel position')
+                    hdu.header['CDELT1'] = (ch['cdelt1'], 'angstrom/pixel')
+                    hdu.header['CRVAL1'] = (ch['crval1'], 'reference wavelength (angstrom)')
+                    hdu.header['EXPTIME'] = (ch['EXPTIME'], 'Second')
+                    hdu.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
+                    hdu.header['DATE'] = (ch['DATE'], 'File Creation Date (UT)')
+                    hdu.header['STRTIME'] = (ch['STRTIME'], 'Scan Start Time')
+                    hdu.header['ENDTIME'] = (ch['ENDTIME'], 'Scan Finish Time')
+                    hdu.header['TILT'] = (ch['tilt'], 'Degree')
+                    hdu.header['COEF1_0'] = (ch['coef1_0'], 'Curvature correction coeff p0')
+                    hdu.header['COEF1_1'] = (ch['coef1_1'], 'Curvature correction coeff p1')
+                    hdu.header['COEF1_2'] = (ch['coef1_2'], 'Curvature correction coeff p2')
+                    hdu.header['COEF2_0'] = (ch['coef2_0'], '2nd Curvature correction coeff p0')
+                    hdu.header['COEF2_1'] = (ch['coef2_1'], '2nd Curvature correction coeff p1')
+                    hdu.header['COEF2_2'] = (ch['coef2_2'], '2nd Curvature correction coeff p2')
+                    hdu.header['CCDNAME'] = (ch['CCDNAME'], 'Prodctname of CCD')
+                    try:
+                        hdu.header['WAVELEN'] = (ch['WAVELEN'], 'Angstrom')
+                    except:
+                        pass
+                    try:
+                        hdu.header['GRATWVLN'] = (ch['GRATWVLN'], 'Angstrom')
+                    except:
+                        pass
+                    hdu.header.add_comment('Tilt Corrected')
+                    hdu.header.add_comment('1st Curvature Corrected')
+                    hdu.header.add_comment('2nd Curvature Corrected')
+                    if len(lYF_A):
+                        hdu.header.add_comment('y-dir Fringe Subtractd')
+                    if len(lXF_A):
+                        hdu.header.add_comment('x-dir Fringe Subtractd')
+                    hdu.writeto(fn, overwrite=True)
+
+                self.log += f"> A Done.<br>"
+                self._writeLog()
+            
+            init = True
+            plt.pause(1)
+            self.p_s7_prof.remove()
+            self.im_s7_spec.remove()
+            self.im_s7_R1.remove()
+            self.im_s7_R2.remove()
+            self.im_s7_R3.remove()
+            self.im_s7_R4.remove()
+            if nf_B:
+                self.log += f"> Run for cam B.<br>"
+                self._writeLog()
+                lDBT = np.zeros(len(lDB_B))
+                dbID = np.arange(len(lDB_B))
+                flatID = np.arange(nf_B)
+                xfID = np.arange(len(lXF_B))
+                yfID = np.arange(len(lYF_B))
+                lDB_data = [None] * len(lDB_B)
+                for i,f in enumerate(lDB_B):
+                    lDBT[i] = Time(proc_base.fname2isot(f)).jd
+                    lDB_data[i] = fits.getdata(f)
+                for i, f in enumerate(lRaw_B):
+                    opn = fits.open(f)[0]
+                    data = opn.data
+                    h = opn.header
+                    jd = Time(h['date']).jd
+                    db = lDB_data[dbID[(jd - lDBT) > 0][-1]]
+                    wh = np.abs(jd - lFlatT_B).argmin()
+                    flat = Flat_B[wh]
+                    ft = lFlatT_B[wh]
+                    ch = hB[wh]
+                    tilt = ch['tilt']
+                    p1_0 = ch['coef1_0']
+                    p1_1 = ch['coef1_1']
+                    p1_2 = ch['coef1_2']
+                    p2_0 = ch['coef2_0']
+                    p2_1 = ch['coef2_1']
+                    p2_2 = ch['coef2_2']
+
+                    data1 = data-db
+                    td = proc_base.tilt_correction(data1, tilt, cubic=True)
+                    cd1 = proc_base.curvature_correction(td, [p1_0, p1_1, p1_2])
+                    
+                    if len(lYF_B):
+                        why = yfID[np.abs(lYFT_B - ft)*24*3600 < 10]
+                        YF = YF_B[why]
+                        cd1 /= YF
+                    if len(lXF_B):
+                        whx = xfID[np.abs(lXFT_B - ft)*24*3600 < 10]
+                        XF = XF_B[whx]
+                        cd1 /= XF
+
+                    cd2 = proc_base.curvature_correction(cd1, [p2_0, p2_1, p2_2])
+
+
+                    cd2 /= flat
+                    cd2 = cd2[:,5:-5,5:-5].astype('int16')
+                    shape = cd2.shape
+
+                    if init:
+                        p0 = int(ch['crpix1']-5)
+                        p_4 = int(p0 - 4/ch['cdelt1'])
+                        p0_5 = int(p0 + 0.5/ch['cdelt1'])
+                        p_0_5 = int(p0 - 0.5/ch['cdelt1'])
+                        self.p_s7_prof = self.ax[7][4].plot(cd2[shape[0]//2,shape[1]//2])[0]
+                        self.ax[7][4].set_xlim(-0.5, shape[2]-0.5)
+
+                        self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cm.ca, origin='lower')
+
+                        self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cm.ca, origin='lower')
+
+                        self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cm.ca, origin='lower')
+                        m = cd2[:,:,p_0_5].mean()
+                        std = cd2[:,:,p_0_5].std()
+                        self.im_s7_R2.set_clim(m-std*2,m+std*2)
+
+                        self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cm.ca, origin='lower')
+                        m = cd2[:,:,p0].mean()
+                        std = cd2[:,:,p0].std()
+                        self.im_s7_R3.set_clim(m-std*2,m+std*2)
+
+                        self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cm.ca, origin='lower')
+                        m = cd2[:,:,p0_5].mean()
+                        std = cd2[:,:,p0_5].std()
+                        self.im_s7_R4.set_clim(m-std*2,m+std*2)
+                        init = False
+                    else:
+                        self.p_s7_prof.y_data(cd2[shape[0]//2,shape[1]//2])
+                        self.im_s7_spec.set_data(cd2[shape[0]//2])
+                        self.im_s7_R1.set_data(cd2[:,:,p_4].T)
+                        self.im_s7_R2.set_data(cd2[:,:,p_0_5].T)
+                        self.im_s7_R3.set_data(cd2[:,:,p0].T)
+                        self.im_s7_R4.set_data(cd2[:,:,p0_5].T)
+
+                    self.ax[7][4].set_title(f'Profile ({i+1}/{len(lRaw_B)})')
+                    self.fig.canvas.draw_idle()
+
+                    # save fits
+                    fn = basename(f)
+                    fn = fn.replace('B.fts', 'B1.fts')
+                    dname = join(self.procdir, basename(dTarget))
+                    if not isdir(dname):
+                        makedirs(dname)
+                    fn = join(dname, fn)
+                    
+                    if ch['STRTIME'].find('.') < 10:
+                        ch['STRTIME'] = ch['STRTIME'].replace('-', 'T').replace('.', '-')
+                    if ch['ENDTIME'].find('.') < 10:
+                        ch['ENDTIME'] = ch['ENDTIME'].replace('-', 'T').replace('.', '-')
+                    obstime = (Time(ch['STRTIME']).jd + Time(ch['ENDTIME']).jd)/2
+                    obstime = Time(obstime, format='jd').isot
+
+                    hdu = fits.PrimaryHDU(cd2.astype('int16'))
+                    hdu.header['CRPIX1'] = (ch['crpix1']-5, 'reference pixel position')
+                    hdu.header['CDELT1'] = (ch['cdelt1'], 'angstrom/pixel')
+                    hdu.header['CRVAL1'] = (ch['crval1'], 'reference wavelength (angstrom)')
+                    hdu.header['EXPTIME'] = (ch['EXPTIME'], 'Second')
+                    hdu.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
+                    hdu.header['DATE'] = (ch['DATE'], 'File Creation Date (UT)')
+                    hdu.header['STRTIME'] = (ch['STRTIME'], 'Scan Start Time')
+                    hdu.header['ENDTIME'] = (ch['ENDTIME'], 'Scan Finish Time')
+                    hdu.header['TILT'] = (ch['tilt'], 'Degree')
+                    hdu.header['COEF1_0'] = (ch['coef1_0'], 'Curvature correction coeff p0')
+                    hdu.header['COEF1_1'] = (ch['coef1_1'], 'Curvature correction coeff p1')
+                    hdu.header['COEF1_2'] = (ch['coef1_2'], 'Curvature correction coeff p2')
+                    hdu.header['COEF2_0'] = (ch['coef2_0'], '2nd Curvature correction coeff p0')
+                    hdu.header['COEF2_1'] = (ch['coef2_1'], '2nd Curvature correction coeff p1')
+                    hdu.header['COEF2_2'] = (ch['coef2_2'], '2nd Curvature correction coeff p2')
+                    hdu.header['CCDNAME'] = (ch['CCDNAME'], 'Prodctname of CCD')
+                    try:
+                        hdu.header['WAVELEN'] = (ch['WAVELEN'], 'Angstrom')
+                    except:
+                        pass
+                    try:
+                        hdu.header['GRATWVLN'] = (ch['GRATWVLN'], 'Angstrom')
+                    except:
+                        pass
+                    hdu.header.add_comment('Tilt Corrected')
+                    hdu.header.add_comment('1st Curvature Corrected')
+                    hdu.header.add_comment('2nd Curvature Corrected')
+                    if len(lYF_B):
+                        hdu.header.add_comment('y-dir Fringe Subtractd')
+                    if len(lXF_B):
+                        hdu.header.add_comment('x-dir Fringe Subtractd')
+                    hdu.writeto(fn, overwrite=True)
+
+                self.log += f"> B Done.<br>"
+                self._writeLog()
+
 
 
         self.log += "> Done.<br>"

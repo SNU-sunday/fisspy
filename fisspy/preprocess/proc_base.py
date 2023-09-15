@@ -944,39 +944,52 @@ class calFlat:
         self.tsh = np.zeros(nf)
         aprof = np.zeros((nf,nw))
         for i, prof in enumerate(fprof):
-            prof = prof*np.ones((4,nw))
+            d2p = np.gradient(np.gradient(prof))
+            d2p = d2p*np.ones((4,nw))
             iteration = 0
-            sh = alignoffset(refI[:,5:-5], prof[:,5:-5])
+            d2r = np.gradient(np.gradient(refI, axis=1), axis=1)
+            sh = alignoffset(d2r[:,5:-5], d2p[:,5:-5])
             wvl = wv.copy()
             self.tsh[i] += sh[1,0]
             while abs(sh[1,0]) >= 1e-1:
                 wvl += sh[1,0]*dw
                 testI = interp(wvl[:,None])*np.ones((4,nw))
-                sh = alignoffset(testI, prof)
+                d2r = np.gradient(np.gradient(testI, axis=1), axis=1)
+                sh = alignoffset(d2r[:, 5:-5], d2p[:, 5:-5])
+                
                 self.tsh[i] += sh[1,0]
                 iteration += 1
                 if iteration == 10:
                     print(f"{i} break")
                     break
-            aprof[i] = testI[2]
+            wvl = wv.copy() + self.tsh[i]*dw
+            aprof[i] = interp(wvl[:,None])
 
 
         self.mlf = self.logF[:,5:-5].mean(1)
         ap =  aprof
         self.lprof = lprof = np.median(self.logF[:,5:-5],1)
         rmin = ap[self.nf//2].argmin()
-        for i in range(self.nf):
-            sh = int(self.tsh[i] - self.tsh[self.nf//2])
-            am1 = ap[i,rmin-sh-10:rmin-sh+10].min()
-            am2 = ap[i,-30:-10].mean()
-            ra = am2 - am1
-            pm1 = lprof[i,rmin-sh-10:rmin-sh+10].min()
-            pm2 = ap[i,-30:-10].mean()
-            rp = pm2 - pm1
-            r = rp/ra
-            ap[i] *= r
-            ys = pm1 - ap[i,rmin-sh-10:rmin-sh+10].min()
-            ap[i] += ys
+        am1 = ap[self.nf//2,rmin-10:rmin+10].min()
+        am2 = ap[self.nf//2,-30:-10].mean()
+        ra = am2 - am1
+        pm1 = lprof[self.nf//2,rmin-10:rmin+10].min()
+        pm2 = ap[self.nf//2,-30:-10].mean()
+        rp = pm2 - pm1
+        r = rp/ra
+        ap *= r
+        # for i in range(self.nf):
+        #     sh = int(self.tsh[i] - self.tsh[self.nf//2])
+        #     # am1 = ap[i,rmin-sh-10:rmin-sh+10].min()
+        #     # am2 = ap[i,-30:-10].mean()
+        #     # ra = am2 - am1
+        #     pm1 = lprof[i,rmin-sh-10:rmin-sh+10].min()
+        #     # pm2 = ap[i,-30:-10].mean()
+        #     # rp = pm2 - pm1
+        #     # r = rp/ra
+        #     ap[i] *= r
+        #     ys = pm1 - ap[i,rmin-sh-10:rmin-sh+10].min()
+        #     ap[i] += ys
 
         self.ap = ap
         self.rmFlat = self.logF - ap[:,None,:]
