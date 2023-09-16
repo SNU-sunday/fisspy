@@ -222,10 +222,10 @@ class prepGUI:
             else:
                 self.s1_data = 10**self.CF.logRF[3]
         if num == 7:
-            self.B_Next.setText("Done")
-            self.B_Next.setStyleSheet(f"background-color: {self.font_primary};")
+            self.B_Next.setVisible(False)
+            plt.pause(0.05)
         else:
-            self.B_Next.setText("Next")
+            self.B_Next.setVisible(True)
         
         self.List_VL[self.stepNum].setGeometry(QtCore.QRect(10,85,280,350))
         plt.pause(0.05)
@@ -358,13 +358,25 @@ class prepGUI:
             self.HL_s0_frame.addWidget(self.B_s0_pf)
             self.HL_s0_frame.addWidget(self.B_s0_nf)
 
+            # go to preprocess step
+            self.L_s0_step7 = QtWidgets.QLabel()
+            self.L_s0_step7.setText("Go to Step7: preprocess")
+            self.L_s0_step7.setFont(self.fNormal)
+            self.B_s0_step7 = QtWidgets.QPushButton()
+            self.B_s0_step7.setText("Go to Step7")
+            self.B_s0_step7.setFont(self.fNormal)
+            self.B_s0_step7.setStyleSheet(f"background-color: {self.bg_second};")
+            self.B_s0_step7.clicked.connect(self.s0_step7)
+
             # add widgets
             self.VL_s0.addWidget(self.L_s0_fflist)
             self.VL_s0.addWidget(self.CB_s0_fflist)
             self.VL_s0.addLayout(self.HL_s0_frame)
+            self.VL_s0.addWidget(self.L_s0_step7)
+            self.VL_s0.addWidget(self.B_s0_step7)
             self.vboxCtrl.addLayout(self.VL_s0)
 
-            self.StepWidgets[0] = [self.L_s0_fflist, self.CB_s0_fflist, self.L_s0_frame, self.LE_s0_frame, self.L_s0_nframe, self.B_s0_pf, self.B_s0_nf]     
+            self.StepWidgets[0] = [self.L_s0_fflist, self.CB_s0_fflist, self.L_s0_frame, self.LE_s0_frame, self.L_s0_nframe, self.B_s0_pf, self.B_s0_nf, self.L_s0_step7, self.B_s0_step7]     
             
         # create Step1 tilt Widget
         if True:
@@ -1249,7 +1261,6 @@ class prepGUI:
             self.L_s7_proc = QtWidgets.QLabel()
             self.L_s7_proc.setText("Run Preprocess:")
             self.L_s7_proc.setFont(self.fNormal)
-            self.L_s7_proc.setStyleSheet(f"color: {self.font_third};")
             
             self.B_s7_proc = QtWidgets.QPushButton()
             self.B_s7_proc.setText("Run")
@@ -1260,7 +1271,6 @@ class prepGUI:
             self.L_s7_comp = QtWidgets.QLabel()
             self.L_s7_comp.setText("Run PCA compression:")
             self.L_s7_comp.setFont(self.fNormal)
-            self.L_s7_comp.setStyleSheet(f"color: {self.font_third};")
             
             self.B_s7_comp = QtWidgets.QPushButton()
             self.B_s7_comp.setText("Run")
@@ -1469,6 +1479,10 @@ class prepGUI:
         else:
             self.step(self.stepNum-1)
 
+    def s0_step7(self):
+        self.step(7)
+        plt.pause(0.05)
+        
     def s0_pf(self):
         if self.frameNum <= 0:
             self.frameNum = 0
@@ -2969,14 +2983,16 @@ class prepGUI:
                     f = f.replace('.fts', '1.fts')
 
                     if makePfile:
-                        Evec, spec, odata = proc_base.PCA_compression(f, ret=True)
+                        Evec, spec, odata, ev = proc_base.PCA_compression(f, ret=True)
+                        self.log += f"> ncoeff: {Evec.shape[0]}.<br> Eval:{ev:.3f} <br>"
+                        self._writeLog()
                         makePfile = False
                         pfile = f.replace('.fts', '_p.fts')
                         pfile = pfile.replace('proc', 'comp')
                         nx, ny, nw = odata.shape
                         if self.p_s7_comp is None:
-                            self.p_s7_odata = self.ax_s7_comp.plot(odata[nx//2, ny//2], label='proc')[0]
-                            self.p_s7_comp = self.ax_s7_comp.plot(spec[nx//2, ny//2], label='comp')[0]
+                            self.p_s7_odata = self.ax_s7_comp.plot(odata[nx//2, ny//2], label='proc', color='C0')[0]
+                            self.p_s7_comp = self.ax_s7_comp.plot(spec[nx//2, ny//2], label='comp', color='C1')[0]
                             self.ax_s7_comp.legend()
                             self.ax_s7_comp.set_xlim(0, nw-1)
                             self.ax_s7_comp.set_xlabel('Wavelength (pix)')
@@ -2992,8 +3008,13 @@ class prepGUI:
                             self._writeLog()
                     num += 1
                         
+            plt.pause(5)
             makePfile = True
             num = 0
+            if self.p_s7_comp is not None:
+                self.p_s7_odata.remove()
+                self.p_s7_comp.remove()
+                self.p_s7_comp = None
             if len(lpB):
                 self.log += f"> Run for cam B.<br>"
                 self._writeLog()
@@ -3009,14 +3030,16 @@ class prepGUI:
                     f = f.replace('.fts', '1.fts')
 
                     if makePfile:
-                        Evec, spec, odata = proc_base.PCA_compression(f, ret=True)
+                        Evec, spec, odata, ev = proc_base.PCA_compression(f, ret=True)
+                        self.log += f"> ncoeff: {Evec.shape[0]}.<br> Eval:{ev:.3f} <br>"
+                        self._writeLog()
                         makePfile = False
                         pfile = f.replace('.fts', '_p.fts')
                         pfile = pfile.replace('proc', 'comp')
                         nx, ny, nw = odata.shape
                         if self.p_s7_comp is None:
-                            self.p_s7_odata = self.ax_s7_comp.plot(odata[nx//2, ny//2], label='proc')[0]
-                            self.p_s7_comp = self.ax_s7_comp.plot(spec[nx//2, ny//2], label='comp')[0]
+                            self.p_s7_odata = self.ax_s7_comp.plot(odata[nx//2, ny//2], label='proc', color='C0')[0]
+                            self.p_s7_comp = self.ax_s7_comp.plot(spec[nx//2, ny//2], label='comp', color='C1')[0]
                             self.ax_s7_comp.legend()
                             self.ax_s7_comp.set_xlim(0, nw-1)
                             self.ax_s7_comp.set_xlabel('Wavelength (pix)')
@@ -3033,7 +3056,7 @@ class prepGUI:
                     num += 1
         
 
-        plt.pause(3)
+        plt.pause(5)
         self.ax_s7_comp.set_visible(False)
         self.log += "> Done.<br>"
         self._writeLog()

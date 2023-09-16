@@ -1201,10 +1201,9 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False):
         pfile = fproc.replace('.fts', '_p.fts')
         pfile = pfile.replace('proc', 'comp')
         dirn = dirname(pfile)
-        print(f"pfile: {basename(pfile)}")
-
         if not isdir(dirn):
             makedirs(dirn)
+            
 
         ranx = np.random.uniform(0, nx-1, 5000).round().astype(int)
         rany = np.random.uniform(0, ny-1, 5000).round().astype(int)
@@ -1226,14 +1225,14 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False):
         Eval, Evec = np.linalg.eig(c_arr)
         if ncoeff is None:
             ncoeff = (Eval >= 1e-1).sum()
+            ncoeff = ncoeff if ncoeff < 50 else 50
+            print(f"eigenvalue[{ncoeff}]: {Eval[50]:.3f}")
         Evec = Evec[:,:ncoeff].T
 
         hdu = fits.PrimaryHDU(Evec.astype('float32'))
         hdu.header['ncoeff'] = ncoeff
         hdu.header['date'] = h['date']
         hdu.writeto(pfile, overwrite=True)
-        
-        print(f"ncoeff: {ncoeff}")
         
         
     else:
@@ -1253,7 +1252,8 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False):
     av = data.mean(2)
     data /= av[:,:,None]
     coeff[:,:,ncoeff] = np.log10(av)
-    coeff[:,:,:ncoeff] = (data[:,:,None,:]*Evec[None,None,:,:]).sum(3)
+    for i in range(ncoeff):
+        coeff[:,:,i] = (data[:,:,:]*Evec[i]).sum(2)
 
     bscale = np.abs(coeff).max()/2e3
     coeff = np.round(coeff/bscale)
@@ -1267,8 +1267,8 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False):
 
     hdu.writeto(cfile, overwrite=True)
 
-    if ret:
+    if ret and pfile is not None:
         c = coeff*bscale
         spec = c[:,:,:ncoeff].dot(Evec)
-        spec *= 10**c[:,:,-1]
-        return Evec, spec, odata
+        spec *= 10**c[:,:,-1][:,:,None]
+        return Evec, spec, odata, Eval[ncoeff]
