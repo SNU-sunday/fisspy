@@ -54,6 +54,7 @@ class prepGUI:
 
         self.xFringe = None
         self.yFringe = None
+        self.p_s7_comp = None
 
         for i,f in enumerate(self.fflatL):
             self.fflatGBL[i] = basename(f)
@@ -76,8 +77,7 @@ class prepGUI:
                           "Step 4: 2nd Curvature Correction",
                           "Step 5: Make Flat",
                           "Step 6: Save Flat",
-                          "Step 7: Run Preproccess",
-                          "Step 8: PCA Compression"]
+                          "Step 7: Run Preproccess"]
         
         self.List_subStep = ["3-1: Atlas Subtraction",
                              "3-2: Vertical Fringe",
@@ -148,6 +148,10 @@ class prepGUI:
         ax_s7_prof.set_position([0.56,0.57,0.38,0.36])
         ax_s7_spec.set_position([0.56,0.07,0.38,0.36])
 
+        self.ax_s7_comp = self.fig.add_subplot(111)
+        self.ax_s7_comp.set_position([0.06,0.07,0.88,0.86])
+        self.ax_s7_comp.set_visible(False)
+
         self.ax = [[ax_s0], [ax_s1_1, ax_s1_2], [ax_s2_1, ax_s2_2, ax_s2_3], None, [ax_s4_1, ax_s4_2, ax_s4_3], [ax_s5], [ax_s6], [ax_s7_R1, ax_s7_R2, ax_s7_R3, ax_s7_R4, ax_s7_prof, ax_s7_spec]]
     
 
@@ -217,8 +221,14 @@ class prepGUI:
                 self.s1_data = self.foc
             else:
                 self.s1_data = 10**self.CF.logRF[3]
+        if num == 7:
+            self.B_Next.setText("Done")
+            self.B_Next.setStyleSheet(f"background-color: {self.font_primary};")
+        else:
+            self.B_Next.setText("Next")
+        
         self.List_VL[self.stepNum].setGeometry(QtCore.QRect(10,85,280,350))
-        plt.pause(0.01)
+        plt.pause(0.05)
         self.fig.set_figheight(h)
 
     def subStep(self, num):
@@ -1236,16 +1246,35 @@ class prepGUI:
         # create Step7 Run Preprocess
         if True:
             self.VL_s7 = QtWidgets.QVBoxLayout()
-            self.B_s7_Run = QtWidgets.QPushButton()
-            self.B_s7_Run.setText("Run")
-            self.B_s7_Run.setFont(self.fNormal)
-            self.B_s7_Run.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
-            self.B_s7_Run.clicked.connect(self.s7_Run)
+            self.L_s7_proc = QtWidgets.QLabel()
+            self.L_s7_proc.setText("Run Preprocess:")
+            self.L_s7_proc.setFont(self.fNormal)
+            self.L_s7_proc.setStyleSheet(f"color: {self.font_third};")
+            
+            self.B_s7_proc = QtWidgets.QPushButton()
+            self.B_s7_proc.setText("Run")
+            self.B_s7_proc.setFont(self.fNormal)
+            self.B_s7_proc.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
+            self.B_s7_proc.clicked.connect(self.s7_proc)
 
-            self.VL_s7.addWidget(self.B_s7_Run)
+            self.L_s7_comp = QtWidgets.QLabel()
+            self.L_s7_comp.setText("Run PCA compression:")
+            self.L_s7_comp.setFont(self.fNormal)
+            self.L_s7_comp.setStyleSheet(f"color: {self.font_third};")
+            
+            self.B_s7_comp = QtWidgets.QPushButton()
+            self.B_s7_comp.setText("Run")
+            self.B_s7_comp.setFont(self.fNormal)
+            self.B_s7_comp.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
+            self.B_s7_comp.clicked.connect(self.s7_comp)
+
+            self.VL_s7.addWidget(self.L_s7_proc)
+            self.VL_s7.addWidget(self.B_s7_proc)
+            self.VL_s7.addWidget(self.L_s7_comp)
+            self.VL_s7.addWidget(self.B_s7_comp)
             self.vboxCtrl.addLayout(self.VL_s7)
 
-            self.StepWidgets[7] = [self.B_s7_Run]
+            self.StepWidgets[7] = [self.L_s7_proc, self.B_s7_proc, self.L_s7_comp, self.B_s7_comp]
 
 
         self.List_VL = [self.VL_s0, self.VL_s1, self.VL_s2, None, self.VL_s4, self.VL_s5, self.VL_s6, self.VL_s7]
@@ -2515,7 +2544,7 @@ class prepGUI:
         self.Next()
         plt.pause(0.1)
 
-    def s7_Run(self):
+    def s7_proc(self):
         self.log += "> Run Preprocess.<br>"
         self._writeLog()
 
@@ -2898,5 +2927,113 @@ class prepGUI:
 
 
 
+        self.log += "> Done.<br>"
+        self._writeLog()
+
+    def s7_comp(self):
+        self.log += "> Run PCA Compression.<br>"
+        self._writeLog()
+
+        self.ax_hide()
+        self.ax_s7_comp.set_visible(True)
+        self.fig.canvas.draw_idle()
+        num = 0
+
+        # Target dir
+        lTarget = glob(join(self.rawdir, '*'))
+        lTarget.sort()
+
+        for Target in lTarget:
+            self.log += f"> Run for {basename(Target)} directory.<br>"
+            self._writeLog()
+
+            lpA = glob(join(Target, '*_A*.fts'))
+            lpA.sort()
+            lpB = glob(join(Target, '*_B*.fts'))
+            lpB.sort()
+
+            makePfile = True
+            if len(lpA):
+                self.log += f"> Run for cam A.<br>"
+                self._writeLog()
+
+                for i,f in enumerate(lpA):
+                    if f.find('BiasDark') > -1:
+                        makePfile = True
+                        num = 0
+                        continue
+                    if num >= 50:
+                        num = 0
+                        makePfile = True
+                    f = f.replace('raw', 'proc')
+                    f = f.replace('.fts', '1.fts')
+
+                    if makePfile:
+                        Evec, spec, odata = proc_base.PCA_compression(f, ret=True)
+                        makePfile = False
+                        pfile = f.replace('.fts', '_p.fts')
+                        pfile = pfile.replace('proc', 'comp')
+                        nx, ny, nw = odata.shape
+                        if self.p_s7_comp is None:
+                            self.p_s7_odata = self.ax_s7_comp.plot(odata[nx//2, ny//2], label='proc')[0]
+                            self.p_s7_comp = self.ax_s7_comp.plot(spec[nx//2, ny//2], label='comp')[0]
+                            self.ax_s7_comp.legend()
+                            self.ax_s7_comp.set_xlim(0, nw-1)
+                            self.ax_s7_comp.set_xlabel('Wavelength (pix)')
+                            self.ax_s7_comp.set_ylabel('Intensity (DN)')
+                        else:
+                            self.p_s7_odata.set_ydata(odata[nx//2, ny//2])
+                            self.p_s7_comp.set_ydata(spec[nx//2, ny//2])
+                        self.ax_s7_comp.set_title(f'pfile: {basename(pfile)}')
+                    else:
+                        proc_base.PCA_compression(f, Evec=Evec, pfile=pfile)
+                        if i % 10:
+                            self.log += f"> Running {i}/{len(lpA)}<br>"
+                            self._writeLog()
+                    num += 1
+                        
+            makePfile = True
+            num = 0
+            if len(lpB):
+                self.log += f"> Run for cam B.<br>"
+                self._writeLog()
+                for i,f in enumerate(lpB):
+                    if f.find('BiasDark') > -1:
+                        makePfile = True
+                        num = 0
+                        continue
+                    if num >= 50:
+                        num = 0
+                        makePfile = True
+                    f = f.replace('raw', 'proc')
+                    f = f.replace('.fts', '1.fts')
+
+                    if makePfile:
+                        Evec, spec, odata = proc_base.PCA_compression(f, ret=True)
+                        makePfile = False
+                        pfile = f.replace('.fts', '_p.fts')
+                        pfile = pfile.replace('proc', 'comp')
+                        nx, ny, nw = odata.shape
+                        if self.p_s7_comp is None:
+                            self.p_s7_odata = self.ax_s7_comp.plot(odata[nx//2, ny//2], label='proc')[0]
+                            self.p_s7_comp = self.ax_s7_comp.plot(spec[nx//2, ny//2], label='comp')[0]
+                            self.ax_s7_comp.legend()
+                            self.ax_s7_comp.set_xlim(0, nw-1)
+                            self.ax_s7_comp.set_xlabel('Wavelength (pix)')
+                            self.ax_s7_comp.set_ylabel('Intensity (DN)')
+                        else:
+                            self.p_s7_odata.set_ydata(odata[nx//2, ny//2])
+                            self.p_s7_comp.set_ydata(spec[nx//2, ny//2])
+                        self.ax_s7_comp.set_title(f'pfile: {basename(pfile)}')
+                    else:
+                        proc_base.PCA_compression(f, Evec=Evec, pfile=pfile)
+                        if i % 10:
+                            self.log += f"> Running {i}/{len(lpB)}<br>"
+                            self._writeLog()
+                    num += 1
+        
+
+        plt.pause(3)
+        self.ax_s7_comp.set_visible(False)
         self.log += "> Done.<br>"
         self._writeLog()

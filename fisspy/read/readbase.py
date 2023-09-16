@@ -100,8 +100,9 @@ def _readPCA(file, pfile, x1=0, x2=None, y1=0, y2=None, ncoeff=False):
     elif ncoeff > ncoeff1:
         ncoeff = ncoeff1
 
-    spec = np.dot(data[:,:,0:ncoeff], pdata[0:ncoeff,:])
-    spec *= 10.**data[:,:,ncoeff][:,:,None]
+    spec = np.dot(data[:,:,:ncoeff], pdata[:ncoeff,:])
+    # spec *= 10.**data[:,:,ncoeff][:,:,None]
+    spec *= 10.**data[:,:,-1][:,:,None]
     return spec
 
 def getHeader(file):

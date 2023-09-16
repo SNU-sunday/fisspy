@@ -64,52 +64,6 @@ def data_mask_and_fill(data, msk_range, axis=1, kind='nearest'):
     mdata = interp(x)
     return mdata
 
-# def cal_fringeGauss(data, axis=0, filterRange=[0,-1], dj=0.05, wpar=12):
-#     """
-#     axis: `int`, optional
-#         0, wavelet along the slit direction
-#     """
-#     wvlet = Wavelet(data, dt=1, axis=axis, dj=dj, param=wpar)
-#     shape = wvlet.wavelet.shape
-#     nwl = shape[1]
-#     for i in range(2):
-#         if filterRange[i] < 0:
-#             filterRange[i] = nwl + filterRange[i]
-
-#     x = np.arange(nwl)
-
-#     pars = [None]*3
-    
-#     freq = np.arctan2(wvlet.wavelet.imag, wvlet.wavelet.real)
-#     coeff = np.zeros((3, shape[0], shape[2]))
-#     Awvlet = np.abs(wvlet.wavelet)
-#     fringe_wvlet = np.zeros(shape, dtype=complex)
-
-#     for ii in range(shape[0]):
-#         if ii % 10 == 0:
-#             print(f"calculate {ii}-th row")
-#         wh = None
-#         for jj in range(shape[2]):
-#             wv = Awvlet[ii,:,jj]
-#             pars[0] = wv[filterRange[0]:filterRange[1]].max()
-#             if wh is None:
-#                 wh = wv[filterRange[0]:filterRange[1]].argmax() + filterRange[0]
-#             else:
-#                 wh = wv[wh-3:wh+3].argmax() + wh-3
-#             pars[1] = wh
-#             pars[2] = 2
-#             try:
-#                 cp, cov = curve_fit(Gaussian, x[wh-5:wh+5], wv[wh-5:wh+5], p0=pars)
-#                 coeff[:,ii,jj] = cp
-#             except:
-#                 print(f"catch err at {ii},:,{jj}")
-#                 return x, Awvlet, freq, coeff
-
-#     fringe_pwr = Gaussian(x[None,:,None], *coeff[:,:,None,:])
-#     fringe_wvlet = fringe_pwr*(np.cos(freq)+1j*np.sin(freq))
-#     fringe = wvlet.iwavelet(fringe_wvlet, wvlet.scale)
-
-#     return fringe
 
 def cal_fringeGauss(wvlet, filterRange=[0,-1]):
     """
@@ -168,17 +122,6 @@ def cal_fringeSimple(wvlet, filterRange):
 
     return wvlet.iwavelet(wavelet, wvlet.scale)
 
-# def cal_fringeSimple(data, filterRange, axis=0, dj=0.05, wpar=12):
-#     wvlet = Wavelet(data, dt=1, axis=axis, dj=dj, param=wpar)
-#     wavelet = wvlet.wavelet
-#     shape = wavelet.shape
-    
-#     nwl = shape[1]
-
-#     wavelet[:,:filterRange[0]] = 0
-#     wavelet[:,filterRange[1]:] = 0
-
-#     return wvlet.iwavelet(wavelet, wvlet.scale)
     
 def get_tilt(img, tilt=None, show=False):
     """
@@ -1245,3 +1188,87 @@ def spectral_range(alpha, order, nw=512):
     wl = sigma/order * (np.sin(np.deg2rad(alpha)) + np.sin(np.deg2rad(alpha) - theta_range))
 
     return wl
+
+def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False):
+    opn = fits.open(fproc)[0]
+    h = opn.header
+    data = opn.data.astype(float)
+    odata = data.copy()
+
+    nx, ny, nw = data.shape
+
+    if pfile is None and Evec is None:
+        pfile = fproc.replace('.fts', '_p.fts')
+        pfile = pfile.replace('proc', 'comp')
+        dirn = dirname(pfile)
+        print(f"pfile: {basename(pfile)}")
+
+        if not isdir(dirn):
+            makedirs(dirn)
+
+        ranx = np.random.uniform(0, nx-1, 5000).round().astype(int)
+        rany = np.random.uniform(0, ny-1, 5000).round().astype(int)
+        tmp = data[ranx, rany]
+        tmpMin = tmp.min(1)
+        wh = tmpMin > 1
+        nd = wh.sum()
+        if nd >= 2000:
+            spgr = tmp[wh][:2000]
+        else:
+            spgr = tmp[wh]
+        
+        spgr /= spgr.mean(1)[:,None]
+        c_arr = spgr.T.dot(spgr)
+        c_arr = np.nan_to_num(c_arr)
+        c_arr[c_arr == -np.inf] = 0
+        c_arr[c_arr == np.inf] = 0
+
+        Eval, Evec = np.linalg.eig(c_arr)
+        if ncoeff is None:
+            ncoeff = (Eval >= 1e-1).sum()
+        Evec = Evec[:,:ncoeff].T
+
+        hdu = fits.PrimaryHDU(Evec.astype('float32'))
+        hdu.header['ncoeff'] = ncoeff
+        hdu.header['date'] = h['date']
+        hdu.writeto(pfile, overwrite=True)
+        
+        print(f"ncoeff: {ncoeff}")
+        
+        
+    else:
+        if Evec is None:
+            opn = fits.open(pfile)
+            ph = opn.header
+            Evec = opn.data
+
+        ncoeff = Evec.shape[0]
+
+
+    coeff = np.zeros((nx, ny, ncoeff+1))
+    cfile = fproc.replace('.fts', '_c.fts')
+    cfile = cfile.replace('proc', 'comp')
+    wh = data < 1
+    data[wh] = 1
+    av = data.mean(2)
+    data /= av[:,:,None]
+    coeff[:,:,ncoeff] = np.log10(av)
+    coeff[:,:,:ncoeff] = (data[:,:,None,:]*Evec[None,None,:,:]).sum(3)
+
+    bscale = np.abs(coeff).max()/2e3
+    coeff = np.round(coeff/bscale)
+
+
+    hdu = fits.PrimaryHDU(coeff.astype('int16'))
+    hdu.header["bscale"] = bscale
+    hdu.header['pfile'] = basename(pfile)
+    for cards in h.cards:
+        hdu.header.add_comment(f"{cards[0]} = {cards[1]} / {cards[2]}")
+
+    hdu.writeto(cfile, overwrite=True)
+
+    if ret:
+        c = coeff*bscale
+        spec = c[:,:,:ncoeff].dot(Evec)
+        spec *= 10**c[:,:,-1]
+        return Evec, spec, odata
