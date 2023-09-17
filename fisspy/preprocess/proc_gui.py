@@ -277,7 +277,7 @@ class prepGUI:
 
         self.panel.setStyleSheet(f"background-color: {self.bg_primary}; color: {self.font_normal}; \n")
         h = self.fig.get_figheight()
-        self.panel.setMaximumSize(QtCore.QSize(300, h*100-22))
+        self.panel.setMaximumSize(QtCore.QSize(300, int(h*100)-22))
         self.panel.setMinimumSize(QtCore.QSize(300, 0))
         self.vboxAll = QtWidgets.QVBoxLayout(self.panel)
         self.vboxMain = QtWidgets.QVBoxLayout()
@@ -1629,10 +1629,14 @@ class prepGUI:
         for ax in self.ax_sub[0]:
             ax.cla()
 
-        self.im_s3_1 = self.ax_sub[0][0].imshow(self.CF.rmFlat[self.frameNum,5:-5,5:-5], plt.cm.gray, origin='lower')
+        data = self.CF.rmFlat[self.frameNum,5:-5,5:-5]
+        m = data.mean()
+        std = data.std()
+        self.im_s3_1 = self.ax_sub[0][0].imshow(data, plt.cm.gray, origin='lower')
         self.ax_sub[0][0].set_xlabel('Wavelength (pix)')
         self.ax_sub[0][0].set_ylabel('Slit (pix)')
         self.ax_sub[0][0].set_title('Atlas Subtraction')
+        self.im_s3_1.set_clim(m-std*1.5, m+std*1.5)
         self.fig.canvas.draw_idle()
 
     def s3_1_pf(self):
@@ -2559,7 +2563,7 @@ class prepGUI:
         plt.pause(0.1)
 
     def s7_proc(self):
-        self.log += "> Run Preprocess.<br>"
+        self.log = "> Run Preprocess.<br>"
         self._writeLog()
 
         lTarget = glob(join(self.rawdir, '*'))
@@ -2651,24 +2655,31 @@ class prepGUI:
             lRaw_B.sort()
             nrB = len(lRaw_B)
 
-            if nf_A:
+            lA = glob(join(dTarget, '*_A*.fts'))
+            lA.sort()
+            lB = glob(join(dTarget, '*_B*.fts'))
+            lB.sort()
+            chclim = False
+
+            if nf_A and len(lA):
                 self.log += f"> Run for cam A.<br>"
                 self._writeLog()
-                lDBT = np.zeros(len(lDB_A))
-                dbID = np.arange(len(lDB_A))
-                flatID = np.arange(nf_A)
+
                 xfID = np.arange(len(lXF_A))
                 yfID = np.arange(len(lYF_A))
-                lDB_data = [None] * len(lDB_A)
-                for i,f in enumerate(lDB_A):
-                    lDBT[i] = Time(proc_base.fname2isot(f)).jd
-                    lDB_data[i] = fits.getdata(f)
-                for i, f in enumerate(lRaw_A):
+
+                for i, f in enumerate(lA):
+                    if i % 10 == 0:
+                        self.log += f"> Run {i}/{len(lA)}.<br>"
+                        self._writeLog()
+                    if f.find('BiasDark') > -1:
+                        db = fits.getdata(f)
+                        chclim = True
+                        continue
                     opn = fits.open(f)[0]
                     data = opn.data
                     h = opn.header
                     jd = Time(h['date']).jd
-                    db = lDB_data[dbID[(jd - lDBT) > 0][-1]]
                     wh = np.abs(jd - lFlatT_A).argmin()
                     flat = Flat_A[wh]
                     ft = lFlatT_A[wh]
@@ -2728,15 +2739,33 @@ class prepGUI:
                         self.im_s7_R4.set_clim(m-std*2,m+std*2)
                         init = False
                     else:
-                        self.p_s7_prof.y_data(cd2[shape[0]//2,shape[1]//2])
+                        self.p_s7_prof.set_ydata(cd2[shape[0]//2,shape[1]//2])
                         self.im_s7_spec.set_data(cd2[shape[0]//2])
                         self.im_s7_R1.set_data(cd2[:,:,p_4].T)
                         self.im_s7_R2.set_data(cd2[:,:,p_0_5].T)
                         self.im_s7_R3.set_data(cd2[:,:,p0].T)
                         self.im_s7_R4.set_data(cd2[:,:,p0_5].T)
+                        if chclim:
+                            prof = cd2[shape[0]//2,shape[1]//2]
+                            self.ax[7][4].set_ylim(prof.min()*0.98, prof.max()*1.02)
+                            self.im_s7_spec.set_clim(cd2[shape[0]//2].min(), cd2[shape[0]//2].max())
+                            
+                            self.im_s7_R1.set_clim(cd2[:,:,p_4].min(), cd2[:,:,p_4].max())
+                            m = cd2[:,:,p_0_5].mean()
+                            std = cd2[:,:,p_0_5].std()
+                            self.im_s7_R2.set_clim(m-std*2,m+std*2)
+                            m = cd2[:,:,p0].mean()
+                            std = cd2[:,:,p0].std()
+                            self.im_s7_R3.set_clim(m-std*2,m+std*2)
+                            m = cd2[:,:,p0_5].mean()
+                            std = cd2[:,:,p0_5].std()
+                            self.im_s7_R4.set_clim(m-std*2,m+std*2)
+                            chclim = False
 
-                    self.ax[7][4].set_title(f'Profile ({i+1}/{len(lRaw_A)})')
+
+                    self.ax[7][4].set_title(f'Profile ({i+1}/{len(lA)})')
                     self.fig.canvas.draw_idle()
+                    plt.pause(0.05)
 
                     
                     # save fits
@@ -2802,21 +2831,21 @@ class prepGUI:
             if nf_B:
                 self.log += f"> Run for cam B.<br>"
                 self._writeLog()
-                lDBT = np.zeros(len(lDB_B))
-                dbID = np.arange(len(lDB_B))
-                flatID = np.arange(nf_B)
                 xfID = np.arange(len(lXF_B))
                 yfID = np.arange(len(lYF_B))
-                lDB_data = [None] * len(lDB_B)
-                for i,f in enumerate(lDB_B):
-                    lDBT[i] = Time(proc_base.fname2isot(f)).jd
-                    lDB_data[i] = fits.getdata(f)
-                for i, f in enumerate(lRaw_B):
+
+                for i, f in enumerate(lB):
+                    if i % 10 == 0:
+                        self.log += f"> Run {i}/{len(lB)}.<br>"
+                        self._writeLog()
+                    if f.find('BiasDark') > -1:
+                        db = fits.getdata(f)
+                        chclim = True
+                        continue
                     opn = fits.open(f)[0]
                     data = opn.data
                     h = opn.header
                     jd = Time(h['date']).jd
-                    db = lDB_data[dbID[(jd - lDBT) > 0][-1]]
                     wh = np.abs(jd - lFlatT_B).argmin()
                     flat = Flat_B[wh]
                     ft = lFlatT_B[wh]
@@ -2844,7 +2873,6 @@ class prepGUI:
 
                     cd2 = proc_base.curvature_correction(cd1, [p2_0, p2_1, p2_2])
 
-
                     cd2 /= flat
                     cd2 = cd2[:,5:-5,5:-5].astype('int16')
                     shape = cd2.shape
@@ -2852,41 +2880,60 @@ class prepGUI:
                     if init:
                         p0 = int(ch['crpix1']-5)
                         p_4 = int(p0 - 4/ch['cdelt1'])
-                        p0_5 = int(p0 + 0.5/ch['cdelt1'])
-                        p_0_5 = int(p0 - 0.5/ch['cdelt1'])
+                        p0_5 = int(p0 + 0.7/ch['cdelt1'])
+                        p_0_5 = int(p0 - 0.7/ch['cdelt1'])
                         self.p_s7_prof = self.ax[7][4].plot(cd2[shape[0]//2,shape[1]//2])[0]
                         self.ax[7][4].set_xlim(-0.5, shape[2]-0.5)
 
-                        self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cm.ca, origin='lower')
+                        self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cm.ha, origin='lower')
 
-                        self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cm.ca, origin='lower')
+                        self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cm.ha, origin='lower')
 
-                        self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cm.ca, origin='lower')
+                        self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cm.ha, origin='lower')
                         m = cd2[:,:,p_0_5].mean()
                         std = cd2[:,:,p_0_5].std()
                         self.im_s7_R2.set_clim(m-std*2,m+std*2)
 
-                        self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cm.ca, origin='lower')
+                        self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cm.ha, origin='lower')
                         m = cd2[:,:,p0].mean()
                         std = cd2[:,:,p0].std()
                         self.im_s7_R3.set_clim(m-std*2,m+std*2)
 
-                        self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cm.ca, origin='lower')
+                        self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cm.ha, origin='lower')
                         m = cd2[:,:,p0_5].mean()
                         std = cd2[:,:,p0_5].std()
                         self.im_s7_R4.set_clim(m-std*2,m+std*2)
                         init = False
                     else:
-                        self.p_s7_prof.y_data(cd2[shape[0]//2,shape[1]//2])
+                        self.p_s7_prof.set_ydata(cd2[shape[0]//2,shape[1]//2])
                         self.im_s7_spec.set_data(cd2[shape[0]//2])
                         self.im_s7_R1.set_data(cd2[:,:,p_4].T)
                         self.im_s7_R2.set_data(cd2[:,:,p_0_5].T)
                         self.im_s7_R3.set_data(cd2[:,:,p0].T)
                         self.im_s7_R4.set_data(cd2[:,:,p0_5].T)
+                        if chclim:
+                            prof = cd2[shape[0]//2,shape[1]//2]
+                            self.ax[7][4].set_ylim(prof.min()*0.98, prof.max()*1.02)
+                            self.im_s7_spec.set_clim(cd2[shape[0]//2].min(), cd2[shape[0]//2].max())
+                            
+                            self.im_s7_R1.set_clim(cd2[:,:,p_4].min(), cd2[:,:,p_4].max())
+                            m = cd2[:,:,p_0_5].mean()
+                            std = cd2[:,:,p_0_5].std()
+                            self.im_s7_R2.set_clim(m-std*2,m+std*2)
+                            m = cd2[:,:,p0].mean()
+                            std = cd2[:,:,p0].std()
+                            self.im_s7_R3.set_clim(m-std*2,m+std*2)
+                            m = cd2[:,:,p0_5].mean()
+                            std = cd2[:,:,p0_5].std()
+                            self.im_s7_R4.set_clim(m-std*2,m+std*2)
+                            chclim = False
 
-                    self.ax[7][4].set_title(f'Profile ({i+1}/{len(lRaw_B)})')
+
+                    self.ax[7][4].set_title(f'Profile ({i+1}/{len(lB)})')
                     self.fig.canvas.draw_idle()
+                    plt.pause(0.05)
 
+                    
                     # save fits
                     fn = basename(f)
                     fn = fn.replace('B.fts', 'B1.fts')
@@ -2902,7 +2949,7 @@ class prepGUI:
                     obstime = (Time(ch['STRTIME']).jd + Time(ch['ENDTIME']).jd)/2
                     obstime = Time(obstime, format='jd').isot
 
-                    hdu = fits.PrimaryHDU(cd2.astype('int16'))
+                    hdu = fits.PrimaryHDU(cd2)
                     hdu.header['CRPIX1'] = (ch['crpix1']-5, 'reference pixel position')
                     hdu.header['CDELT1'] = (ch['cdelt1'], 'angstrom/pixel')
                     hdu.header['CRVAL1'] = (ch['crval1'], 'reference wavelength (angstrom)')
@@ -2936,6 +2983,7 @@ class prepGUI:
                         hdu.header.add_comment('x-dir Fringe Subtractd')
                     hdu.writeto(fn, overwrite=True)
 
+
                 self.log += f"> B Done.<br>"
                 self._writeLog()
 
@@ -2945,12 +2993,13 @@ class prepGUI:
         self._writeLog()
 
     def s7_comp(self):
-        self.log += "> Run PCA Compression.<br>"
+        self.log = "> Run PCA Compression.<br>"
         self._writeLog()
 
         self.ax_hide()
         self.ax_s7_comp.set_visible(True)
         self.fig.canvas.draw_idle()
+        plt.pause(0.05)
         num = 0
 
         # Target dir
@@ -2997,10 +3046,13 @@ class prepGUI:
                             self.ax_s7_comp.set_xlim(0, nw-1)
                             self.ax_s7_comp.set_xlabel('Wavelength (pix)')
                             self.ax_s7_comp.set_ylabel('Intensity (DN)')
+                            
                         else:
                             self.p_s7_odata.set_ydata(odata[nx//2, ny//2])
                             self.p_s7_comp.set_ydata(spec[nx//2, ny//2])
                         self.ax_s7_comp.set_title(f'pfile: {basename(pfile)}')
+                        self.fig.canvas.draw_idle()
+                        plt.pause(0.05)
                     else:
                         proc_base.PCA_compression(f, Evec=Evec, pfile=pfile)
                         if i % 10:
@@ -3048,6 +3100,8 @@ class prepGUI:
                             self.p_s7_odata.set_ydata(odata[nx//2, ny//2])
                             self.p_s7_comp.set_ydata(spec[nx//2, ny//2])
                         self.ax_s7_comp.set_title(f'pfile: {basename(pfile)}')
+                        self.fig.canvas.draw_idle()
+                        plt.pause(0.05)
                     else:
                         proc_base.PCA_compression(f, Evec=Evec, pfile=pfile)
                         if i % 10:
