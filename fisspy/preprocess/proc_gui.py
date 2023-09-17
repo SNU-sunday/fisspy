@@ -2822,12 +2822,13 @@ class prepGUI:
             
             init = True
             plt.pause(1)
-            self.p_s7_prof.remove()
-            self.im_s7_spec.remove()
-            self.im_s7_R1.remove()
-            self.im_s7_R2.remove()
-            self.im_s7_R3.remove()
-            self.im_s7_R4.remove()
+            if nf_A:
+                self.p_s7_prof.remove()
+                self.im_s7_spec.remove()
+                self.im_s7_R1.remove()
+                self.im_s7_R2.remove()
+                self.im_s7_R3.remove()
+                self.im_s7_R4.remove()
             if nf_B:
                 self.log += f"> Run for cam B.<br>"
                 self._writeLog()
@@ -2885,21 +2886,21 @@ class prepGUI:
                         self.p_s7_prof = self.ax[7][4].plot(cd2[shape[0]//2,shape[1]//2])[0]
                         self.ax[7][4].set_xlim(-0.5, shape[2]-0.5)
 
-                        self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cm.ha, origin='lower')
+                        self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cm.ca, origin='lower')
 
-                        self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cm.ha, origin='lower')
+                        self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cm.ca, origin='lower')
 
-                        self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cm.ha, origin='lower')
+                        self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cm.ca, origin='lower')
                         m = cd2[:,:,p_0_5].mean()
                         std = cd2[:,:,p_0_5].std()
                         self.im_s7_R2.set_clim(m-std*2,m+std*2)
 
-                        self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cm.ha, origin='lower')
+                        self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cm.ca, origin='lower')
                         m = cd2[:,:,p0].mean()
                         std = cd2[:,:,p0].std()
                         self.im_s7_R3.set_clim(m-std*2,m+std*2)
 
-                        self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cm.ha, origin='lower')
+                        self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cm.ca, origin='lower')
                         m = cd2[:,:,p0_5].mean()
                         std = cd2[:,:,p0_5].std()
                         self.im_s7_R4.set_clim(m-std*2,m+std*2)
