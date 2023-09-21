@@ -350,7 +350,7 @@ def get_curve_par(cData, show=False):
     for f in range(nf):
         k = d2Data[f].mean(0)
         pk = find_peaks(k, k.std()*2)[0]
-        pk = pk[(pk >= 8) * (pk - 8 <=nw-13)]
+        pk = pk[(pk >= 8) * (pk + 8 <=nw-15)]
         npk = len(pk)
         dwpk = np.zeros((npk, ny))
         for pp, wh in enumerate(pk):

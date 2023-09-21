@@ -1874,12 +1874,13 @@ class prepGUI:
         w = np.zeros(self.CF.nf, dtype=int)
         x = np.arange(self.CF.nw)
         for i in range(self.CF.nf):
-            tt = self.s1[i][5:-5,5:-5].mean(0) - self.s1[i][5:-5,5:-5].min()
+            # tt = self.s1[i][5:-5,5:-5].mean(0) - self.s1[i][5:-5,5:-5].min()
+            tt = self.CF.mlf[i,5:-5] - self.CF.mlf[i,5:-5].max()
             whmin = self.cpos[i]
             pars = [tt[whmin-5], whmin, 5]
             cp, cr = curve_fit(proc_base.Gaussian, x[whmin-5:whmin+5], tt[whmin-5-5:whmin-5+5], p0=pars)
             # self.cpos[i] = int(cp[1])
-            w[i] = int(cp[2]*1.5)
+            w[i] = int(cp[2]*1.2)
 
         self.msk_width = int(np.median(w))
         self.LE_s3_3_MW.setText(f"{self.msk_width}")
@@ -3001,7 +3002,7 @@ class prepGUI:
     def s7_comp(self):
         self.log = "> Run PCA Compression.<br>"
         self._writeLog()
-
+        maxnum = 50
         self.ax_hide()
         self.ax_s7_comp.set_visible(True)
         self.fig.canvas.draw_idle()
@@ -3068,7 +3069,7 @@ class prepGUI:
                             makePfile = True
                             num = 0
                             continue
-                        if num >= 50:
+                        if num >= maxnum:
                             num = 0
                             makePfile = True
                         f = f.replace('raw', 'proc')
@@ -3076,7 +3077,10 @@ class prepGUI:
 
                         if makePfile:
                             Evec, spec, odata, ev = proc_base.PCA_compression(f, ret=True, tol=tol)
-                            self.log += f"> ncoeff: {Evec.shape[0]}.<br> Eval:{ev:.3f} <br>"
+                            ncoeff = Evec.shape[0]
+                            if ncoeff == 50:
+                                maxnum = 10
+                            self.log += f"> ncoeff: {ncoeff}.<br> Eval:{ev:.3f} <br>"
                             self._writeLog()
                             makePfile = False
                             pfile = f.replace('.fts', '_p.fts')
