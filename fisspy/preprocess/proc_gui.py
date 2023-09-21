@@ -11,6 +11,15 @@ from scipy.optimize import curve_fit
 from astropy.time import Time
 from os import makedirs
 from fisspy import cm
+from scipy.signal import find_peaks
+from fisspy.image.base import alignoffset, shift
+
+def qSleep(sec):
+    # plt.show(block=True)
+    ms = int(sec*1e3)
+    qtTimerLoop = QtCore.QEventLoop()
+    QtCore.QTimer.singleShot(ms, qtTimerLoop.quit)
+    qtTimerLoop.exec_()
 
 class prepGUI:
     def __init__(self, basedir, ffocA=None, ffocB=None):
@@ -55,6 +64,8 @@ class prepGUI:
         self.xFringe = None
         self.yFringe = None
         self.p_s7_comp = None
+        self.p_s7_prof = None
+        self.stop = False
 
         for i,f in enumerate(self.fflatL):
             self.fflatGBL[i] = basename(f)
@@ -177,12 +188,16 @@ class prepGUI:
         for ax in self.ax[0]:
             ax.set_visible(True)
         self.initWidget()
-        # self.fig.canvas.mpl_connect()
+        self.fig.canvas.mpl_connect('key_press_event', self._onKey)
         self.s2 = None
         self.fig.show()
-        plt.pause(0.01)
+        qSleep(0.01)
         self.List_VL[0].setGeometry(QtCore.QRect(10,85,280,350))
-        plt.pause(0.01)
+        qSleep(0.01)
+
+    def _onKey(self, event):
+        if event.key == 'ctrl+c':
+            self.stop = True
 
     def ax_hide(self):
         for i, lax in enumerate(self.ax):
@@ -223,12 +238,12 @@ class prepGUI:
                 self.s1_data = 10**self.CF.logRF[3]
         if num == 7:
             self.B_Next.setVisible(False)
-            plt.pause(0.05)
+            qSleep(0.05)
         else:
             self.B_Next.setVisible(True)
         
         self.List_VL[self.stepNum].setGeometry(QtCore.QRect(10,85,280,350))
-        plt.pause(0.05)
+        qSleep(0.05)
         self.fig.set_figheight(h)
 
     def subStep(self, num):
@@ -606,12 +621,12 @@ class prepGUI:
             self.LE_s3_2_FRmin.setStyleSheet(f"background-color: {self.bg_second}; border: 1px solid {self.font_normal};")
             self.LE_s3_2_FRmin.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
 
-            self.yf_max = 115
+            self.yf_max = 110
             self.L_s3_2_FRmax = QtWidgets.QLabel()
             self.L_s3_2_FRmax.setText("max:")
             self.L_s3_2_FRmax.setFont(self.fNormal)
             self.LE_s3_2_FRmax = QtWidgets.QLineEdit()
-            self.LE_s3_2_FRmax.setText("115")
+            self.LE_s3_2_FRmax.setText("110")
             self.LE_s3_2_FRmax.setStyleSheet(f"background-color: {self.bg_second}; border: 1px solid {self.font_normal};")
             self.LE_s3_2_FRmax.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
 
@@ -1278,13 +1293,25 @@ class prepGUI:
             self.B_s7_comp.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
             self.B_s7_comp.clicked.connect(self.s7_comp)
 
+            self.L_s7_stop = QtWidgets.QLabel()
+            self.L_s7_stop.setText("Stop")
+            self.L_s7_stop.setFont(self.fNormal)
+            
+            self.B_s7_stop = QtWidgets.QPushButton()
+            self.B_s7_stop.setText("Stop")
+            self.B_s7_stop.setFont(self.fNormal)
+            self.B_s7_stop.setStyleSheet(f"background-color: {self.font_err}; color: {self.bg_primary};")
+            self.B_s7_stop.clicked.connect(self.s7_stop)
+
             self.VL_s7.addWidget(self.L_s7_proc)
             self.VL_s7.addWidget(self.B_s7_proc)
             self.VL_s7.addWidget(self.L_s7_comp)
             self.VL_s7.addWidget(self.B_s7_comp)
+            self.VL_s7.addWidget(self.L_s7_stop)
+            self.VL_s7.addWidget(self.B_s7_stop)
             self.vboxCtrl.addLayout(self.VL_s7)
 
-            self.StepWidgets[7] = [self.L_s7_proc, self.B_s7_proc, self.L_s7_comp, self.B_s7_comp]
+            self.StepWidgets[7] = [self.L_s7_proc, self.B_s7_proc, self.L_s7_comp, self.B_s7_comp, self.L_s7_stop, self.B_s7_stop]
 
 
         self.List_VL = [self.VL_s0, self.VL_s1, self.VL_s2, None, self.VL_s4, self.VL_s5, self.VL_s6, self.VL_s7]
@@ -1436,7 +1463,8 @@ class prepGUI:
 
     def _writeLog(self):
         self.L_Log.setText(self.log)
-        plt.pause(0.01)
+        qSleep(0.01)
+        # self.fig.canvas.draw_idle()
         self._scrollDown()
 
     def _scrollDown(self):
@@ -1481,7 +1509,7 @@ class prepGUI:
 
     def s0_step7(self):
         self.step(7)
-        plt.pause(0.05)
+        qSleep(0.05)
         
     def s0_pf(self):
         if self.frameNum <= 0:
@@ -1521,7 +1549,7 @@ class prepGUI:
         self.log += f"> Tilt: {self.CF.tilt:.3f} degree.<br>"
         self._writeLog()
         self.LE_s1_tilt.setText(f"{self.CF.tilt:.3f}")
-        self.CF.rlRF = proc_base.tilt_correction(self.CF.logRF, self.CF.tilt, cubic=True)
+        self.CF.rlRF = proc_base.tilt_correction(self.CF.logRF, self.CF.tilt, cubic=False)
         self.log += f"> Done.<br>"
         self._writeLog()
         # draw results
@@ -1825,7 +1853,7 @@ class prepGUI:
             mskMin = mskMin if mskMin >= 0 else 0
             mskMax = self.cpos[i]+self.msk_width
             mskMax = mskMax if mskMax <= self.CF.nw-1 else self.CF.nw-1
-            self.ms1[i] = proc_base.data_mask_and_fill(self.s1[i], [mskMin, mskMax])
+            self.ms1[i] = proc_base.data_mask_and_fill(self.s1[i], [[mskMin], [mskMax]])
 
         self.mskShow = True
         if self.im_s3_3 is None:
@@ -2451,22 +2479,26 @@ class prepGUI:
         if self.yFringe is not None:
             self.log += "> Save y-dir Fringe Pattern.<br>"
             self._writeLog()
-            yf = 10 ** self.yFringe[self.CF.nf//2]
+            yf = 10 ** self.yFringe
             yFringeHDU = fits.PrimaryHDU(yf)
             yFringeHDU.header['EXPTIME'] = (self.h['EXPTIME'], 'Second')
             yFringeHDU.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
             yFringeHDU.header['DATE'] = (self.h['DATE'], 'File Creation Date (UT)')
+            yFringeHDU.header['FILTMIN'] = (self.yf_min, 'Minimum Wavelet Filtering Range')
+            yFringeHDU.header['FILTMAX'] = (self.yf_max, 'Maximum Wavelet Filtering Range')
             yFringeHDU.header.add_comment('Tilt Corrected')
             yFringeHDU.header.add_comment('1st Curvature Corrected')
             yFringeHDU.writeto(join(self.pcaldir, yFringeName), overwrite=True)
         if self.xFringe is not None:
             self.log += "> Save x-dir Fringe Pattern.<br>"
             self._writeLog()
-            xf = 10 ** self.xFringe[self.CF.nf//2]
+            xf = 10 ** self.xFringe
             xFringeHDU = fits.PrimaryHDU(xf)
             xFringeHDU.header['EXPTIME'] = (self.h['EXPTIME'], 'Second')
             xFringeHDU.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
             xFringeHDU.header['DATE'] = (self.h['DATE'], 'File Creation Date (UT)')
+            xFringeHDU.header['FILTMIN'] = (self.xf_min, 'Minimum Wavelet Filtering Range')
+            xFringeHDU.header['FILTMAX'] = (self.xf_max, 'Maximum Wavelet Filtering Range')
             xFringeHDU.header.add_comment('Tilt Corrected')
             xFringeHDU.header.add_comment('1st Curvature Corrected')
             xFringeHDU.writeto(join(self.pcaldir, xFringeName), overwrite=True)
@@ -2480,19 +2512,19 @@ class prepGUI:
             self.B_s6_yes.setStyleSheet(f"background-color: {self.bg_second}; color:{self.font_normal};")
             self.B_s6_No.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
 
-        plt.pause(0.01)
+        qSleep(0.01)
         self.List_VL[6].setGeometry(QtCore.QRect(10,85,280,350))
         
         self.log += "> Done.<br>"
         self._writeLog()
-        plt.pause(0.2)
+        qSleep(0.2)
         self.fig.canvas.draw_idle()
 
     def s6_yes(self):
         self.Initialize()
         self.B_s6_yes.setStyleSheet(f"background-color: {self.bg_second};")
         self.step(0)
-        plt.pause(0.1)
+        qSleep(0.1)
 
     def Initialize(self):
         self.subStepNum = -1
@@ -2560,7 +2592,7 @@ class prepGUI:
 
     def s6_no(self):
         self.Next()
-        plt.pause(0.1)
+        qSleep(0.1)
 
     def s7_proc(self):
         self.log = "> Run Preprocess.<br>"
@@ -2568,431 +2600,360 @@ class prepGUI:
 
         lTarget = glob(join(self.rawdir, '*'))
         lTarget.sort()
-
-        lFlat_A = glob(join(self.pcaldir, 'FISS_FLAT*A.fts'))
-        lFlat_B = glob(join(self.pcaldir, 'FISS_FLAT*B.fts'))
-        lXF_A = glob(join(self.pcaldir, 'FISS_xFringe*A.fts'))
-        lXF_B = glob(join(self.pcaldir, 'FISS_xFringe*B.fts'))
-        lYF_A = glob(join(self.pcaldir, 'FISS_yFringe*A.fts'))
-        lYF_B = glob(join(self.pcaldir, 'FISS_yFringe*B.fts'))
-        lFlat_A.sort()
-        lFlat_B.sort()
-        lXF_A.sort()
-        lXF_B.sort()
-        lYF_A.sort()
-        lYF_B.sort()
-        nf_A = len(lFlat_A)
-        nf_B = len(lFlat_B)
+        lBand = ['A', 'B']
+        cmRaster = [cm.ha, cm.ca]
+        lfFlat_A = glob(join(self.pcaldir, 'FISS_FLAT*A.fts'))
+        lfFlat_A.sort()
+        lfFlat_B = glob(join(self.pcaldir, 'FISS_FLAT*B.fts'))
+        lfFlat_B.sort()
+        tlfFlat = [lfFlat_A, lfFlat_B]
+        lfXF_A = glob(join(self.pcaldir, 'FISS_xFringe*A.fts'))
+        lfXF_B = glob(join(self.pcaldir, 'FISS_xFringe*B.fts'))
+        lfXF_A.sort()
+        lfXF_B.sort()
+        tlfXF = [lfXF_A, lfXF_B]
+        lfYF_A = glob(join(self.pcaldir, 'FISS_yFringe*A.fts'))
+        lfYF_B = glob(join(self.pcaldir, 'FISS_yFringe*B.fts'))
+        lfYF_A.sort()
+        lfYF_B.sort()
+        tlfYF = [lfYF_A, lfYF_B]
         init = True
 
-        if nf_A:
-            h0_A = fits.getheader(lFlat_A[0])
-            nw_A = h0_A['naxis1']
-            ny_A = h0_A['naxis2']
-            
-            Flat_A = np.zeros((nf_A, ny_A, nw_A),dtype=float)
-            hA = [None] * len(lFlat_A)
-            lFlatT_A = np.zeros(nf_A)
-            for i, f in enumerate(lFlat_A):
-                lFlatT_A[i] = Time(proc_base.fname2isot(f)).jd
+        # read Flat and Fringe
+        tFlatHeader = [None]*2
+        tFlat = [None]*2
+        tFlatJD = [None]*2
+        tXF = [None]*2
+        tXFJD = [None]*2
+        tYF = [None]*2
+        tYFJD = [None]*2
+        for i, lfF in enumerate(tlfFlat):
+            # read Flat
+            nFlat = len(lfF)
+            lh = [None]*nFlat
+            lJD = np.zeros(nFlat)
+            init = True
+            for j,f in enumerate(lfF):
                 opn = fits.open(f)[0]
-                hA[i] = opn.header
-                Flat_A[i] = opn.data
+                if init:
+                    ny, nw = opn.data.shape
+                    lFlat = np.zeros((nFlat, ny, nw), dtype=float)
+                    init = False
+                lh[j] = opn.header
+                lFlat[j] = opn.data
+                lJD[j] = Time(proc_base.fname2isot(f)).jd
 
-        if nf_B:
-            h0_B = fits.getheader(lFlat_B[0])
-            nw_B = h0_B['naxis1']
-            ny_B = h0_B['naxis2']
-            nf_B = len(lFlat_B)
-            Flat_B = np.zeros((nf_B, ny_B, nw_B),dtype=float)
-            hB = [None] * len(lFlat_B)
+            tFlat[i] = lFlat
+            tFlatHeader[i] = lh
+            tFlatJD[i] = lJD
 
-            lFlatT_B = np.zeros(nf_B)
-            for i, f in enumerate(lFlat_B):
-                lFlatT_B[i] = Time(proc_base.fname2isot(f)).jd
-                opn = fits.open(f)[0]
-                hB[i] = opn.header
-                Flat_B[i] = opn.data
-
+            # read xFringe
+            lfX = tlfXF[i]
+            init = True
+            if len(lfX):
+                lXFJD = np.zeros(len(lfX))
+                for j,f in enumerate(lfX):
+                    xf = fits.getdata(f)
+                    if init:
+                        nf, ny, nw = xf.shape
+                        lXF = np.zeros((len(lfX), nf, ny, nw))
+                        init = False
+                    lXF[j] = xf
+                    lXFJD[j] = Time(proc_base.fname2isot(f)).jd
+                tXF[i] = lXF
+                tXFJD[i] = lXFJD
+                    
+            # read yFringe
+            lfY = tlfYF[i]
+            init = True
+            if len(lfY):
+                lYFJD = np.zeros(len(lfY))
+                for j,f in enumerate(lfY):
+                    yf = fits.getdata(f)
+                    if init:
+                        nf, ny, nw = yf.shape
+                        lYF = np.zeros((len(lfY), nf, ny, nw))
+                        init = False
+                    lYF[j] = yf
+                    lYFJD[j] = Time(proc_base.fname2isot(f)).jd
+                tYF[i] = lYF
+                tYFJD[i] = lYFJD
+                    
         
-        if len(lXF_A):
-            XF_A = np.zeros((len(lXF_A), ny_A, nw_A),dtype=float)
-            lXFT_A = np.zeros(len(lXF_A))
-            for i, f in enumerate(lXF_A):
-                lXFT_A[i] = Time(proc_base.fname2isot(f)).jd
-                XF_A[i] = fits.getdata(f)
-        if len(lXF_B):
-            XF_B = np.zeros((len(lXF_B), ny_B, nw_B),dtype=float)
-            lXFT_B = np.zeros(len(lXF_B))
-            for i, f in enumerate(lXF_B):
-                lXFT_B[i] = Time(proc_base.fname2isot(f)).jd
-                XF_B[i] = fits.getdata(f)
-        if len(lYF_A):
-            YF_A = np.zeros((len(lYF_A), ny_A, nw_A),dtype=float)
-            lYFT_A = np.zeros(len(lYF_A))
-            for i, f in enumerate(lYF_A):
-                lYFT_A[i] = Time(proc_base.fname2isot(f)).jd
-                YF_A[i] = fits.getdata(f)
-        if len(lYF_B):
-            YF_B = np.zeros((len(lYF_B), ny_B, nw_B),dtype=float)
-            lYFT_B = np.zeros(len(lYF_B))
-            for i, f in enumerate(lYF_B):
-                lYFT_B[i] = Time(proc_base.fname2isot(f)).jd
-                YF_B[i] = fits.getdata(f)
-
         for dTarget in lTarget:
+            if self.stop:
+                break
             self.log += f"> Run for {basename(dTarget)} directory.<br>"
             self._writeLog()
-            lDB_A = glob(join(dTarget, '*A_BiasDark.fts'))
-            lDB_A.sort()
-            lDB_B = glob(join(dTarget, '*B_BiasDark.fts'))
-            lDB_B.sort()
 
-            lRaw_A = glob(join(dTarget, '*A.fts'))
-            lRaw_A.sort()
-            nrA = len(lRaw_A)
-            lRaw_B = glob(join(dTarget, '*B.fts'))
-            lRaw_B.sort()
-            nrB = len(lRaw_B)
+            for idx, band in enumerate(lBand):
+                # if idx == 0:
+                #     continue
+                lf = glob(join(dTarget, f'*_{band}*.fts'))
+                lf.sort()
+                nlf = len(lf)
+                if self.stop:
+                    break
+                chclim = False
+                TXTinit = True
+                if self.p_s7_prof is not None:
+                    self.p_s7_prof.remove()
+                    self.im_s7_spec.remove()
+                    self.im_s7_R1.remove()
+                    self.im_s7_R2.remove()
+                    self.im_s7_R3.remove()
+                    self.im_s7_R4.remove()
+                    self.p_s7_prof = None
+                    qSleep(1)
 
-            lA = glob(join(dTarget, '*_A*.fts'))
-            lA.sort()
-            lB = glob(join(dTarget, '*_B*.fts'))
-            lB.sort()
-            chclim = False
+                xfID = np.arange(len(tlfXF[idx]), dtype=int)
+                yfID = np.arange(len(tlfYF[idx]), dtype=int)
+                if len(tlfFlat[i]) and nlf:
+                    self.log += f"> Run for cam {band}.<br>"
+                    self._writeLog()
 
-            if nf_A and len(lA):
-                self.log += f"> Run for cam A.<br>"
-                self._writeLog()
+                    for i, f in enumerate(lf):
+                        if self.stop:
+                            break
 
-                xfID = np.arange(len(lXF_A))
-                yfID = np.arange(len(lYF_A))
+                        if TXTinit:
+                            self.log += f"> Run {i+1}/{nlf}.<br>"
+                            TXTinit = False
+                        else:
+                            self.log = self.log.replace(f"{i}/{nlf}", f"{i+1}/{nlf}")
 
-                for i, f in enumerate(lA):
-                    if i % 10 == 0:
-                        self.log += f"> Run {i}/{len(lA)}.<br>"
                         self._writeLog()
-                    if f.find('BiasDark') > -1:
-                        db = fits.getdata(f)
-                        chclim = True
-                        continue
-                    opn = fits.open(f)[0]
-                    data = opn.data
-                    h = opn.header
-                    jd = Time(h['date']).jd
-                    wh = np.abs(jd - lFlatT_A).argmin()
-                    flat = Flat_A[wh]
-                    ft = lFlatT_A[wh]
-                    ch = hA[wh]
-                    tilt = ch['tilt']
-                    p1_0 = ch['coef1_0']
-                    p1_1 = ch['coef1_1']
-                    p1_2 = ch['coef1_2']
-                    p2_0 = ch['coef2_0']
-                    p2_1 = ch['coef2_1']
-                    p2_2 = ch['coef2_2']
 
-                    data1 = data-db
-                    td = proc_base.tilt_correction(data1, tilt, cubic=True)
-                    cd1 = proc_base.curvature_correction(td, [p1_0, p1_1, p1_2])
-                    
-                    if len(lYF_A):
-                        why = yfID[np.abs(lYFT_A - ft)*24*3600 < 10]
-                        YF = YF_A[why]
-                        cd1 /= YF
-                    if len(lXF_A):
-                        whx = xfID[np.abs(lXFT_A - ft)*24*3600 < 10]
-                        XF = XF_A[whx]
-                        cd1 /= XF
+                        if f.find('BiasDark') > -1:
+                            db = fits.getdata(f)
+                            chclim = True
+                            continue
+                        # if i < 440:
+                        #     continue
+                        opn = fits.open(f)[0]
+                        data = opn.data
+                        h = opn.header
+                        jd = Time(h['date']).jd
+                        wh = np.abs(jd - tFlatJD[idx]).argmin()
+                        flat = tFlat[idx][wh]
+                        fjd = tFlatJD[idx][wh]
+                        ch = tFlatHeader[idx][wh]
+                        tilt = ch['tilt']
+                        p1_0 = ch['coef1_0']
+                        p1_1 = ch['coef1_1']
+                        p1_2 = ch['coef1_2']
+                        p2_0 = ch['coef2_0']
+                        p2_1 = ch['coef2_1']
+                        p2_2 = ch['coef2_2']
 
-                    cd2 = proc_base.curvature_correction(cd1, [p2_0, p2_1, p2_2])
+                        data1 = data-db
 
-                    cd2 /= flat
-                    cd2 = cd2[:,5:-5,5:-5].astype('int16')
-                    shape = cd2.shape
+                        td = proc_base.tilt_correction(data1, tilt, cubic=True)
+                        cd1 = proc_base.curvature_correction(td, [p1_0, p1_1, p1_2])
 
-                    if init:
-                        p0 = int(ch['crpix1']-5)
-                        p_4 = int(p0 - 4/ch['cdelt1'])
-                        p0_5 = int(p0 + 0.7/ch['cdelt1'])
-                        p_0_5 = int(p0 - 0.7/ch['cdelt1'])
-                        self.p_s7_prof = self.ax[7][4].plot(cd2[shape[0]//2,shape[1]//2])[0]
-                        self.ax[7][4].set_xlim(-0.5, shape[2]-0.5)
-
-                        self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cm.ha, origin='lower')
-
-                        self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cm.ha, origin='lower')
-
-                        self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cm.ha, origin='lower')
-                        m = cd2[:,:,p_0_5].mean()
-                        std = cd2[:,:,p_0_5].std()
-                        self.im_s7_R2.set_clim(m-std*2,m+std*2)
-
-                        self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cm.ha, origin='lower')
-                        m = cd2[:,:,p0].mean()
-                        std = cd2[:,:,p0].std()
-                        self.im_s7_R3.set_clim(m-std*2,m+std*2)
-
-                        self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cm.ha, origin='lower')
-                        m = cd2[:,:,p0_5].mean()
-                        std = cd2[:,:,p0_5].std()
-                        self.im_s7_R4.set_clim(m-std*2,m+std*2)
-                        init = False
-                    else:
-                        self.p_s7_prof.set_ydata(cd2[shape[0]//2,shape[1]//2])
-                        self.im_s7_spec.set_data(cd2[shape[0]//2])
-                        self.im_s7_R1.set_data(cd2[:,:,p_4].T)
-                        self.im_s7_R2.set_data(cd2[:,:,p_0_5].T)
-                        self.im_s7_R3.set_data(cd2[:,:,p0].T)
-                        self.im_s7_R4.set_data(cd2[:,:,p0_5].T)
-                        if chclim:
-                            prof = cd2[shape[0]//2,shape[1]//2]
-                            self.ax[7][4].set_ylim(prof.min()*0.98, prof.max()*1.02)
-                            self.im_s7_spec.set_clim(cd2[shape[0]//2].min(), cd2[shape[0]//2].max())
+                        if len(tlfYF[idx]):
+                            why = yfID[np.abs(tYFJD[idx] - fjd)*24*3600 < 10][0]
+                            YF = np.log10(tYF[idx][why])
+                            rrYF = YF[nf//2]
+                            y = int(h['date'][:4])
+                            if y >= 2022:
+                                iy = YF.mean(0)
+                            else:
+                                iy = YF[nf//2]
                             
-                            self.im_s7_R1.set_clim(cd2[:,:,p_4].min(), cd2[:,:,p_4].max())
+
+                            # image shift correction
+                            if np.abs(jd - fjd)*24*60 <= 30:
+                                cd1 /= 10**(rrYF)
+                            else:
+                                rYF = iy.copy()
+                                sp = proc_base.yf2sp(iy)
+                                rYF -= sp
+                                rYF -= rYF[5:-5,5:-5].mean()
+                                cd1_2 = cd1/10**(rYF)
+                                rr = sp[:,40:60].mean(1)
+                                dd = np.log10(cd1_2.mean(0)) - np.log10(flat)
+                                ii = (dd-dd[5:-5].mean(0))[:,40:60].mean(1)
+                                d2r = np.gradient(np.gradient(rr))
+                                d2i = np.gradient(np.gradient(ii))
+                                pks = find_peaks(d2r[10:-10], d2r[10:-10].std())[0] + 10
+                                shy = 0
+                                for whd in pks:
+                                    img = d2i[whd-8:whd+8] * np.ones((4,16))
+                                    rimg = d2r[whd-8:whd+8] * np.ones((4,16))
+                                    shy += alignoffset(img, rimg)[1,0]
+                                shy /= len(pks)
+                                sh = np.zeros((2,1))
+                                sh[0,0] = shy
+
+                                SP = 10**(shift(sp, sh, missing=-1))
+                                cd1_2 /= SP
+
+                                cYF = YF[nf//2] - rYF - sp
+                                cYF -= cYF[5:-5,5:-5].mean()
+                                ii = (dd-dd[5:-5].mean(0))[5:-5,-26:-10]
+                                rr = cYF[5:-5,-26:-10]
+
+                                sh = alignoffset(ii, rr)
+                                if np.abs(sh).max() >=2:
+                                    sh = np.zeros([2,1])
+                                
+                                scYF = 10**(shift(cYF, sh, missing=-1))
+                                self.tshy = shy
+                                self.sh = sh
+                                self.scYF =scYF
+                                self.cYF = cYF
+                                if np.abs(shy) < 0.2:
+                                    cd1 /= 10**(rrYF)
+                                else:
+                                    cd1 = cd1_2/scYF
+                                
+
+
+
+                        if len(tlfXF[idx]):
+                            whx = xfID[np.abs(tXFJD[idx] - fjd)*24*3600 < 10][0]
+                            XF = tXF[idx][whx]
+                            cd1 /= XF[nf//2]
+
+                        cd2 = proc_base.curvature_correction(cd1, [p2_0, p2_1, p2_2])
+                        cd2 /= flat
+                        cd2 = cd2[:,5:-5,5:-5].astype('int16')
+                        shape = cd2.shape
+
+                        if self.p_s7_prof is None:
+                            p0 = int(ch['crpix1']-5)
+                            p_4 = int(p0 - 4/ch['cdelt1'])
+                            if idx == 0:
+                                p0_5 = int(p0 + 0.7/ch['cdelt1'])
+                                p_0_5 = int(p0 - 0.7/ch['cdelt1'])
+                                self.ax[7][1].set_title('-0.7 $\\AA$')
+                                self.ax[7][3].set_title('+0.7 $\\AA$')
+                            else:
+                                p0_5 = int(p0 + 0.5/ch['cdelt1'])
+                                p_0_5 = int(p0 - 0.5/ch['cdelt1'])
+                                self.ax[7][1].set_title('-0.5 $\\AA$')
+                                self.ax[7][3].set_title('+0.5 $\\AA$')
+                            self.p_s7_prof = self.ax[7][4].plot(cd2[shape[0]//2,shape[1]//2])[0]
+                            self.ax[7][4].set_xlim(-0.5, shape[2]-0.5)
+                            self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cmRaster[idx], origin='lower')
+
+                            self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cmRaster[idx], origin='lower')
+
+                            self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cmRaster[idx], origin='lower')
                             m = cd2[:,:,p_0_5].mean()
                             std = cd2[:,:,p_0_5].std()
                             self.im_s7_R2.set_clim(m-std*2,m+std*2)
+
+                            self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cmRaster[idx], origin='lower')
                             m = cd2[:,:,p0].mean()
                             std = cd2[:,:,p0].std()
                             self.im_s7_R3.set_clim(m-std*2,m+std*2)
+
+                            self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cmRaster[idx], origin='lower')
                             m = cd2[:,:,p0_5].mean()
                             std = cd2[:,:,p0_5].std()
                             self.im_s7_R4.set_clim(m-std*2,m+std*2)
-                            chclim = False
-
-
-                    self.ax[7][4].set_title(f'Profile ({i+1}/{len(lA)})')
-                    self.fig.canvas.draw_idle()
-                    plt.pause(0.05)
-
-                    
-                    # save fits
-                    fn = basename(f)
-                    fn = fn.replace('A.fts', 'A1.fts')
-                    dname = join(self.procdir, basename(dTarget))
-                    if not isdir(dname):
-                        makedirs(dname)
-                    fn = join(dname, fn)
-                    
-                    if ch['STRTIME'].find('.') < 10:
-                        ch['STRTIME'] = ch['STRTIME'].replace('-', 'T').replace('.', '-')
-                    if ch['ENDTIME'].find('.') < 10:
-                        ch['ENDTIME'] = ch['ENDTIME'].replace('-', 'T').replace('.', '-')
-                    obstime = (Time(ch['STRTIME']).jd + Time(ch['ENDTIME']).jd)/2
-                    obstime = Time(obstime, format='jd').isot
-
-                    hdu = fits.PrimaryHDU(cd2)
-                    hdu.header['CRPIX1'] = (ch['crpix1']-5, 'reference pixel position')
-                    hdu.header['CDELT1'] = (ch['cdelt1'], 'angstrom/pixel')
-                    hdu.header['CRVAL1'] = (ch['crval1'], 'reference wavelength (angstrom)')
-                    hdu.header['EXPTIME'] = (ch['EXPTIME'], 'Second')
-                    hdu.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
-                    hdu.header['DATE'] = (ch['DATE'], 'File Creation Date (UT)')
-                    hdu.header['STRTIME'] = (ch['STRTIME'], 'Scan Start Time')
-                    hdu.header['ENDTIME'] = (ch['ENDTIME'], 'Scan Finish Time')
-                    hdu.header['TILT'] = (ch['tilt'], 'Degree')
-                    hdu.header['COEF1_0'] = (ch['coef1_0'], 'Curvature correction coeff p0')
-                    hdu.header['COEF1_1'] = (ch['coef1_1'], 'Curvature correction coeff p1')
-                    hdu.header['COEF1_2'] = (ch['coef1_2'], 'Curvature correction coeff p2')
-                    hdu.header['COEF2_0'] = (ch['coef2_0'], '2nd Curvature correction coeff p0')
-                    hdu.header['COEF2_1'] = (ch['coef2_1'], '2nd Curvature correction coeff p1')
-                    hdu.header['COEF2_2'] = (ch['coef2_2'], '2nd Curvature correction coeff p2')
-                    hdu.header['CCDNAME'] = (ch['CCDNAME'], 'Prodctname of CCD')
-                    try:
-                        hdu.header['WAVELEN'] = (ch['WAVELEN'], 'Angstrom')
-                    except:
-                        pass
-                    try:
-                        hdu.header['GRATWVLN'] = (ch['GRATWVLN'], 'Angstrom')
-                    except:
-                        pass
-                    hdu.header.add_comment('Tilt Corrected')
-                    hdu.header.add_comment('1st Curvature Corrected')
-                    hdu.header.add_comment('2nd Curvature Corrected')
-                    if len(lYF_A):
-                        hdu.header.add_comment('y-dir Fringe Subtractd')
-                    if len(lXF_A):
-                        hdu.header.add_comment('x-dir Fringe Subtractd')
-                    hdu.writeto(fn, overwrite=True)
-
-                self.log += f"> A Done.<br>"
-                self._writeLog()
-            
-            init = True
-            plt.pause(1)
-            if nf_A:
-                self.p_s7_prof.remove()
-                self.im_s7_spec.remove()
-                self.im_s7_R1.remove()
-                self.im_s7_R2.remove()
-                self.im_s7_R3.remove()
-                self.im_s7_R4.remove()
-            if nf_B:
-                self.log += f"> Run for cam B.<br>"
-                self._writeLog()
-                xfID = np.arange(len(lXF_B))
-                yfID = np.arange(len(lYF_B))
-
-                for i, f in enumerate(lB):
-                    if i % 10 == 0:
-                        self.log += f"> Run {i}/{len(lB)}.<br>"
-                        self._writeLog()
-                    if f.find('BiasDark') > -1:
-                        db = fits.getdata(f)
-                        chclim = True
-                        continue
-                    opn = fits.open(f)[0]
-                    data = opn.data
-                    h = opn.header
-                    jd = Time(h['date']).jd
-                    wh = np.abs(jd - lFlatT_B).argmin()
-                    flat = Flat_B[wh]
-                    ft = lFlatT_B[wh]
-                    ch = hB[wh]
-                    tilt = ch['tilt']
-                    p1_0 = ch['coef1_0']
-                    p1_1 = ch['coef1_1']
-                    p1_2 = ch['coef1_2']
-                    p2_0 = ch['coef2_0']
-                    p2_1 = ch['coef2_1']
-                    p2_2 = ch['coef2_2']
-
-                    data1 = data-db
-                    td = proc_base.tilt_correction(data1, tilt, cubic=True)
-                    cd1 = proc_base.curvature_correction(td, [p1_0, p1_1, p1_2])
-                    
-                    if len(lYF_B):
-                        why = yfID[np.abs(lYFT_B - ft)*24*3600 < 10]
-                        YF = YF_B[why]
-                        cd1 /= YF
-                    if len(lXF_B):
-                        whx = xfID[np.abs(lXFT_B - ft)*24*3600 < 10]
-                        XF = XF_B[whx]
-                        cd1 /= XF
-
-                    cd2 = proc_base.curvature_correction(cd1, [p2_0, p2_1, p2_2])
-
-                    cd2 /= flat
-                    cd2 = cd2[:,5:-5,5:-5].astype('int16')
-                    shape = cd2.shape
-
-                    if init:
-                        p0 = int(ch['crpix1']-5)
-                        p_4 = int(p0 - 4/ch['cdelt1'])
-                        p0_5 = int(p0 + 0.7/ch['cdelt1'])
-                        p_0_5 = int(p0 - 0.7/ch['cdelt1'])
-                        self.p_s7_prof = self.ax[7][4].plot(cd2[shape[0]//2,shape[1]//2])[0]
-                        self.ax[7][4].set_xlim(-0.5, shape[2]-0.5)
-
-                        self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cm.ca, origin='lower')
-
-                        self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cm.ca, origin='lower')
-
-                        self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cm.ca, origin='lower')
-                        m = cd2[:,:,p_0_5].mean()
-                        std = cd2[:,:,p_0_5].std()
-                        self.im_s7_R2.set_clim(m-std*2,m+std*2)
-
-                        self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cm.ca, origin='lower')
-                        m = cd2[:,:,p0].mean()
-                        std = cd2[:,:,p0].std()
-                        self.im_s7_R3.set_clim(m-std*2,m+std*2)
-
-                        self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cm.ca, origin='lower')
-                        m = cd2[:,:,p0_5].mean()
-                        std = cd2[:,:,p0_5].std()
-                        self.im_s7_R4.set_clim(m-std*2,m+std*2)
-                        init = False
-                    else:
-                        self.p_s7_prof.set_ydata(cd2[shape[0]//2,shape[1]//2])
-                        self.im_s7_spec.set_data(cd2[shape[0]//2])
-                        self.im_s7_R1.set_data(cd2[:,:,p_4].T)
-                        self.im_s7_R2.set_data(cd2[:,:,p_0_5].T)
-                        self.im_s7_R3.set_data(cd2[:,:,p0].T)
-                        self.im_s7_R4.set_data(cd2[:,:,p0_5].T)
-                        if chclim:
-                            prof = cd2[shape[0]//2,shape[1]//2]
-                            self.ax[7][4].set_ylim(prof.min()*0.98, prof.max()*1.02)
-                            self.im_s7_spec.set_clim(cd2[shape[0]//2].min(), cd2[shape[0]//2].max())
+                            init = False
+                        else:
                             
-                            self.im_s7_R1.set_clim(cd2[:,:,p_4].min(), cd2[:,:,p_4].max())
-                            m = cd2[:,:,p_0_5].mean()
-                            std = cd2[:,:,p_0_5].std()
-                            self.im_s7_R2.set_clim(m-std*2,m+std*2)
-                            m = cd2[:,:,p0].mean()
-                            std = cd2[:,:,p0].std()
-                            self.im_s7_R3.set_clim(m-std*2,m+std*2)
-                            m = cd2[:,:,p0_5].mean()
-                            std = cd2[:,:,p0_5].std()
-                            self.im_s7_R4.set_clim(m-std*2,m+std*2)
-                            chclim = False
+                            self.p_s7_prof.set_ydata(cd2[shape[0]//2,shape[1]//2])
+                            self.im_s7_spec.set_data(cd2[shape[0]//2])
+                            self.im_s7_R1.set_data(cd2[:,:,p_4].T)
+                            self.im_s7_R2.set_data(cd2[:,:,p_0_5].T)
+                            self.im_s7_R3.set_data(cd2[:,:,p0].T)
+                            self.im_s7_R4.set_data(cd2[:,:,p0_5].T)
 
+                            if chclim:
+                                prof = cd2[shape[0]//2,shape[1]//2]
+                                self.ax[7][4].set_ylim(prof.min()*0.95, prof.max()*1.05)
+                                self.im_s7_spec.set_clim(cd2[shape[0]//2].min(), cd2[shape[0]//2].max())
+                                
+                                self.im_s7_R1.set_clim(cd2[:,:,p_4].min(), cd2[:,:,p_4].max())
+                                m = cd2[:,:,p_0_5].mean()
+                                std = cd2[:,:,p_0_5].std()
+                                self.im_s7_R2.set_clim(m-std*2,m+std*2)
+                                m = cd2[:,:,p0].mean()
+                                std = cd2[:,:,p0].std()
+                                self.im_s7_R3.set_clim(m-std*2,m+std*2)
+                                m = cd2[:,:,p0_5].mean()
+                                std = cd2[:,:,p0_5].std()
+                                self.im_s7_R4.set_clim(m-std*2,m+std*2)
 
-                    self.ax[7][4].set_title(f'Profile ({i+1}/{len(lB)})')
-                    self.fig.canvas.draw_idle()
-                    plt.pause(0.05)
+                                self.im_s7_R1.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
+                                self.im_s7_R2.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
+                                self.im_s7_R3.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
+                                self.im_s7_R4.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
+                                self.ax[7][0].set_xlim(-0.5, shape[0]-0.5)
+                                self._writeLog()
+                                chclim = False
+                            
+                            
+                        self.ax[7][4].set_title(f'Profile ({i+1}/{nlf})')
+                        
+                        self.fig.canvas.draw_idle()
+                        qSleep(0.2)
 
-                    
-                    # save fits
-                    fn = basename(f)
-                    fn = fn.replace('B.fts', 'B1.fts')
-                    dname = join(self.procdir, basename(dTarget))
-                    if not isdir(dname):
-                        makedirs(dname)
-                    fn = join(dname, fn)
-                    
-                    if ch['STRTIME'].find('.') < 10:
-                        ch['STRTIME'] = ch['STRTIME'].replace('-', 'T').replace('.', '-')
-                    if ch['ENDTIME'].find('.') < 10:
-                        ch['ENDTIME'] = ch['ENDTIME'].replace('-', 'T').replace('.', '-')
-                    obstime = (Time(ch['STRTIME']).jd + Time(ch['ENDTIME']).jd)/2
-                    obstime = Time(obstime, format='jd').isot
+                        # save fits
+                        fn = basename(f)
+                        fn = fn.replace(f'{band}.fts', f'{band}1.fts')
+                        dname = join(self.procdir, basename(dTarget))
+                        if not isdir(dname):
+                            makedirs(dname)
+                        fn = join(dname, fn)
+                        
+                        if ch['STRTIME'].find('.') < 10:
+                            ch['STRTIME'] = ch['STRTIME'].replace('-', 'T').replace('.', '-')
+                        if ch['ENDTIME'].find('.') < 10:
+                            ch['ENDTIME'] = ch['ENDTIME'].replace('-', 'T').replace('.', '-')
+                        obstime = (Time(ch['STRTIME']).jd + Time(ch['ENDTIME']).jd)/2
+                        obstime = Time(obstime, format='jd').isot
 
-                    hdu = fits.PrimaryHDU(cd2)
-                    hdu.header['CRPIX1'] = (ch['crpix1']-5, 'reference pixel position')
-                    hdu.header['CDELT1'] = (ch['cdelt1'], 'angstrom/pixel')
-                    hdu.header['CRVAL1'] = (ch['crval1'], 'reference wavelength (angstrom)')
-                    hdu.header['EXPTIME'] = (ch['EXPTIME'], 'Second')
-                    hdu.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
-                    hdu.header['DATE'] = (ch['DATE'], 'File Creation Date (UT)')
-                    hdu.header['STRTIME'] = (ch['STRTIME'], 'Scan Start Time')
-                    hdu.header['ENDTIME'] = (ch['ENDTIME'], 'Scan Finish Time')
-                    hdu.header['TILT'] = (ch['tilt'], 'Degree')
-                    hdu.header['COEF1_0'] = (ch['coef1_0'], 'Curvature correction coeff p0')
-                    hdu.header['COEF1_1'] = (ch['coef1_1'], 'Curvature correction coeff p1')
-                    hdu.header['COEF1_2'] = (ch['coef1_2'], 'Curvature correction coeff p2')
-                    hdu.header['COEF2_0'] = (ch['coef2_0'], '2nd Curvature correction coeff p0')
-                    hdu.header['COEF2_1'] = (ch['coef2_1'], '2nd Curvature correction coeff p1')
-                    hdu.header['COEF2_2'] = (ch['coef2_2'], '2nd Curvature correction coeff p2')
-                    hdu.header['CCDNAME'] = (ch['CCDNAME'], 'Prodctname of CCD')
-                    try:
-                        hdu.header['WAVELEN'] = (ch['WAVELEN'], 'Angstrom')
-                    except:
-                        pass
-                    try:
-                        hdu.header['GRATWVLN'] = (ch['GRATWVLN'], 'Angstrom')
-                    except:
-                        pass
-                    hdu.header.add_comment('Tilt Corrected')
-                    hdu.header.add_comment('1st Curvature Corrected')
-                    hdu.header.add_comment('2nd Curvature Corrected')
-                    if len(lYF_B):
-                        hdu.header.add_comment('y-dir Fringe Subtractd')
-                    if len(lXF_B):
-                        hdu.header.add_comment('x-dir Fringe Subtractd')
-                    hdu.writeto(fn, overwrite=True)
+                        hdu = fits.PrimaryHDU(cd2)
+                        hdu.header['CRPIX1'] = (ch['crpix1']-5, 'reference pixel position')
+                        hdu.header['CDELT1'] = (ch['cdelt1'], 'angstrom/pixel')
+                        hdu.header['CRVAL1'] = (ch['crval1'], 'reference wavelength (angstrom)')
+                        hdu.header['EXPTIME'] = (ch['EXPTIME'], 'Second')
+                        hdu.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
+                        hdu.header['DATE'] = (ch['DATE'], 'File Creation Date (UT)')
+                        hdu.header['STRTIME'] = (ch['STRTIME'], 'Scan Start Time')
+                        hdu.header['ENDTIME'] = (ch['ENDTIME'], 'Scan Finish Time')
+                        hdu.header['TILT'] = (ch['tilt'], 'Degree')
+                        hdu.header['COEF1_0'] = (ch['coef1_0'], 'Curvature correction coeff p0')
+                        hdu.header['COEF1_1'] = (ch['coef1_1'], 'Curvature correction coeff p1')
+                        hdu.header['COEF1_2'] = (ch['coef1_2'], 'Curvature correction coeff p2')
+                        hdu.header['COEF2_0'] = (ch['coef2_0'], '2nd Curvature correction coeff p0')
+                        hdu.header['COEF2_1'] = (ch['coef2_1'], '2nd Curvature correction coeff p1')
+                        hdu.header['COEF2_2'] = (ch['coef2_2'], '2nd Curvature correction coeff p2')
+                        hdu.header['CCDNAME'] = (ch['CCDNAME'], 'Prodctname of CCD')
+                        try:
+                            hdu.header['WAVELEN'] = (ch['WAVELEN'], 'Angstrom')
+                        except:
+                            pass
+                        try:
+                            hdu.header['GRATWVLN'] = (ch['GRATWVLN'], 'Angstrom')
+                        except:
+                            pass
+                        hdu.header.add_comment('Tilt Corrected')
+                        hdu.header.add_comment('1st Curvature Corrected')
+                        hdu.header.add_comment('2nd Curvature Corrected')
+                        if len(tlfYF[idx]):
+                            hdu.header.add_comment('y-dir Fringe Subtractd')
+                        if len(tlfXF[idx]):
+                            hdu.header.add_comment('x-dir Fringe Subtractd')
+                        hdu.writeto(fn, overwrite=True)
 
+                    self.log += f"> {band} Done.<br>"
+                    self._writeLog()
 
-                self.log += f"> B Done.<br>"
-                self._writeLog()
-
-
-
-        self.log += "> Done.<br>"
+        if self.stop:
+            self.log += "> Stop.<br>"
+        else:
+            self.log += "> Done.<br>"
         self._writeLog()
-
+        self.stop = False
+        print('Done')
+                    
     def s7_comp(self):
         self.log = "> Run PCA Compression.<br>"
         self._writeLog()
@@ -3000,7 +2961,7 @@ class prepGUI:
         self.ax_hide()
         self.ax_s7_comp.set_visible(True)
         self.fig.canvas.draw_idle()
-        plt.pause(0.05)
+        qSleep(0.05)
         num = 0
 
         # Target dir
@@ -3053,7 +3014,7 @@ class prepGUI:
                             self.p_s7_comp.set_ydata(spec[nx//2, ny//2])
                         self.ax_s7_comp.set_title(f'pfile: {basename(pfile)}')
                         self.fig.canvas.draw_idle()
-                        plt.pause(0.05)
+                        qSleep(0.05)
                     else:
                         proc_base.PCA_compression(f, Evec=Evec, pfile=pfile)
                         if i % 10:
@@ -3061,7 +3022,7 @@ class prepGUI:
                             self._writeLog()
                     num += 1
                         
-            plt.pause(5)
+            qSleep(5)
             makePfile = True
             num = 0
             if self.p_s7_comp is not None:
@@ -3102,7 +3063,7 @@ class prepGUI:
                             self.p_s7_comp.set_ydata(spec[nx//2, ny//2])
                         self.ax_s7_comp.set_title(f'pfile: {basename(pfile)}')
                         self.fig.canvas.draw_idle()
-                        plt.pause(0.05)
+                        qSleep(0.05)
                     else:
                         proc_base.PCA_compression(f, Evec=Evec, pfile=pfile)
                         if i % 10:
@@ -3111,7 +3072,10 @@ class prepGUI:
                     num += 1
         
 
-        plt.pause(5)
+        qSleep(5)
         self.ax_s7_comp.set_visible(False)
         self.log += "> Done.<br>"
         self._writeLog()
+
+    def s7_stop(self):
+        self.stop = True

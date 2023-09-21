@@ -13,6 +13,7 @@ from scipy.signal import find_peaks
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 from fisspy.analysis.wavelet import Wavelet
+from scipy.fftpack import fft, ifft
 
 def fname2isot(f):
     rf = basename(f).replace('_BiasDark', '')
@@ -48,17 +49,19 @@ def Gaussian(x, *par):
 
 def data_mask_and_fill(data, msk_range, axis=1, kind='nearest'):
     shape = data.shape
-    nmsk = len(msk_range)
-    if nmsk %2 !=0:
-        raise(ValueError("msk_range should has even number of elements"))
-    nmsk //= 2
+    minMsk, maxMsk = msk_range
+    nmsk = len(minMsk)
+    if nmsk != len(maxMsk):
+        raise(ValueError("The number of minimum mask range is different from the maximum mask range"))
     x = np.arange(shape[axis])
     xt = x.copy()
     tdata = data.copy()
 
+    lmsk = 0
     for i in range(nmsk):
-        xt = np.delete(xt, np.arange(msk_range[i*2], msk_range[i*2+1]))
-        tdata = np.delete(tdata, np.arange(msk_range[i*2], msk_range[i*2+1]), axis=axis)
+        xt = np.delete(xt, np.arange(lmsk+minMsk[i], lmsk+maxMsk[i]))
+        tdata = np.delete(tdata, np.arange(lmsk+minMsk[i], lmsk+maxMsk[i]), axis=axis)
+        lmsk -= maxMsk[i] - minMsk[i]
         
     interp = interp1d(xt, tdata, axis=axis, kind=kind)
     mdata = interp(x)
@@ -123,7 +126,7 @@ def cal_fringeSimple(wvlet, filterRange):
     return wvlet.iwavelet(wavelet, wvlet.scale)
 
     
-def get_tilt(img, tilt=None, show=False):
+def get_tilt_old(img, tilt=None, show=False):
     """
     Get a tilt angle of the spectrum camera in the unit of degree.
 
@@ -212,6 +215,91 @@ def get_tilt(img, tilt=None, show=False):
             pass
 
     return Tilt
+
+def get_tilt(img, tilt=None, show=False):
+    """
+    Get a tilt angle of the spectrum camera in the unit of degree.
+
+    Parameters
+    ----------
+    img : `~numpy.array`
+        A two-dimensional `~numpy.array` of the form ``(y, x)``.
+    show : `bool`, optional
+        If `False` (default) just calculate the tilt angle.
+        If `True` calculate and draw the original image and the rotation corrected image.
+
+    Returns
+    -------
+    Tilt : `float`
+        A tilt angle of the spectrum camera in the unit of degree.
+
+    Examples
+    --------
+    >>> from astropy.io import fits
+    >>> data = fits.getdata("FISS_20140603_164020_A_Flat.fts")[3]
+    >>> tilt = get_tilt(data, show=True)
+    """
+
+    nw = img.shape[-1]
+    wp = 40
+
+    dy_img = np.gradient(np.gradient(img, axis=0), axis=0)
+    k = np.abs(dy_img[20:-20,wp:wp+20].mean(1))
+    pks = find_peaks(k, k.std()*2)[0]+20
+    npks = len(pks)
+
+    shy = 0
+    for whd in pks:
+        i1 = dy_img[whd-16:whd+16, wp:wp+16]
+        i2 = dy_img[whd-16:whd+16, -(wp+16):-wp]
+        sh = alignoffset(i2, i1)
+        shy += sh[0,0]
+    shy /= npks
+    
+    if tilt is None:
+        Tilt = np.rad2deg(np.arctan2(shy, nw - wp*2))
+    else:
+        Tilt = tilt
+
+
+    if show:
+        rimg = rot(img, np.deg2rad(-Tilt), cubic=True, missing=-1)
+        
+        fig, ax = plt.subplots(2,1, figsize=[6, 6], sharey=True, sharex=True)
+        iimg = img - np.median(img, axis=0)
+        m = iimg[whd-16:whd+16].mean()
+        std = iimg[whd-16:whd+16].std()
+        imo = ax[0].imshow(iimg, plt.cm.gray, origin='lower', interpolation='bilinear')
+        imo.set_clim(m-std*2,m+std*2)
+        
+        irimg = rimg - np.median(rimg, axis=0)
+        imr = ax[1].imshow(irimg, plt.cm.gray, origin='lower', interpolation='bilinear')
+        clim = imo.get_clim()
+        imr.set_clim(clim)
+        # imr.set_clim(m-std,m+std)
+
+        # ax[0].set_xlabel('Wavelength (pix)')
+        ax[1].set_xlabel('Wavelength (pix)')
+        ax[1].set_ylabel('Slit (pix)')
+        ax[0].set_ylabel('Slit (pix)')
+        ax[0].set_title('tilted image')
+        ax[1].set_title('corrected image')
+
+        ax[0].set_ylim(whd-10,whd+10)
+
+        ax[0].set_aspect(adjustable='box', aspect='auto')
+        ax[1].set_aspect(adjustable='box', aspect='auto')
+
+        fig.tight_layout()
+        fig.show()
+        try:
+            fig.canvas.manager.window.move(0,0)
+        except:
+            pass
+
+    return Tilt
+
+
 
 def piecewise_quadratic_fit(x, y, npoint=5):
     """
@@ -1031,18 +1119,6 @@ def preprocess(f, outname, flat, slit, dark, tilt, curve_coeff, cent_wv=False, o
     if ret:
         return ci, hdu.header
 
-def pca_compression(data, h, outname, ncoeff=30, pfname=None, pdata=None):
-    if pfname is None:
-        pfname = outname.replace('c.fts', 'p.fts')
-    nx, ny, nw = data.shape
-    bscale = 1
-    bzero = 0
-    ret = False
-
-    if pdata is None:
-        ret = True
-        x = np.round()
-
 def wv_calib_atlas(data, header, cent_wv=False):
     wave, intensity = read_atlas()
 
@@ -1272,3 +1348,17 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False):
         spec = c[:,:,:ncoeff].dot(Evec)
         spec *= 10**c[:,:,-1][:,:,None]
         return Evec, spec, odata, Eval[ncoeff]
+
+def yf2sp(yf):
+    """
+    Calculate the slit pattern using the y-directional Fringe pattern
+    """
+    d2y = np.gradient(np.gradient(yf,axis=0), axis=0).mean(1)
+    pks = find_peaks(d2y[5:-5], d2y[5:-5].std())[0]+5
+    myf = data_mask_and_fill(yf, [pks-1,pks+2], axis=0, kind='slinear')
+    s1 = myf[:,5:-5].mean(1)[:,None]
+    sp = yf-myf+s1
+    fsp = fft(sp, axis=1)
+    fsp[:,10:-9] = 0
+    sp = ifft(fsp,axis=1).real
+    return sp
