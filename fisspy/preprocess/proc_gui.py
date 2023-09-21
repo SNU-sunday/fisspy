@@ -35,6 +35,7 @@ class prepGUI:
         self.border = "#5a626a"
         self.btn_1 = "#997404"
         self.btn_2 = "#ea868f"
+        self.runCam = 0 # 0: both, 1: A, 2: B
 
         plt.rcParams['text.color'] = self.font_normal
         plt.rcParams['axes.labelcolor'] = self.font_normal
@@ -1273,10 +1274,43 @@ class prepGUI:
         # create Step7 Run Preprocess
         if True:
             self.VL_s7 = QtWidgets.QVBoxLayout()
+
+            self.HL_s7_cam = QtWidgets.QHBoxLayout()
+            self.L_s7_cam = QtWidgets.QLabel()
+            self.L_s7_cam.setText("Select Camera:")
+            self.L_s7_cam.setFont(self.fNormal)
+
+            self.CB_s7_camlist = QtWidgets.QComboBox()
+            self.CB_s7_camlist.setStyleSheet("background-color: %s; border: 1px solid %s;"%(self.bg_second, self.border))
+            self.CB_s7_camlist.addItems(['0: both','1: A','2: B'])
+            self.CB_s7_camlist.setCurrentIndex(self.runCam)
+
+            self.HL_s7_cam.addWidget(self.L_s7_cam)
+            self.HL_s7_cam.addWidget(self.CB_s7_camlist)
+
+            self.HL_s7_target = QtWidgets.QHBoxLayout()
+            self.L_s7_target = QtWidgets.QLabel()
+            self.L_s7_target.setText("Select Target:")
+            self.L_s7_target.setFont(self.fNormal)
+
+            self.CB_s7_targetlist = QtWidgets.QComboBox()
+            self.CB_s7_targetlist.setStyleSheet("background-color: %s; border: 1px solid %s;"%(self.bg_second, self.border))
+            lTarget = glob(join(self.rawdir, '*'))
+            lTarget.sort()
+            target = [None] * (len(lTarget)+1)
+            target[0] = '0: All'
+            for ii, t in enumerate(lTarget):
+                target[ii+1] = f"{ii+1}: {basename(t)}"
+            self.CB_s7_targetlist.addItems(target)
+            self.CB_s7_targetlist.setCurrentIndex(self.runCam)
+
+            self.HL_s7_target.addWidget(self.L_s7_target)
+            self.HL_s7_target.addWidget(self.CB_s7_targetlist)
+
             self.L_s7_proc = QtWidgets.QLabel()
             self.L_s7_proc.setText("Run Preprocess:")
             self.L_s7_proc.setFont(self.fNormal)
-            
+
             self.B_s7_proc = QtWidgets.QPushButton()
             self.B_s7_proc.setText("Run")
             self.B_s7_proc.setFont(self.fNormal)
@@ -1303,6 +1337,8 @@ class prepGUI:
             self.B_s7_stop.setStyleSheet(f"background-color: {self.font_err}; color: {self.bg_primary};")
             self.B_s7_stop.clicked.connect(self.s7_stop)
 
+            self.VL_s7.addLayout(self.HL_s7_cam)
+            self.VL_s7.addLayout(self.HL_s7_target)
             self.VL_s7.addWidget(self.L_s7_proc)
             self.VL_s7.addWidget(self.B_s7_proc)
             self.VL_s7.addWidget(self.L_s7_comp)
@@ -1311,7 +1347,7 @@ class prepGUI:
             self.VL_s7.addWidget(self.B_s7_stop)
             self.vboxCtrl.addLayout(self.VL_s7)
 
-            self.StepWidgets[7] = [self.L_s7_proc, self.B_s7_proc, self.L_s7_comp, self.B_s7_comp, self.L_s7_stop, self.B_s7_stop]
+            self.StepWidgets[7] = [self.L_s7_cam, self.CB_s7_camlist, self.L_s7_target, self.CB_s7_targetlist, self.L_s7_proc, self.B_s7_proc, self.L_s7_comp, self.B_s7_comp, self.L_s7_stop, self.B_s7_stop]
 
 
         self.List_VL = [self.VL_s0, self.VL_s1, self.VL_s2, None, self.VL_s4, self.VL_s5, self.VL_s6, self.VL_s7]
@@ -2597,6 +2633,8 @@ class prepGUI:
     def s7_proc(self):
         self.log = "> Run Preprocess.<br>"
         self._writeLog()
+        self.runCam = self.CB_s7_camlist.currentIndex()
+        self.runTarget = self.CB_s7_targetlist.currentIndex()
 
         lTarget = glob(join(self.rawdir, '*'))
         lTarget.sort()
@@ -2680,15 +2718,21 @@ class prepGUI:
                 tYFJD[i] = lYFJD
                     
         
-        for dTarget in lTarget:
+        for kk, dTarget in enumerate(lTarget):
+            if self.runTarget:
+                if kk != self.runTarget -1:
+                    continue
+
             if self.stop:
                 break
             self.log += f"> Run for {basename(dTarget)} directory.<br>"
             self._writeLog()
 
             for idx, band in enumerate(lBand):
-                # if idx == 0:
-                #     continue
+                if self.runCam == 1 and idx == 1:
+                    continue
+                elif self.runCam == 2 and idx == 0:
+                    continue
                 lf = glob(join(dTarget, f'*_{band}*.fts'))
                 lf.sort()
                 nlf = len(lf)
@@ -2708,7 +2752,7 @@ class prepGUI:
 
                 xfID = np.arange(len(tlfXF[idx]), dtype=int)
                 yfID = np.arange(len(tlfYF[idx]), dtype=int)
-                if len(tlfFlat[i]) and nlf:
+                if len(tlfFlat[idx]) and nlf:
                     self.log += f"> Run for cam {band}.<br>"
                     self._writeLog()
 
@@ -2962,120 +3006,111 @@ class prepGUI:
         self.ax_s7_comp.set_visible(True)
         self.fig.canvas.draw_idle()
         qSleep(0.05)
-        num = 0
+
+        self.runCam = self.CB_s7_camlist.currentIndex()
+        self.runTarget = self.CB_s7_targetlist.currentIndex()
+
+        lBand = ['A', 'B']
+        ltol = [1e-1, 5e-1]
 
         # Target dir
         lTarget = glob(join(self.rawdir, '*'))
         lTarget.sort()
 
-        for Target in lTarget:
+        for kk, Target in enumerate(lTarget):
+            if self.runTarget:
+                if kk != self.runTarget -1:
+                    continue
+
+            if self.stop:
+                break
+
             self.log += f"> Run for {basename(Target)} directory.<br>"
             self._writeLog()
 
-            lpA = glob(join(Target, '*_A*.fts'))
-            lpA.sort()
-            lpB = glob(join(Target, '*_B*.fts'))
-            lpB.sort()
-
-            makePfile = True
-            if len(lpA):
-                self.log += f"> Run for cam A.<br>"
-                self._writeLog()
-
-                for i,f in enumerate(lpA):
-                    if f.find('BiasDark') > -1:
-                        makePfile = True
-                        num = 0
-                        continue
-                    if num >= 50:
-                        num = 0
-                        makePfile = True
-                    f = f.replace('raw', 'proc')
-                    f = f.replace('.fts', '1.fts')
-
-                    if makePfile:
-                        Evec, spec, odata, ev = proc_base.PCA_compression(f, ret=True)
-                        self.log += f"> ncoeff: {Evec.shape[0]}.<br> Eval:{ev:.3f} <br>"
-                        self._writeLog()
-                        makePfile = False
-                        pfile = f.replace('.fts', '_p.fts')
-                        pfile = pfile.replace('proc', 'comp')
-                        nx, ny, nw = odata.shape
-                        if self.p_s7_comp is None:
-                            self.p_s7_odata = self.ax_s7_comp.plot(odata[nx//2, ny//2], label='proc', color='C0')[0]
-                            self.p_s7_comp = self.ax_s7_comp.plot(spec[nx//2, ny//2], label='comp', color='C1')[0]
-                            self.ax_s7_comp.legend()
-                            self.ax_s7_comp.set_xlim(0, nw-1)
-                            self.ax_s7_comp.set_xlabel('Wavelength (pix)')
-                            self.ax_s7_comp.set_ylabel('Intensity (DN)')
-                            
-                        else:
-                            self.p_s7_odata.set_ydata(odata[nx//2, ny//2])
-                            self.p_s7_comp.set_ydata(spec[nx//2, ny//2])
-                        self.ax_s7_comp.set_title(f'pfile: {basename(pfile)}')
-                        self.fig.canvas.draw_idle()
-                        qSleep(0.05)
-                    else:
-                        proc_base.PCA_compression(f, Evec=Evec, pfile=pfile)
-                        if i % 10:
-                            self.log += f"> Running {i}/{len(lpA)}<br>"
-                            self._writeLog()
-                    num += 1
-                        
-            qSleep(5)
             makePfile = True
             num = 0
-            if self.p_s7_comp is not None:
-                self.p_s7_odata.remove()
-                self.p_s7_comp.remove()
-                self.p_s7_comp = None
-            if len(lpB):
-                self.log += f"> Run for cam B.<br>"
-                self._writeLog()
-                for i,f in enumerate(lpB):
-                    if f.find('BiasDark') > -1:
-                        makePfile = True
-                        num = 0
-                        continue
-                    if num >= 50:
-                        num = 0
-                        makePfile = True
-                    f = f.replace('raw', 'proc')
-                    f = f.replace('.fts', '1.fts')
+            for bb, band in enumerate(lBand):
+                if self.runCam == 1 and bb == 1:
+                    continue
+                elif self.runCam == 2 and bb == 0:
+                    continue
+                if self.stop:
+                    break
 
-                    if makePfile:
-                        Evec, spec, odata, ev = proc_base.PCA_compression(f, ret=True)
-                        self.log += f"> ncoeff: {Evec.shape[0]}.<br> Eval:{ev:.3f} <br>"
-                        self._writeLog()
-                        makePfile = False
-                        pfile = f.replace('.fts', '_p.fts')
-                        pfile = pfile.replace('proc', 'comp')
-                        nx, ny, nw = odata.shape
-                        if self.p_s7_comp is None:
-                            self.p_s7_odata = self.ax_s7_comp.plot(odata[nx//2, ny//2], label='proc', color='C0')[0]
-                            self.p_s7_comp = self.ax_s7_comp.plot(spec[nx//2, ny//2], label='comp', color='C1')[0]
-                            self.ax_s7_comp.legend()
-                            self.ax_s7_comp.set_xlim(0, nw-1)
-                            self.ax_s7_comp.set_xlabel('Wavelength (pix)')
-                            self.ax_s7_comp.set_ylabel('Intensity (DN)')
+                if self.p_s7_comp is not None:
+                    self.p_s7_comp.remove()
+                    self.p_s7_comp = None
+                    self.p_s7_odata.remove()
+                
+                tol = ltol[bb]
+                lf = glob(join(Target, f'*_{band}*.fts'))
+                lf.sort()
+                nlf = len(lf)
+                TXTinit = True
+                if nlf:
+                    self.log += f"> Run for cam {band}.<br>"
+                    self._writeLog()
+
+                    for i, f in enumerate(lf):
+                        if self.stop:
+                            break
+
+                        if TXTinit:
+                            self.log += f"> Run {i+1}/{nlf}.<br>"
+                            TXTinit = False
                         else:
-                            self.p_s7_odata.set_ydata(odata[nx//2, ny//2])
-                            self.p_s7_comp.set_ydata(spec[nx//2, ny//2])
-                        self.ax_s7_comp.set_title(f'pfile: {basename(pfile)}')
-                        self.fig.canvas.draw_idle()
-                        qSleep(0.05)
-                    else:
-                        proc_base.PCA_compression(f, Evec=Evec, pfile=pfile)
-                        if i % 10:
-                            self.log += f"> Running {i}/{len(lpB)}<br>"
-                            self._writeLog()
-                    num += 1
-        
+                            self.log = self.log.replace(f"{i}/{nlf}", f"{i+1}/{nlf}")
 
-        qSleep(5)
-        self.ax_s7_comp.set_visible(False)
-        self.log += "> Done.<br>"
+                        self._writeLog()
+
+                        if f.find('BiasDark') > -1:
+                            makePfile = True
+                            num = 0
+                            continue
+                        if num >= 50:
+                            num = 0
+                            makePfile = True
+                        f = f.replace('raw', 'proc')
+                        f = f.replace('.fts', '1.fts')
+
+                        if makePfile:
+                            Evec, spec, odata, ev = proc_base.PCA_compression(f, ret=True, tol=tol)
+                            self.log += f"> ncoeff: {Evec.shape[0]}.<br> Eval:{ev:.3f} <br>"
+                            self._writeLog()
+                            makePfile = False
+                            pfile = f.replace('.fts', '_p.fts')
+                            pfile = pfile.replace('proc', 'comp')
+                            nx, ny, nw = odata.shape
+                            if self.p_s7_comp is None:
+                                self.p_s7_odata = self.ax_s7_comp.plot(odata[nx//2, ny//2], label='proc', color='C0')[0]
+                                self.p_s7_comp = self.ax_s7_comp.plot(spec[nx//2, ny//2], label='comp', color='C1')[0]
+                                self.ax_s7_comp.legend()
+                                self.ax_s7_comp.set_xlim(0, nw-1)
+                                self.ax_s7_comp.set_xlabel('Wavelength (pix)')
+                                self.ax_s7_comp.set_ylabel('Intensity (DN)')
+                        else:
+                            res = proc_base.PCA_compression(f, Evec=Evec, pfile=pfile, tol=tol, ret=True)
+                            odata = res[2]
+                            spec = res[1]
+                        self.p_s7_odata.set_ydata(odata[nx//2, ny//2])
+                        self.p_s7_comp.set_ydata(spec[nx//2, ny//2])
+                        self.ax_s7_comp.set_ylim(odata[nx//2, ny//2].min()*0.98, odata[nx//2, ny//2].max()*1.02)
+                        self.ax_s7_comp.set_title(f"Profile ({i+1}/{nlf})")
+                        self.fig.canvas.draw_idle()
+                        qSleep(0.1)
+                            
+                        num += 1 
+
+                qSleep(5)
+        if self.stop:
+            self.log += "> Stop.<br>"
+        else:
+            self.log += "> Done.<br>"
         self._writeLog()
+        self.ax_s7_comp.set_visible(False)
+        self.stop = False
+        print('Done')
 
     def s7_stop(self):
         self.stop = True

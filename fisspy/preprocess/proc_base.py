@@ -1265,13 +1265,14 @@ def spectral_range(alpha, order, nw=512):
 
     return wl
 
-def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False):
+def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False, tol=1e-1):
     opn = fits.open(fproc)[0]
     h = opn.header
     data = opn.data.astype(float)
     odata = data.copy()
 
     nx, ny, nw = data.shape
+    Eval = None
 
     if pfile is None and Evec is None:
         pfile = fproc.replace('.fts', '_p.fts')
@@ -1300,8 +1301,9 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False):
 
         Eval, Evec = np.linalg.eig(c_arr)
         if ncoeff is None:
-            ncoeff = (Eval >= 1e-1).sum()
+            ncoeff = (Eval >= tol).sum()
             ncoeff = ncoeff if ncoeff < 50 else 50
+            ncoeff = ncoeff if ncoeff > 30 else 30
             print(f"eigenvalue[{ncoeff}]: {Eval[50]:.3f}")
         Evec = Evec[:,:ncoeff].T
 
@@ -1347,7 +1349,10 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False):
         c = coeff*bscale
         spec = c[:,:,:ncoeff].dot(Evec)
         spec *= 10**c[:,:,-1][:,:,None]
-        return Evec, spec, odata, Eval[ncoeff]
+        if Eval is None:
+            return Evec, spec, odata
+        else:
+            return Evec, spec, odata, Eval[ncoeff]
 
 def yf2sp(yf):
     """
