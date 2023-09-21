@@ -2000,8 +2000,8 @@ class prepGUI:
         for i in range(self.CF.nf):
             self.wvlet_x[i] = Wavelet(self.ms1[i][5:-5,5:-5], dt=1, axis=1, dj=0.05, param=12)
             data = np.abs(self.wvlet_x[i].wavelet).mean((0,2))
-            xwh[i] = data[:-20].argmax()
-            hmax = data[:-20].max()/2
+            xwh[i] = data[:-25].argmax()
+            hmax = data[:-25].max()/2
             t = x[data[xwh[i]-7:xwh[i]+7] >= hmax]
             w[i] = (t.max() - t.min())/2
 
