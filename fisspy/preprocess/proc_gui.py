@@ -22,7 +22,7 @@ def qSleep(sec):
     qtTimerLoop.exec_()
 
 class prepGUI:
-    def __init__(self, basedir, ffocA=None, ffocB=None):
+    def __init__(self, basedir, ffocA=None, ffocB=None, savedir=None):
         mpl.use('Qt5Agg')
         # color
         self.bg_primary = "#212529"
@@ -54,12 +54,17 @@ class prepGUI:
 
         self.rcaldir = join(basedir, 'cal')
         self.pcaldir = join(basedir, 'proc', 'cal')
-        self.procdir = join(basedir, 'proc')
-        self.compdir = join(basedir, 'comp')
+        if savedir is None:
+            self.procdir = join(basedir, 'proc')
+            self.compdir = join(basedir, 'comp')
+        else:
+            self.procdir = join(savedir, 'proc')
+            self.compdir = join(savedir, 'comp')
         self.rawdir = join(basedir, 'raw')
         self.ffocA = ffocA
         self.ffocB = ffocB
         self.fflatL = glob(join(self.rcaldir, '*_Flat.fts'))
+        self.fflatL.sort()
         self.fflatGBL = [None] * len(self.fflatL)
 
         self.xFringe = None
@@ -197,7 +202,7 @@ class prepGUI:
         qSleep(0.01)
 
     def _onKey(self, event):
-        if event.key == 'ctrl+c':
+        if event.key == 'ctrl+c' or event.key == 'q':
             self.stop = True
 
     def ax_hide(self):
@@ -2840,7 +2845,7 @@ class prepGUI:
                                 rr = cYF[5:-5,-26:-10]
 
                                 sh = alignoffset(ii, rr)
-                                if np.abs(sh).max() >=2:
+                                if np.abs(sh).max() >=4:
                                     sh = np.zeros([2,1])
                                 
                                 scYF = 10**(shift(cYF, sh, missing=-1))
@@ -3002,7 +3007,7 @@ class prepGUI:
     def s7_comp(self):
         self.log = "> Run PCA Compression.<br>"
         self._writeLog()
-        maxnum = 50
+        maxnum = 10
         self.ax_hide()
         self.ax_s7_comp.set_visible(True)
         self.fig.canvas.draw_idle()
@@ -3078,8 +3083,8 @@ class prepGUI:
                         if makePfile:
                             Evec, spec, odata, ev = proc_base.PCA_compression(f, ret=True, tol=tol)
                             ncoeff = Evec.shape[0]
-                            if ncoeff == 50:
-                                maxnum = 10
+                            # if ncoeff == 50:
+                            #     maxnum = 10
                             self.log += f"> ncoeff: {ncoeff}.<br> Eval:{ev:.3f} <br>"
                             self._writeLog()
                             makePfile = False

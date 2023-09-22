@@ -1265,7 +1265,28 @@ def spectral_range(alpha, order, nw=512):
 
     return wl
 
-def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, ret=False, tol=1e-1):
+def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret=False):
+    """
+    Compress the given 3D data by using the PCA analysis as described in Chae et al. 2013.
+    
+    Parameters
+    ----------
+    frpoc: `str`
+        Processed file to be compressed.
+    Evec: `~numpy.array` (optional)
+        Eigen vector of the pfile. It will be used to compress the data for a given pfile data. When you make the pfile, do not give this value!
+    pfile: `str` (optional)
+        pfile (eigen vector file) of the PCA compression. If this and Evec is not given, calculate the eigen vector from the given fproc file.
+    ncoeff: `int` (optional)
+        The number of coefficients of the principal components. If it is not given automatically find the ncoeff until the eigenvalue is higher than the given tolerance value. Min=30, Max=50
+    tol: `float` (optional)
+        The tolerance to find the ncoeff eigenvalue. The number of the coefficients is equals the number of the componenet that has an eigenvalue of higher than the tolerance.
+        Default is 1e-1.
+    ret: `bool`
+        If true return the Eigenvector, original data and compressed data and Eignevalue.
+        Default is False.
+
+    """
     opn = fits.open(fproc)[0]
     h = opn.header
     data = opn.data.astype(float)
