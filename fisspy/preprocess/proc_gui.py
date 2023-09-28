@@ -2716,6 +2716,8 @@ class prepGUI:
                 lpks = [None]*len(lfY)
                 lYFaws = [None]*len(lfY)
                 lYFJD = np.zeros(len(lfY))
+                h = fits.getheader(lfY[0])
+                yy = int(h['date'][:4])
                 for j,f in enumerate(lfY):
                     yf = fits.getdata(f)
                     if init:
@@ -2728,7 +2730,10 @@ class prepGUI:
                     d2y = np.gradient(np.gradient(lyf[nf//2],axis=0), axis=0).mean(1)
                     pks = find_peaks(d2y[5:-5], d2y[5:-5].std())[0]+5
                     lpks[j] = pks
-                    sp = proc_base.yf2sp(lyf.mean(0))
+                    if yy >= 2023:
+                        sp = proc_base.yf2sp(lyf.mean(0))
+                    else:
+                        sp = proc_base.yf2sp(lyf[nf//2])
                     sp -= sp[5:-5,5:-5].mean()
 
                     # get wavelet
