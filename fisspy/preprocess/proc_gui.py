@@ -241,7 +241,7 @@ class prepGUI:
                 self.foc = fits.getdata(self.CF.ffoc).mean(0)
                 self.s1_data = self.foc
             else:
-                self.s1_data = 10**self.CF.logRF[3]
+                self.s1_data = 10**self.CF.logRF[self.CF.nf//2]
         if num == 7:
             self.B_Next.setVisible(False)
             qSleep(0.05)
@@ -627,12 +627,12 @@ class prepGUI:
             self.LE_s3_2_FRmin.setStyleSheet(f"background-color: {self.bg_second}; border: 1px solid {self.font_normal};")
             self.LE_s3_2_FRmin.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
 
-            self.yf_max = 110
+            self.yf_max = 105
             self.L_s3_2_FRmax = QtWidgets.QLabel()
             self.L_s3_2_FRmax.setText("max:")
             self.L_s3_2_FRmax.setFont(self.fNormal)
             self.LE_s3_2_FRmax = QtWidgets.QLineEdit()
-            self.LE_s3_2_FRmax.setText("110")
+            self.LE_s3_2_FRmax.setText("105")
             self.LE_s3_2_FRmax.setStyleSheet(f"background-color: {self.bg_second}; border: 1px solid {self.font_normal};")
             self.LE_s3_2_FRmax.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
 
@@ -2298,7 +2298,7 @@ class prepGUI:
         if self.im_s5 is None:
             self.im_s5 = self.ax[5][0].imshow(self.CF.Flat[5:-5,5:-5], plt.cm.gray, origin='lower', interpolation='bilinear')
         else:
-            self.im_s5.set_data(self.CF.Flat)
+            self.im_s5.set_data(self.CF.Flat[5:-5,5:-5])
 
         self.im_s5.set_visible(True)
         self.ax[5][0].set_xlabel('Wavelength (pix)')
@@ -2670,6 +2670,8 @@ class prepGUI:
         tXF = [None]*2
         tXFJD = [None]*2
         tYF = [None]*2
+        tYFpks = [None]*2
+        tYFaws = [None]*2
         tYFJD = [None]*2
         for i, lfF in enumerate(tlfFlat):
             # read Flat
@@ -2711,6 +2713,8 @@ class prepGUI:
             lfY = tlfYF[i]
             init = True
             if len(lfY):
+                lpks = [None]*len(lfY)
+                lYFaws = [None]*len(lfY)
                 lYFJD = np.zeros(len(lfY))
                 for j,f in enumerate(lfY):
                     yf = fits.getdata(f)
@@ -2719,9 +2723,22 @@ class prepGUI:
                         lYF = np.zeros((len(lfY), nf, ny, nw))
                         init = False
                     lYF[j] = yf
+                    # get slit pattern position
+                    lyf = np.log10(yf)
+                    d2y = np.gradient(np.gradient(lyf[nf//2],axis=0), axis=0).mean(1)
+                    pks = find_peaks(d2y[5:-5], d2y[5:-5].std())[0]+5
+                    lpks[j] = pks
+                    sp = proc_base.yf2sp(lyf.mean(0))
+                    sp -= sp[5:-5,5:-5].mean()
+
+                    # get wavelet
+                    wvl = Wavelet(lyf[nf//2] - sp, dt=1, axis=0)
+                    lYFaws[j] = np.abs(wvl.wavelet)
                     lYFJD[j] = Time(proc_base.fname2isot(f)).jd
                 tYF[i] = lYF
                 tYFJD[i] = lYFJD
+                tYFpks[i] = lpks
+                tYFaws[i] = lYFaws
                     
         
         for kk, dTarget in enumerate(lTarget):
@@ -2803,62 +2820,12 @@ class prepGUI:
 
                         if len(tlfYF[idx]):
                             why = yfID[np.abs(tYFJD[idx] - fjd)*24*3600 < 10][0]
-                            YF = np.log10(tYF[idx][why])
-                            rrYF = YF[nf//2]
-                            y = int(h['date'][:4])
-                            if y >= 2022:
-                                iy = YF.mean(0)
-                            else:
-                                iy = YF[nf//2]
                             
-
                             # image shift correction
-                            if np.abs(jd - fjd)*24*60 <= 30:
-                                cd1 /= 10**(rrYF)
-                            else:
-                                rYF = iy.copy()
-                                sp = proc_base.yf2sp(iy)
-                                rYF -= sp
-                                rYF -= rYF[5:-5,5:-5].mean()
-                                cd1_2 = cd1/10**(rYF)
-                                rr = sp[:,40:60].mean(1)
-                                dd = np.log10(cd1_2.mean(0)) - np.log10(flat)
-                                ii = (dd-dd[5:-5].mean(0))[:,40:60].mean(1)
-                                d2r = np.gradient(np.gradient(rr))
-                                d2i = np.gradient(np.gradient(ii))
-                                pks = find_peaks(d2r[10:-10], d2r[10:-10].std())[0] + 10
-                                shy = 0
-                                for whd in pks:
-                                    img = d2i[whd-8:whd+8] * np.ones((4,16))
-                                    rimg = d2r[whd-8:whd+8] * np.ones((4,16))
-                                    shy += alignoffset(img, rimg)[1,0]
-                                shy /= len(pks)
-                                sh = np.zeros((2,1))
-                                sh[0,0] = shy
-
-                                SP = 10**(shift(sp, sh, missing=-1))
-                                cd1_2 /= SP
-
-                                cYF = YF[nf//2] - rYF - sp
-                                cYF -= cYF[5:-5,5:-5].mean()
-                                ii = (dd-dd[5:-5].mean(0))[5:-5,-26:-10]
-                                rr = cYF[5:-5,-26:-10]
-
-                                sh = alignoffset(ii, rr)
-                                if np.abs(sh).max() >=4:
-                                    sh = np.zeros([2,1])
-                                
-                                scYF = 10**(shift(cYF, sh, missing=-1))
-                                self.tshy = shy
-                                self.sh = sh
-                                self.scYF =scYF
-                                self.cYF = cYF
-                                if np.abs(shy) < 0.2:
-                                    cd1 /= 10**(rrYF)
-                                else:
-                                    cd1 = cd1_2/scYF
-                                
-
+                            rsp = proc_base.raw2sp(cd1, tYFpks[idx][why])
+                            cd1 /= rsp
+                            ryf = proc_base.rawYF(cd1, tYFaws[idx][why])
+                            cd1 /= ryf
 
 
                         if len(tlfXF[idx]):
@@ -2943,6 +2910,8 @@ class prepGUI:
                         
                         self.fig.canvas.draw_idle()
                         qSleep(0.2)
+                        self.fig.canvas.draw_idle()
+                        qSleep(0.1)
 
                         # save fits
                         fn = basename(f)

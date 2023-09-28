@@ -979,7 +979,8 @@ class calFlat:
             d2p = d2p*np.ones((4,nw))
             iteration = 0
             d2r = np.gradient(np.gradient(refI, axis=1), axis=1)
-            sh = alignoffset(d2r[:,5:-5], d2p[:,5:-5])
+            # sh = alignoffset(d2r[:,5:-5], d2p[:,5:-5])
+            sh = alignoffset(refI, prof*np.ones((4,nw)))
             wvl = wv.copy()
             self.tsh[i] += sh[1,0]
             while abs(sh[1,0]) >= 1e-1:
@@ -1375,12 +1376,12 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret=Fal
         else:
             return Evec, spec, odata, Eval[ncoeff]
 
-def yf2sp(yf):
+def yf2sp(yf, tolRate=1):
     """
     Calculate the slit pattern using the y-directional Fringe pattern
     """
     d2y = np.gradient(np.gradient(yf,axis=0), axis=0).mean(1)
-    pks = find_peaks(d2y[5:-5], d2y[5:-5].std())[0]+5
+    pks = find_peaks(d2y[5:-5], d2y[5:-5].std()*tolRate)[0]+5
     myf = data_mask_and_fill(yf, [pks-1,pks+2], axis=0, kind='slinear')
     s1 = myf[:,5:-5].mean(1)[:,None]
     sp = yf-myf+s1
@@ -1388,3 +1389,29 @@ def yf2sp(yf):
     fsp[:,10:-9] = 0
     sp = ifft(fsp,axis=1).real
     return sp
+
+def raw2sp(raw, pks):
+    """
+    Calculate the slit pattern using the raw data.
+    """
+    mr = np.log10(raw.mean(0))
+    mr = np.nan_to_num(mr, True, 1,1,1)
+    mRaw = mr - mr[5:-5].mean(0)
+    mskRaw = data_mask_and_fill(mRaw, [pks-2,pks+3], axis=0, kind='slinear')
+    sp = mRaw-mskRaw
+    fsp = fft(sp, axis=1)
+    fsp[:,10:-9] = 0
+    sp = ifft(fsp,axis=1).real
+    sp -= sp[5:-5,5:-5].mean()
+    return 10**sp
+
+def rawYF(sraw, aws):
+    mr = np.log10(sraw.mean(0))
+    mr = np.nan_to_num(mr, True, 1,1,1)
+    mRaw = mr - mr[5:-5].mean(0) - mr[:, 5:-5].mean(1)[:, None]
+    wvlet = Wavelet(mRaw, dt=1, axis=0)
+    freq = np.arctan2(wvlet.wavelet.imag, wvlet.wavelet.real)
+    wvs = aws*(np.cos(freq) + 1j*np.sin(freq))
+    fringe = wvlet.iwavelet(wvs, wvlet.scale)
+    fringe -= fringe[5:-5,5:-5].mean()
+    return 10**fringe.T
