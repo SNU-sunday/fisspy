@@ -1317,9 +1317,10 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret=Fal
         
         spgr /= spgr.mean(1)[:,None]
         c_arr = spgr.T.dot(spgr)
-        c_arr = np.nan_to_num(c_arr)
-        c_arr[c_arr == -np.inf] = 0
-        c_arr[c_arr == np.inf] = 0
+        m = c_arr.mean()
+        c_arr = np.nan_to_num(c_arr, True, m,m,m)
+        # c_arr[c_arr == -np.inf] = 0
+        # c_arr[c_arr == np.inf] = 0
 
         Eval, Evec = np.linalg.eig(c_arr)
         if ncoeff is None:
@@ -1355,7 +1356,7 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret=Fal
     for i in range(ncoeff):
         coeff[:,:,i] = (data[:,:,:]*Evec[i]).sum(2)
 
-    bscale = np.abs(coeff).max()/2e3
+    bscale = np.abs(coeff).max()/2e4
     coeff = np.round(coeff/bscale)
 
 
