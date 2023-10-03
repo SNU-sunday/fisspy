@@ -1785,9 +1785,11 @@ class prepGUI:
         self.ms1 = np.zeros([self.CF.nf,self.CF.ny,self.CF.nw])
         for i in range(self.CF.nf):
             self.yFringe[i] = proc_base.cal_fringeSimple(self.wvlet_y[i], [self.yf_min, self.yf_max]).T
-            self.yFringe[i] -= self.yFringe[i][5:-5,5:-5].mean()
-            self.s1[i] = self.CF.rmFlat[i] - self.yFringe[i]
             
+        # self.yFringe = proc_base.YFart_correction(self.yFringe)
+        self.yFringe -= self.yFringe[:,5:-5,5:-5].mean((1,2))[:,None,None]
+
+        self.s1 = self.CF.rmFlat - self.yFringe
         self.ms1 = self.s1.copy()
         self.log += "> Done.<br>"
         self._writeLog()
@@ -2673,6 +2675,7 @@ class prepGUI:
         tYFpks = [None]*2
         tYFaws = [None]*2
         tYFJD = [None]*2
+        tSP = [None]*2
         for i, lfF in enumerate(tlfFlat):
             # read Flat
             nFlat = len(lfF)
@@ -2715,6 +2718,7 @@ class prepGUI:
             if len(lfY):
                 lpks = [None]*len(lfY)
                 lYFaws = [None]*len(lfY)
+                lSP = [None]*len(lfY)
                 lYFJD = np.zeros(len(lfY))
                 h = fits.getheader(lfY[0])
                 yy = int(h['date'][:4])
@@ -2737,9 +2741,12 @@ class prepGUI:
                     sp -= sp[5:-5,5:-5].mean()
 
                     # get wavelet
+                    # wvl = Wavelet(lyf[nf//2], dt=1, axis=0)
                     wvl = Wavelet(lyf[nf//2] - sp, dt=1, axis=0)
                     lYFaws[j] = np.abs(wvl.wavelet)
                     lYFJD[j] = Time(proc_base.fname2isot(f)).jd
+                    lSP[j] = 10**sp
+                tSP[i] = lSP
                 tYF[i] = lYF
                 tYFJD[i] = lYFJD
                 tYFpks[i] = lpks
@@ -2822,15 +2829,31 @@ class prepGUI:
 
                         td = proc_base.tilt_correction(data1, tilt, cubic=True)
                         cd1 = proc_base.curvature_correction(td, [p1_0, p1_1, p1_2])
-
+                        
                         if len(tlfYF[idx]):
                             why = yfID[np.abs(tYFJD[idx] - fjd)*24*3600 < 10][0]
                             
                             # image shift correction
-                            rsp = proc_base.raw2sp(cd1, tYFpks[idx][why])
+                            self.sp = tSP[idx][why]
+                            # cd1 /= self.sp
+                            # rsp = proc_base.raw2sp_old(cd1, tYFpks[idx][why])
+                            # self.rsp = rsp
+                            # cd1 /= rsp
+                            # ryf = proc_base.rawYF(cd1, tYFaws[idx][why])
+                            # cd1 /= ryf
+                            # self.cd1 = cd1
+                            cd1 /= flat
+                            self.testRaw = cd1.copy()
+                            ssp, spks = proc_base.calShift(cd1, self.sp, tYFpks[idx][why])
+                            self.pks = tYFpks[idx][why]
+                            self.spks = spks
+                            cd1 /= ssp
+                            rsp = proc_base.raw2sp(cd1, spks)
+                            self.rsp = rsp
                             cd1 /= rsp
                             ryf = proc_base.rawYF(cd1, tYFaws[idx][why])
                             cd1 /= ryf
+                            self.cd1 = cd1
 
 
                         if len(tlfXF[idx]):
@@ -2839,8 +2862,9 @@ class prepGUI:
                             cd1 /= XF[nf//2]
 
                         cd2 = proc_base.curvature_correction(cd1, [p2_0, p2_1, p2_2])
-                        cd2 /= flat
+                        # cd2 /= flat
                         cd2 = cd2[:,5:-5,5:-5].astype('int16')
+                        self.cd2 = cd2
                         shape = cd2.shape
 
                         if self.p_s7_prof is None:
@@ -2915,7 +2939,7 @@ class prepGUI:
                         
                         self.fig.canvas.draw_idle()
                         qSleep(0.2)
-                        self.fig.canvas.draw_idle()
+                        # self.fig.canvas.draw_idle()
                         qSleep(0.1)
 
                         # save fits

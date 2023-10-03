@@ -1390,20 +1390,44 @@ def yf2sp(yf, tolRate=1):
     sp = ifft(fsp,axis=1).real
     return sp
 
+
 def raw2sp(raw, pks):
-    """
-    Calculate the slit pattern using the raw data.
-    """
     mr = np.log10(raw.mean(0))
     mr = np.nan_to_num(mr, True, 1,1,1)
     mRaw = mr - mr[5:-5].mean(0)
-    mskRaw = data_mask_and_fill(mRaw, [pks-2,pks+3], axis=0, kind='slinear')
-    sp = mRaw-mskRaw
+    ft = fft(mRaw, axis=0)
+    ft[:10] = 0
+    ft[-9:] = 0
+    k = ifft(ft, axis=0).real
+    mk = np.median(k[:, 5:-5], 1)
+    yy = np.arange(mRaw.shape[0])
+    x = mk[pks-2]
+    y = yy[pks-2]
+    for i in range(-1,3):
+        x = np.append(x,mk[pks+i])
+        y = np.append(y,yy[pks+i])
+    idx = y[x.argmin()]
+    xx = np.arange(mRaw.shape[1])
+    coef = np.polyfit(xx[5:-5], k[idx,5:-5],1)
+    kkf = np.polyval(coef, xx)
+    tmp = k[idx,5:-5] - kkf[5:-5]
+    val = tmp.mean()+tmp.std()
+    wh = tmp > val
+    xx = np.arange(mRaw.shape[1]-10)
+    ct = xx[len(xx)//2]+5
+    hw = int(len(xx[wh])*1.5 // 2)
+    mm = ct-hw
+    mM = ct+hw
+    tt = data_mask_and_fill(k, [[mm],[mM]], axis=1, kind='slinear')
+
+    mskTT = data_mask_and_fill(tt, [pks-2,pks+3], axis=0, kind='slinear')
+    sp = tt-mskTT
     fsp = fft(sp, axis=1)
     fsp[:,10:-9] = 0
     sp = ifft(fsp,axis=1).real
     sp -= sp[5:-5,5:-5].mean()
     return 10**sp
+
 
 def rawYF(sraw, aws):
     mr = np.log10(sraw.mean(0))
@@ -1415,3 +1439,66 @@ def rawYF(sraw, aws):
     fringe = wvlet.iwavelet(wvs, wvlet.scale)
     fringe -= fringe[5:-5,5:-5].mean()
     return 10**fringe.T
+
+def YFart_correction(yf):
+    syf = np.zeros(yf.shape)
+    sp = np.zeros(yf.shape)
+    for i, el in enumerate(yf):
+        sp[i] = yf2sp(el)
+        syf[i] = el - sp[i]
+        wvl = Wavelet(syf[i], dt=1, axis=0)
+        if i == 0:
+            s1,s2,s3 = wvl.wavelet.shape
+            aws = np.zeros((yf.shape[0], s1, s2, s3))
+            phase = np.zeros((yf.shape[0], s1, s2, s3))
+            spec = np.zeros((yf.shape[0], s1, s2, s3), dtype=complex)
+        aws[i] = np.abs(wvl.wavelet)
+        spec[i] = wvl.wavelet
+        phase[i] = np.arctan2(wvl.wavelet.imag, wvl.wavelet.real)
+    aws = np.abs(spec.mean(0))
+    
+    for i in range(yf.shape[0]):
+        syf[i] = wvl.iwavelet(aws*(np.cos(phase[i]) + 1j*np.sin(phase[i])), wvl.scale).T
+    return syf + sp
+
+def calShift(raw, sp, pks):
+    lsp = np.log10(sp)
+    rd2y = np.gradient(np.gradient(lsp,axis=0), axis=0)
+    wp = 40
+    npks = len(pks)
+    lraw = np.log10(raw)
+    data = lraw.mean(0) - lraw.mean((0,1))
+    d2y = np.gradient(np.gradient(data,axis=0), axis=0)
+
+    sh = 0
+    ash = np.zeros(npks)
+    if pks[0] < 16:
+        ss = 1
+    else:
+        ss = 0
+    if pks[-1] > d2y.shape[0]-16:
+        ee = len(pks)-1
+    else:
+        ee = len(pks) 
+    for i, whd in enumerate(pks[ss:ee]):
+        rimg = rd2y[whd-16:whd+16, 10:-10]
+        img = d2y[whd-16:whd+16, 10:-10]
+        ash[i] = alignoffset(img, rimg)[0,0]
+    sh = np.median(ash)
+    s = np.zeros((2,1))
+    mx = int(np.round(sh))
+    s[0,0] = mx
+    
+    ssp = shift(sp, s, missing=sp[5:-5,5:-5].mean())
+
+    tpks = find_peaks(d2y[5:-5,10], d2y[5:-5,10].std())[0]+5
+    spks = pks+mx
+    if mx < 0:
+        pp = tpks[tpks >= d2y.shape[0]+mx-5]
+    else:
+        pp = tpks[tpks <= mx+5]
+    if pp.size:
+        spks = np.append(spks, pp)
+    
+    return ssp, spks
+
