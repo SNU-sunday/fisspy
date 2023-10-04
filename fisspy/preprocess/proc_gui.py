@@ -2845,7 +2845,7 @@ class prepGUI:
                             # cd1 /= flat
                             self.testRaw = cd1.copy()
                             self.pks = tYFpks[idx][why]
-                            if self.pks:
+                            if len(self.pks):
                                 ssp, spks = proc_base.calShift(cd1, self.sp, self.pks)
                                 self.spks = spks
                                 cd1 /= ssp
