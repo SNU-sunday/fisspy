@@ -980,14 +980,16 @@ class calFlat:
             iteration = 0
             d2r = np.gradient(np.gradient(refI, axis=1), axis=1)
             # sh = alignoffset(d2r[:,5:-5], d2p[:,5:-5])
-            sh = alignoffset(refI, prof*np.ones((4,nw)))
+            sh = alignoffset(refI[:,5:-5], prof[5:-5]*np.ones((4,nw-10)))
+            
             wvl = wv.copy()
             self.tsh[i] += sh[1,0]
             while abs(sh[1,0]) >= 1e-1:
                 wvl += sh[1,0]*dw
                 testI = interp(wvl[:,None])*np.ones((4,nw))
                 d2r = np.gradient(np.gradient(testI, axis=1), axis=1)
-                sh = alignoffset(d2r[:, 5:-5], d2p[:, 5:-5])
+                # sh = alignoffset(d2r[:, 5:-5], d2p[:, 5:-5])
+                sh = alignoffset(testI[:,5:-5], prof[5:-5]*np.ones((4,nw-10)))
                 
                 self.tsh[i] += sh[1,0]
                 iteration += 1
