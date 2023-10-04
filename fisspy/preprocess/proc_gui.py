@@ -2847,12 +2847,14 @@ class prepGUI:
                             self.pks = tYFpks[idx][why]
                             if self.pks:
                                 ssp, spks = proc_base.calShift(cd1, self.sp, self.pks)
+                                self.spks = spks
+                                cd1 /= ssp
+                                rsp = proc_base.raw2sp(cd1, spks)
+                                self.rsp = rsp
+                                cd1 /= rsp
+                            else:
+                                cd1 /= self.sp 
                             
-                            self.spks = spks
-                            cd1 /= ssp
-                            rsp = proc_base.raw2sp(cd1, spks)
-                            self.rsp = rsp
-                            cd1 /= rsp
                             ryf = proc_base.rawYF(cd1, tYFaws[idx][why])
                             cd1 /= ryf
                             self.cd1 = cd1
