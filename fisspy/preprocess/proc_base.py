@@ -1468,7 +1468,7 @@ def calShift(raw, sp, pks):
     wp = 40
     npks = len(pks)
     lraw = np.log10(raw)
-    data = lraw.mean(0) - lraw.mean((0,1))
+    data = lraw.mean(0) - lraw[:,5:-5].mean((0,1))
     d2y = np.gradient(np.gradient(data,axis=0), axis=0)
 
     sh = 0

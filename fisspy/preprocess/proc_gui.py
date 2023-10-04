@@ -2842,7 +2842,7 @@ class prepGUI:
                             # ryf = proc_base.rawYF(cd1, tYFaws[idx][why])
                             # cd1 /= ryf
                             # self.cd1 = cd1
-                            cd1 /= flat
+                            # cd1 /= flat
                             self.testRaw = cd1.copy()
                             ssp, spks = proc_base.calShift(cd1, self.sp, tYFpks[idx][why])
                             self.pks = tYFpks[idx][why]
@@ -2862,7 +2862,7 @@ class prepGUI:
                             cd1 /= XF[nf//2]
 
                         cd2 = proc_base.curvature_correction(cd1, [p2_0, p2_1, p2_2])
-                        # cd2 /= flat
+                        cd2 /= flat
                         cd2 = cd2[:,5:-5,5:-5].astype('int16')
                         self.cd2 = cd2
                         shape = cd2.shape
