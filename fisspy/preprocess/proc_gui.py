@@ -15,7 +15,6 @@ from scipy.signal import find_peaks
 from fisspy.image.base import alignoffset, shift
 
 def qSleep(sec):
-    # plt.show(block=True)
     ms = int(sec*1e3)
     qtTimerLoop = QtCore.QEventLoop()
     QtCore.QTimer.singleShot(ms, qtTimerLoop.quit)
@@ -2777,6 +2776,7 @@ class prepGUI:
                 TXTinit = True
                 if self.p_s7_prof is not None:
                     self.p_s7_prof.remove()
+                    self.ax[7][4].cla()
                     self.im_s7_spec.remove()
                     self.im_s7_R1.remove()
                     self.im_s7_R2.remove()
@@ -2870,6 +2870,18 @@ class prepGUI:
                         if self.p_s7_prof is None:
                             p0 = int(ch['crpix1']-5)
                             p_4 = int(p0 - 4/ch['cdelt1'])
+                            self.ax[7][0].set_axis_off()
+                            self.ax[7][1].set_axis_off()
+                            self.ax[7][2].set_axis_off()
+                            self.ax[7][3].set_axis_off()
+                            self.ax[7][0].set_title('-4.0 $\\AA$')
+                            self.ax[7][2].set_title('+0.0 $\\AA$')
+                            self.ax[7][5].set_title(f'Spectrogram (x={shape[0]//2})')
+                            self.ax[7][5].set_xlabel('Wavelength (pix)')
+                            self.ax[7][5].set_ylabel('Slit (pix)')
+
+                            self.ax[7][4].set_xlabel('Wavelength (pix)')
+                            self.ax[7][4].set_ylabel('Intensity (DN)')
                             if idx == 0:
                                 p0_5 = int(p0 + 0.7/ch['cdelt1'])
                                 p_0_5 = int(p0 - 0.7/ch['cdelt1'])
@@ -2936,6 +2948,7 @@ class prepGUI:
                             
                             
                         self.ax[7][4].set_title(f'Profile ({i+1}/{nlf})')
+                        
                         
                         self.fig.canvas.draw_idle()
                         qSleep(0.2)
