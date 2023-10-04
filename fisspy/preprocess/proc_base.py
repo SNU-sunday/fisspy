@@ -1471,6 +1471,7 @@ def calShift(raw, sp, pks):
     npks = len(pks)
     lraw = np.log10(raw)
     m = np.log10(raw[:,5:-5,5:-5].mean())
+    m = np.nan_to_num(m, True, 1,1,1)
     lraw = np.nan_to_num(lraw, True, m, m, m)
     data = lraw.mean(0) - lraw[:,5:-5].mean((0,1))
     d2y = np.gradient(np.gradient(data,axis=0), axis=0)
@@ -1486,8 +1487,8 @@ def calShift(raw, sp, pks):
     else:
         ee = len(pks) 
     for i, whd in enumerate(pks[ss:ee]):
-        rimg = rd2y[whd-16:whd+16, 10:-10]
-        img = d2y[whd-16:whd+16, 10:-10]
+        rimg = rd2y[whd-8:whd+8, 10:-10]
+        img = d2y[whd-8:whd+8, 10:-10]
         ash[i] = alignoffset(img, rimg)[0,0]
     sh = np.median(ash)
     s = np.zeros((2,1))
