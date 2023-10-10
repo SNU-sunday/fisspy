@@ -61,7 +61,10 @@ class rawData:
         self.ny = self.header['naxis2']
         self.nx = self.header['naxis3']
         self.date = self.header['date']
-        self.band = self.header['wavelen'][:4]
+        try:
+            self.band = self.header['wavelen'][:4]
+        except:
+            self.band = str(self.header['gratwvln'])[:4]
         #simple wavelength calibration
         self.wave = (np.arange(self.nwv)-self.nwv//2)*self.wvDelt
         self.centralWavelength = 0.
@@ -241,7 +244,10 @@ class FISS:
         self.ny, self.nx, self.nwv = self.data.shape
         self.wvDelt = self.header['cdelt1']
         self.date = self.header['date']
-        self.band = self.header['wavelen'][:4]
+        try:
+            self.band = self.header['wavelen'][:4]
+        except:
+            self.band = str(self.header['gratwvln'])[:4]
 
         self.refProfile = self.data.mean((0,1))
         self.wave = self._waveCalibration(simpleWaveCalib= simpleWaveCalib,

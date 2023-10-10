@@ -93,7 +93,7 @@ class prepGUI:
                           "Step 4: 2nd Curvature Correction",
                           "Step 5: Make Flat",
                           "Step 6: Save Flat",
-                          "Step 7: Run Preproccess"]
+                          "Step 7: Run Preprocess"]
         
         self.List_subStep = ["3-1: Atlas Subtraction",
                              "3-2: Vertical Fringe",
@@ -2807,7 +2807,7 @@ class prepGUI:
                             db = fits.getdata(f)
                             chclim = True
                             continue
-                        # if i < 440:
+                        # if i != 27:
                         #     continue
                         opn = fits.open(f)[0]
                         data = opn.data
@@ -2835,14 +2835,7 @@ class prepGUI:
                             
                             # image shift correction
                             self.sp = tSP[idx][why]
-                            # cd1 /= self.sp
-                            # rsp = proc_base.raw2sp_old(cd1, tYFpks[idx][why])
-                            # self.rsp = rsp
-                            # cd1 /= rsp
-                            # ryf = proc_base.rawYF(cd1, tYFaws[idx][why])
-                            # cd1 /= ryf
-                            # self.cd1 = cd1
-                            # cd1 /= flat
+
                             self.testRaw = cd1.copy()
                             self.pks = tYFpks[idx][why]
                             if len(self.pks):
@@ -2856,7 +2849,10 @@ class prepGUI:
                                 cd1 /= self.sp 
                             
                             ryf = proc_base.rawYF(cd1, tYFaws[idx][why])
+                            self.ryf = ryf
                             cd1 /= ryf
+
+                            # cd1 /= tYF[idx][why][3]
                             self.cd1 = cd1
 
 
@@ -3084,7 +3080,8 @@ class prepGUI:
                             self.log = self.log.replace(f"{i}/{nlf}", f"{i+1}/{nlf}")
 
                         self._writeLog()
-
+                        # if i != 27:
+                        #     continue
                         if f.find('BiasDark') > -1:
                             makePfile = True
                             num = 0
