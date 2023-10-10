@@ -1,0 +1,154 @@
+{% extends 'template.html' %}
+{% set active_page = "Guide" %}
+
+{% block content %}
+
+<body for="html-export">
+  <div class="container" id="my-style">
+<h1 class="page-header" id="idlpython-cheat-sheet">IDL/Python Cheat Sheet</h1>
+
+<p>The primary useful scientific data analysis packages in Python are NumPy and SciPy. You import NumPy:</p>
+<pre data-role="codeBlock" data-info="Python" class="language-python"><span class="token keyword">import</span> numpy <span class="token keyword">as</span> np
+</pre><p>Here you can compare the IDL and python operator.</p>
+<br><br>
+<p><strong>Relational Operators</strong></p>
+<table class="table table-hover">
+<thead>
+<tr>
+<th>IDL</th>
+<th>Python</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a EQ b</td>
+<td>a == b</td>
+</tr>
+<tr>
+<td>a NE b</td>
+<td>a != b</td>
+</tr>
+<tr>
+<td>a LT b</td>
+<td>a &lt; b</td>
+</tr>
+<tr>
+<td>a LE b</td>
+<td>a &lt;= b</td>
+</tr>
+<tr>
+<td>a GT b</td>
+<td>a &gt; b</td>
+</tr>
+<tr>
+<td>a GE b</td>
+<td>a &gt;= b</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Logical Operators</strong></p>
+<table class="table table-hover">
+<thead>
+<tr>
+<th>IDL</th>
+<th>Python</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a and b</td>
+<td>a and b (np.logical_and(a, b))</td>
+</tr>
+<tr>
+<td>a or b</td>
+<td>a or b (np.logical_or(a, b))</td>
+</tr>
+</tbody>
+</table>
+<p><strong>MathFunctions</strong></p>
+<table class="table table-hover">
+<thead>
+<tr>
+<th>IDL</th>
+<th>Python</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sin(a)</td>
+<td>np.sin(a)</td>
+</tr>
+<tr>
+<td>alog(a)</td>
+<td>np.log(a)</td>
+</tr>
+<tr>
+<td>alog10(a)</td>
+<td>np.log10(a)</td>
+</tr>
+<tr>
+<td>exp(a)</td>
+<td>np.exp(a)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Math Constants</strong></p>
+<table class="table table-hover">
+<thead>
+<tr>
+<th>IDL</th>
+<th>Python</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>!pi</td>
+<td>np.pi</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Array Creation</strong></p>
+<table class="table table-hover">
+<thead>
+<tr>
+<th>IDL</th>
+<th>Python</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dblarr(3, 5)</td>
+<td>np.zeros((3, 5))</td>
+</tr>
+<tr>
+<td>intarr(3, 5)</td>
+<td>np.zeros((3, 5), dtype=int)</td>
+</tr>
+<tr>
+<td>dblarr(3, 5)+1</td>
+<td>np.ones((3, 5))</td>
+</tr>
+<tr>
+<td>boolarr(10)</td>
+<td>np.zeros(10, dtype=bool)</td>
+</tr>
+<tr>
+<td>indgen(10)</td>
+<td>np.arange(10)</td>
+</tr>
+<tr>
+<td>dindgen(10)</td>
+<td>np.arange(10, dtype=float)</td>
+</tr>
+</tbody>
+</table>
+<h2 class="page-header" id="more-example">More example</h2>
+
+<p>See this <a href="http://mathesaurus.sourceforge.net/idl-numpy.html">page</a>.</p>
+
+      </div>
+
+
+    </body>
+
+{% endblock %}
