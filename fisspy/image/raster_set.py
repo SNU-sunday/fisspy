@@ -164,9 +164,8 @@ class makeRasterSet:
         self.ani = FuncAnimation(self.fig, self.chData, frames=np.arange(self.nf), interval=100)
         self.fig.canvas.draw_idle()
 
-    def saveAnimation(self, dirn, stype='mp4'):
+    def saveAnimation(self, fname):
         if self.ani is None:
             self.animation()
         time = proc_base.fname2isot(self.flistA[0])
-        fname = join(dirn, time[:10] + '.mp4')
         self.ani.save(fname)
