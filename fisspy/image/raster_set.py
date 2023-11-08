@@ -9,7 +9,12 @@ from astropy.time import Time
 from os.path import join, basename
 
 class makeRasterSet:
-    def __init__(self, flistA, flistB, flatA, flatB, wvset=None, ii=0):
+    def __init__(self, flistA, flistB, flatA, flatB, wvset=None, ii=0, show=True):
+        self.show = show
+        if show:
+            plt.ion()
+        else:
+            plt.ioff()
         flistA.sort()
         flistB.sort()
         self.flistA = flistA
