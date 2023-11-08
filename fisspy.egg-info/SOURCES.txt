@@ -8,6 +8,7 @@ fisspy.egg-info/PKG-INFO
 fisspy.egg-info/SOURCES.txt
 fisspy.egg-info/dependency_links.txt
 fisspy.egg-info/not-zip-safe
+fisspy.egg-info/requires.txt
 fisspy.egg-info/top_level.txt
 fisspy/analysis/__init__.py
 fisspy/analysis/doppler.py
@@ -27,6 +28,8 @@ fisspy/io/__init__.py
 fisspy/io/read.py
 fisspy/preprocess/__init__.py
 fisspy/preprocess/proc_base.py
+fisspy/preprocess/proc_gui.py
+fisspy/preprocess/t_y_sh.py
 fisspy/read/__init__.py
 fisspy/read/read_factory.py
 fisspy/read/readbase.py

@@ -334,16 +334,21 @@ class Wavelet:
         
             
         """
+        self.cdelta = -1
+        self.gamma_fac = -1
+        self.dj0 = -1
         if self.mother == 'MORLET':
             self.dofmin=2.
             if self.param == 6.:
                 self.cdelta = 0.776
                 self.gamma_fac = 2.32
                 self.dj0 = 0.60
-            else:
-                self.cdelta = -1
-                self.gamma_fac = -1
-                self.dj0 = -1
+            elif self.param == 12:
+                self.cdelta = 0.38
+                self.dj0 = 0.60
+            elif self.param == 18:
+                self.cdelta = 0.27
+                self.dj0 = 0.60
         elif self.mother == 'PAUL':
             if not self.param:
                 self.param = 4.

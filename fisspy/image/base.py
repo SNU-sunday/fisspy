@@ -359,76 +359,76 @@ def shift(image, sh, missing=0, cubic=False):
 
     return img_interpol(image,x,y,xt,yt,missing=missing,cubic=cubic)
 
-# def diff_rot_correct(mmap, refx, refy, reftime, cubic=False):
-#     """
-#     Correct the solar rotation.
+def shift3d(img, sh):
+    """
+    Shift the given image.
 
-#     Parameters
-#     ----------
-#     mmap : sunpy.map.GenericMap
-#         Single map class.
-#     refx : astropy.units.Quantity
-#         Horizontal wcs information of reference frame.
-#     refy : astropy.units.Quantity
-#         Vertical wcs information of reference frame.
-#     reftime : astropy.time.Time
-#         Time for the reference frame.
+    Parameters
+    ----------
+    image :  `~numpy.ndarray`
+        3 dimensional array.
+    sh : tuple, list or ndarray
+        tuple, list or ndarray of shifting value set (y,x)
 
-#     Returns
-#     -------
-#     smap : sunpy.map.GenericMap
-#         Solar rotation corrected map class.
+    Returns
+    -------
+    simage : ~numpy.ndarray
+        shifted image.
+    """
+    nt, ny, nx =img.shape
 
-#     """
+    t = np.arange(nt)[:,None,None]
+    y = np.arange(ny)[None,:,None]
+    x = np.arange(nx)
+    tt = t + y*0 + x*0
+    yt = y - sh[0][:, None, None] + t*0 + x*0
+    xt = x - sh[1][:, None, None] + t*0 + y*0
 
-#     refc = SkyCoord(refx, refy, obstime= reftime,
-#                     observer= get_earth(reftime),
-#                     frame= frames.Helioprojective)
+    return img_interpol3d(img, t, y, x, tt, yt, xt, missing=0)
 
-#     date = mmap.date
-#     res = solar_rotate_coordinate(refc, time=date ,frame_time='synodic')
-#     x = res.Tx.value
-#     y = res.Ty.value
+def img_interpol3d(img, ta, ya, xa,
+                   tt, yt, xt, missing=-1):
+    """
+    Interpolate the image for a given coordinates.
 
-#     sx = x - refx.value
-#     sy = y - refy.value
-#     mmap.shift
-#     smap = _mapShift(mmap, sx, sy, cubic=cubic)
-#     return smap
+    Parameters
+    ----------
+    img : `~numpy.ndarray`
+        3 dimensional array of image.
+    xa : `~numpy.ndarray`
+        Row vector of x.
+    ya : `~numpy.ndarray`
+        Colomn vector of y.
+    ta : `~numpy.ndarray`
+        Frame vector.
+    tt : `~numpy.ndarray`
+        Coordinates of the positions in the observed frame.
+    yt : `~numpy.ndarray`
+        Coordinates of the positions in the observed frame.
+    xt : `~numpy.ndarray`
+        Coordinates of the positions in the observed frame.
+    missing : (optional) `float`
+        The value of extrapolated position.
+        Default is -1, and it means the False.
+        If False, then extrapolate the given position.
 
-# def _mapShift(map1, sx, sy, cubic=False):
+    Returns
+    -------
+    res : ~numpy.ndarray
+        3 dimensional interpolated image.
+        The size of res is same as input img.
 
-#     new_meta = map1.meta.copy()
-#     new_meta['crval1'] = ((map1.meta['crval1']*
-#                            map1.spatial_units[0] +
-#                            sx * map1.spatial_units[0]).to(map1.spatial_units[0])).value
-#     new_meta['crval2'] = ((map1.meta['crval2']*
-#                            map1.spatial_units[0] +
-#                            sy * map1.spatial_units[0]).to(map1.spatial_units[0])).value
-#     delx = sx/map1.meta['cdelt1']
-#     dely = sy/map1.meta['cdelt2']
-
-#     smin = [0, 0]
-#     smax = [new_meta['naxis2']-1, new_meta['naxis1']-1]
-#     order = map1.data.shape
-#     if cubic:
-#         interp = CubicSpline(smin, smax, order, map1.data)    
-#     else:
-#         interp = LinearSpline(smin, smax, order, map1.data)
-
-#     x = np.arange(new_meta['naxis1'], dtype=float)
-#     xx0 = x * np.ones([new_meta['naxis2'],1])
-#     xx = xx0 + delx
-#     y = np.arange(new_meta['naxis2'], dtype=float)
-#     yy0 = y[:,None] + np.ones(new_meta['naxis1'])
-#     yy = yy0 + dely
-#     size = new_meta['naxis1']*new_meta['naxis2']
-#     inp = np.array([yy.reshape(size), xx.reshape(size)])
-#     out = interp(inp.T)
-
-#     out = out.reshape(new_meta['naxis2'], new_meta['naxis1'])
-#     mask = np.invert((xx<=xx0.max())*(xx>=xx0.min())*(yy<=yy0.max())*(yy>=yy0.min()))
-#     out[mask] = 0
-#     newMap = map1._new_instance(out, new_meta, map1.plot_settings)
-
-#     return newMap
+    """
+    shape = xt.shape
+    size = xt.size
+    smin = [ta[0,0,0], ya[0,0,0], xa[0]]
+    smax = [ta[-1,0,0],ya[0,-1,0], xa[-1]]
+    order = [ta.size, ya.size, xa.size]
+    interp = LinearSpline(smin, smax, order, img)
+    a = np.array((tt.reshape(size), yt.reshape(size), xt.reshape(size)))
+    b=interp(a.T)
+    res=b.reshape(shape)
+    if missing!=-1:
+        mask=np.invert((xt<=xa.max())*(xt>=xa.min())*(yt<=ya.max())*(yt>=ya.min()))
+        res[mask]=missing
+    return res
