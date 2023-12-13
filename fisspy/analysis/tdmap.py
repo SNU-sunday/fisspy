@@ -1,387 +1,832 @@
 from __future__ import absolute_import, division
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import gridspec
-from fisspy.analysis.filter import FourierFilter
 from interpolation.splines import LinearSpline
-from matplotlib.animation import FuncAnimation
-import astropy.units as u
-from astropy.time import Time
+from scipy.interpolate import CubicSpline as CS
+from os.path import join
+from os import getcwd
+import matplotlib.patheffects as pe
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
-class TDmap:
+
+class makeTDmap:
     """
-    Make Time-Distance map for given slit position
-    
+    Make Time-Distance map for given slit position interactively
+
     Parameters
     ----------
     data : `~numpy.ndarray`
-        3-dimensional data array (time, y, x).
-    header : '~astropy.io.fits.header.Header
-        Header of data.
-    tarr : `~numpy.ndarray`, optional
-        Array of time (unit: second).
-    filterRange : `list`, optional
-        List of range of Fourier bandpass filters
-        
-    Returns
-    -------
-    td : `~fisspy.analysis.tdmap.TDmap`
-        A new time distance class object.
-    
-    Examples
-    --------
-    
+        3-dimensional data array with the shape of (nt, ny, nx).
+    dx : `float` (optional)
+        Pixel scale along x-axis in the unit of km.
+    dy : `float` (optional)
+        Pixel scale along y-axis in the unit of km.
+    dt : `float` (optional)
+        Pixel scale along t-axis in the unit of sec.
+    cmap : matplotlib color map (optional)
+        Colormap of the image.
+    figsize : `list` (optional)
+        Figure size.
+    dpi : `int` (optional)
+        Depth per inch
+    clim : `list` (optional)
+        Color limit of the image.
+
+    Interactive Keys
+    ----------------
+    right : next frame
+    left : previous frame
+    spacebar : select TD slit position (npoint >= 2)
+        if npoint=2, linear slit (1st point-start point, 2nd point-end point)
+        if npoint=3, arc slit (1st point-center of the arc, 2nd point-start point, 3rd point-angle of the arc)
+        if npoint>=4, arbtrary curve (1st point-start point, nth point-end point)
+    c : calculate and show TD map on the new figure.
+    ctrl+h, cmd+h: open help box
     """
-    
-    def __init__(self, data, header, tarr=None, filterRange=None, cmap=None):
-        
-        self.data = data
-        self.header = header
-        self.nx = self.header['naxis1']
-        self.ny = self.header['naxis2']
-        self.nt = self.header['naxis3']
-        self.dx = self.header['cdelt1']
-        self.dy = self.header['cdelt2']
-        self.dt = self.header['cdelt3']
-        self.rx = self.header['crval1']
-        self.ry = self.header['crval2']
-        self.cmap = cmap
-            
-        if not np.any(tarr):
-            tarr = np.arange(0, self.nt*self.dt, self.dt)
-        self._tarr = tarr
-        self.Time = Time(self.header['sttime']) + tarr*u.second
-        
-        self.extent = [self.rx-self.nx/2*self.dx,
-                       self.rx+self.nx/2*self.dx,
-                       self.ry-self.ny/2*self.dy,
-                       self.ry+self.ny/2*self.dy]
-        self._xarr = np.linspace(self.extent[0]+self.dx*0.5,
-                                 self.extent[1]-self.dx*0.5,
-                                 self.nx)
-        self._yarr = np.linspace(self.extent[2]+self.dy*0.5,
-                                 self.extent[3]-self.dy*0.5,
-                                 self.ny)
-        
-        self.smin = [self._tarr[0],
-                     self.extent[2]+0.5*self.dy,
-                     self.extent[0]+0.5*self.dx]
-        self.smax = [self._tarr[-1],
-                     self.extent[3]-0.5*self.dy,
-                     self.extent[1]-0.5*self.dx]
-        self.order = [self.nt, self.ny, self.nx]
-        
-        self._tname = ['ori']
-        if not filterRange:
-            self.nfilter = 1
-            self.fdata = np.empty([1, self.nt, self.ny, self.nx])
-        else:
-            self.nfilter = len(filterRange)+1
-            self.fdata = np.empty([self.nfilter, self.nt, self.ny, self.nx])
-            
-            for n, fR in enumerate(filterRange):
-                self._tname += ['%.1f - %.1f mHZ'%(fR[0], fR[1])]
-                self.fdata[n+1] = FourierFilter(self.data, self.nt,
-                          self.dt*1e-3, fR)
-            
-        self.fdata[0] = self.data
-        self.interp = []
-        for data in self.fdata:
-            self.interp += [LinearSpline(self.smin, self.smax,
-                                         self.order, data)]
-        
-    def get_TD(self, R, xc, yc, angle):
-        self.R = R
-        self.xc = xc
-        self.yc = yc
-        self.angle = angle
-        ang = np.deg2rad(self.angle)
-        nl = int(np.ceil(2*R/self.dx))
-        self.x1 = -R*np.cos(ang) + xc
-        self.x2 = R*np.cos(ang) + xc
-        self.y1 = -R*np.sin(ang) + yc
-        self.y2 = R*np.sin(ang) + yc
-        x = np.linspace(self.x1, self.x2, nl)
-        y = np.linspace(self.y1, self.y2, nl)
-        
-        oiarr = np.empty([nl, self.nt, 3])
-        oiarr[:,:,0] = self._tarr
-        oiarr[:,:,1] = y[:,None]
-        oiarr[:,:,2] = x[:,None]
-        iarr = oiarr.reshape([nl*self.nt, 3])
-        
-        td = self.interp[self.filterNum-1](iarr)
-        
-        return td.reshape([nl, self.nt])
-    
-    def imshow(self, R=5, xc=None, yc=None, angle=0, t=0,
-               filterNum=1, fps=10, cmap=plt.cm.gray,
-               interpolation='bilinear'):
-        
+    def __init__(self, data, dx=1, dy=1, dt=1, cmap=None, figsize=None, dpi=100, clim=None, label=None):
         try:
             plt.rcParams['keymap.back'].remove('left')
             plt.rcParams['keymap.forward'].remove('right')
         except:
             pass
-        if not xc:
-            xc = self.rx
-        if not yc:
-            yc = self.ry
-        self.R = self._R0 = R
-        self.angle = self._angle0 = angle
-        self.xc = self._xc0 = xc
-        self.yc = self._yc0 = yc
-        self.filterNum = self._filterNum0 = filterNum
-        self.t = self._t0 = t
-        self.fps = fps
-        self.pause = 'ini'
-        self.pos = []
-        self.mark = []
-        self.hlines = []
-        tpix = np.abs(self._tarr-self.t).argmin()
-        self.td = self.get_TD(R,xc,yc,angle)
-        self.tdextent = [self._tarr[0]-0.5*self.dt,
-                         self._tarr[-1]+0.5*self.dt,
-                         -self.R,
-                         self.R]
-        if not self.cmap:
-            self.cmap = cmap
-        
-        self.fig= plt.figure(figsize=[14,9])
-        self.fig.canvas.set_window_title('%s ~ %s'%(self.Time[0], self.Time[-1]))
-        gs = gridspec.GridSpec(5, self.nfilter)
-        
-        self.axTD = self.fig.add_subplot(gs[3:, :])
-        self.axTD.set_xlabel('Time (sec)')
-        self.axTD.set_ylabel('Distance (arcsec)')
-        self.axTD.set_title('%i: %s,  '
-                            'Time: %s, '
-                            'tpix: %i'%(filterNum, self._tname[filterNum-1],
-                                        self.Time[tpix].value,
-                                        tpix))
-        self.imTD = self.axTD.imshow(self.td,
-                                     extent=self.tdextent,
-                                     origin='lower',
-                                     cmap=self.cmap,
-                                     interpolation=interpolation)
-        
-        self.axRaster = []
-        self.im = []
-        for i in range(self.nfilter):
-            if i == 0:
-                self.axRaster += [self.fig.add_subplot(gs[:3, i])]
-                self.axRaster[i].set_xlabel('X (arcsec)')
-                self.axRaster[i].set_ylabel('Y (arcsec)')
-            else:
-                self.axRaster += [self.fig.add_subplot(gs[:3, i],
-                                                       sharex=self.axRaster[0],
-                                                       sharey=self.axRaster[0])]
-                self.axRaster[i].tick_params(labelleft=False, labelbottom=False)
-            self.axRaster[i].set_title('%i: %s'%(i+1, self._tname[i]))
-            self.im += [self.axRaster[i].imshow(self.fdata[i, tpix],
-                                                extent=self.extent,
-                                                origin='lower',
-                                               cmap=self.cmap,
-                                               interpolation=interpolation)]
-            
-        self.slit = self.axRaster[filterNum-1].plot([self.x1, self.x2],
-                                                    [self.y1, self.y2],
-                                                    color='k')[0]
-        self.center = self.axRaster[filterNum-1].scatter(self.xc, self.yc,
-                                                         100, marker='+',
-                                                         c='k')
-        self.top = self.axRaster[filterNum-1].scatter(self.x2, self.y2, 100,
-                                marker='+', c='b', label='%.1f'%self.R)
-        self.bottom = self.axRaster[filterNum-1].scatter(self.x1, self.y1, 100,
-                                   marker='+', c='r',
-                                   label='-%.1f'%self.R)
-        self.tslit = self.axTD.axvline(self.t, ls='dashed', c='lime')
-        self.leg = self.axRaster[filterNum-1].legend()
-        self.axTD.set_aspect(adjustable='box', aspect='auto')
-        self.imTD.set_clim(self.fdata[filterNum-1,0].min(),
-                           self.fdata[filterNum-1,0].max())
-        self.fig.tight_layout()
-        self.fig.canvas.mpl_connect('key_press_event', self._onKey)
-        plt.show()
-        
-    def _onKey(self, event):
-        if event.key == 'up':
-            if self.angle < 360:
-                self.angle += 1
-            else:
-                self.angle = 1
-        elif event.key == 'down':
-            if self.angle > 0:
-                self.angle -=1
-            else:
-                self.angle = 359
-        elif event.key == 'right':
-            if self.t < self._tarr[-1]:
-                self.t += self.dt
-            else:
-                self.t = self._tarr[0]
-        elif event.key == 'left':
-            if self.t > self._tarr[0]:
-                self.t -= self.dt
-            else:
-                self.t = self._tarr[-1]
-        elif event.key == 'ctrl+right':
-            if self.xc < self._xarr[-1]:
-                self.xc += self.dx
-            else:
-                self.xc = self._xarr[0]
-        elif event.key == 'ctrl+left':
-            if self.xc > self._xarr[0]:
-                self.xc -= self.dx
-            else:
-                self.xc = self._xarr[-1]
-        elif event.key == 'ctrl+up':
-            if self.yc < self._yarr[-1]:
-                self.yc += self.dy
-            else:
-                self.yc = self._yarr[0]
-        elif event.key == 'ctrl+down':
-            if self.yc > self._yarr[0]:
-                self.yc -= self.dy
-            else:
-                self.yc = self._yarr[-1]
-        elif event.key == 'ctrl++':
-            self.R += self.dx
-        elif event.key == 'ctrl+-':
-            self.R -= self.dx
-        elif event.key == ' ' and event.inaxes in self.axRaster:
-            self.xc = event.xdata
-            self.yc = event.ydata
-        elif event.key == ' ' and event.inaxes == self.axTD:
-            self.t = event.xdata
-        elif event.key == 'x' and event.inaxes == self.axTD:
-            self.pos += [event.ydata]
-            ang = np.deg2rad(self.angle)
-            xp = self.pos[-1]*np.cos(ang) + self.xc
-            yp = self.pos[-1]*np.sin(ang) + self.yc
-            self.mark += [self.axRaster[self.filterNum-1].scatter(xp, yp, 100,
-                                                                  marker='+',
-                                                                  c='lime')]
-            self.hlines += [self.axTD.axhline(self.pos[-1], ls='dashed', c='lime')]
-        elif event.key == 'enter':
-            if self.pause == 'ini':
-                self.ani = FuncAnimation(self.fig, self._chTime,
-                                         frames=self._tarr,
-                                         blit=False,
-                                         interval=1e3/self.fps,
-                                         repeat=True)
-#                                         cache_frame_data=False)
-                self.pause = False
-            else:
-                self.pause ^= True
-                if self.pause:
-                    self.ani.event_source.stop()
-                else:
-                    self.ani.event_source.start(1e3/self.fps)
-        for iid in range(self.nfilter):
-            if event.key == 'ctrl+%i'%(iid+1):
-                self.filterNum = iid+1
-                tpix = np.abs(self._tarr-self.t).argmin()
-                self.changeSlit(self.R, self.xc, self.yc, self.angle)
-                self.axTD.set_title('%i: %s,  '
-                            'Time: %s, '
-                            'tpix: %i'%(self.filterNum, self._tname[self.filterNum-1],
-                                        self.Time[tpix].value,
-                                        tpix))
-                self._filterNum0 = self.filterNum
-                self.imTD.set_clim(self.im[self.filterNum-1].get_clim())
-        
-        if self.xc != self._xc0 or self.yc != self._yc0 or \
-            self.angle != self._angle0 or self.R != self._R0:
-                self.changeSlit(self.R, self.xc, self.yc, self.angle)
-                self._R0 = self.R
-                self._xc0 = self.xc
-                self._yc0 = self.yc
-                self._angle0 = self.angle
-        if self.t != self._t0:
-            self._chTime(self.t)
-            self._t0 = self.t
-        self.fig.canvas.draw_idle()
-        
-    def changeSlit(self, R, xc, yc, angle):
-        td = self.get_TD(R, xc, yc, angle)
-        self.tdextent[2] = -R
-        self.tdextent[3] = R
-        self.axTD.set_ylim(-R, R)       
-        ang = np.deg2rad(self.angle)
-        if self.filterNum != self._filterNum0:
-            self.leg.remove()
-            self.slit.remove()
-            self.bottom.remove()
-            self.center.remove()
-            self.top.remove()
-            self.slit = self.axRaster[self.filterNum-1].plot([self.x1, self.x2],
-                                                             [self.y1, self.y2],
-                                                             color='k')[0]
-            self.center = self.axRaster[self.filterNum-1].scatter(self.xc,
-                                   self.yc, 100, marker='+', c='k')
-            self.top = self.axRaster[self.filterNum-1].scatter(self.x2,
-                                    self.y2, 100,
-                                    marker='+', c='b', label='%.1f'%self.R)
-            self.bottom = self.axRaster[self.filterNum-1].scatter(self.x1,
-                                       self.y1, 100,
-                                       marker='+', c='r',
-                                       label='-%.1f'%self.R)
-            for n, pos in enumerate(self.pos):
-                self.mark[n].remove()
-                xp = pos*np.cos(ang) + self.xc
-                yp = pos*np.sin(ang) + self.yc
-                self.mark[n] = self.axRaster[self.filterNum-1].scatter(xp, yp, 100,
-                                                                  marker='+',
-                                                                  c='lime')
-        else:
-            self.slit.set_xdata([self.x1, self.x2])
-            self.slit.set_ydata([self.y1, self.y2])
-            self.bottom.set_offsets([self.x1, self.y1])
-            self.top.set_offsets([self.x2, self.y2])
-            self.center.set_offsets([self.xc, self.yc])
-            # change marker
-            for n, pos in enumerate(self.pos):
-                xp = pos*np.cos(ang) + self.xc
-                yp = pos*np.sin(ang) + self.yc
-                self.mark[n].set_offsets([xp, yp])
-                self.hlines[n].set_ydata(pos)
-        self.top.set_label('%.1f'%self.R)
-        self.bottom.set_label('-%.1f'%self.R)
-        self.imTD.set_data(td)
-        self.leg = self.axRaster[self.filterNum-1].legend()
-        
-    def _chTime(self, t):
-        self.t = t
-        tpix = np.abs(self._tarr-t).argmin()
-        self.axTD.set_title('%i: %s,  '
-                            'Time: %s, '
-                            'tpix: %i'%(self.filterNum, self._tname[self.filterNum-1],
-                                        self.Time[tpix].value,
-                                        tpix))
-        self.tslit.set_xdata(self.t)
-        for n, im in enumerate(self.im):
-            im.set_data(self.fdata[n, tpix])
-    
-    def set_clim(self, cmin, cmax, frame):
-        self.im[frame-1].set_clim(cmin, cmax)
-        if self.filterNum == frame:
-            self.imTD.set_clim(cmin, cmax)
-            
-    def remove_Mark(self):
-        for n in range(len(self.pos)):
-            self.mark[n].remove()
-            self.hlines[n].remove()
-        self.pos = []
-        self.mark = []
-        self.hlines = []
+        try:
+            plt.rcParams['keymap.back'].remove('c')
+            plt.rcParams['keymap.forward'].remove('v')
+        except:
+            pass
 
-    def savefig(self, filename, **kwargs):
-        self.fig.save(filename, **kwargs)
+        # set initial parameter
+        self.data = data
+        self.nt, self.ny, self.nx = data.shape
+        self.dx = dx
+        self.dy = dy
+        self.dt = dt
+        self.clim = clim
+        if cmap is None:
+            cmap = plt.cm.gray
+        self.cmap = cmap
+        self.analysis = None
+        self.a_fig = None
+        self.a_ax = None
+        self.h_fig = None
+        self.t = 0
+        self.time = np.arange(0, self.nt)*self.dt
+        self.slitPoint = []
+        self.pslitPoint = []
+        self.cplot = None
+        self.lplot = None
+        self.onSlit = False
+        # save parameter
+        self.spGrad = []
+        self.sv = []
+        self.sfit = []
+        self.Tperiod = []
+        self.Tline_pos = []
+        self.Ddistance = []
+        self.Dline_pos = []
+
+        # figure window label
+        afl = plt.get_figlabels()
+        if label is None:
+            label = 'Unknown'
+        if label in afl:
+            ii = 0
+            tmp2 = []
+            for aa in afl:
+                if aa.find('-TD') == -1:
+                    continue
+                tmp = aa.split(f'{label}_case')
+                if len(tmp) > 1:
+                    ii += 1
+                    tmp2 += [int(tmp[-1])]
+            if ii == 0:
+                label = label+'_case2'
+            else:
+                label = label+f'_caseq{max(tmp2)+1}'
+        self.label = label
+
+        # make interpolation function
+        smin = [0, 0, 0]
+        smax = [(self.nt-1)*dt, (self.ny-1)*dy, (self.nx-1)*dx]
+        order = data.shape
+        self.interp = LinearSpline(smin, smax, order, data)
+
+        # figure setting
+        self.outline = [pe.Stroke(linewidth=plt.rcParams['lines.linewidth']*2, foreground='k', alpha=0.3), pe.Normal()]
+        wratio = self.ny/self.nx
+        l = -dx*0.5
+        r = (self.nx - 0.5)*dx
+        b = -dy*0.5
+        t = (self.ny - 0.5)*dy
+        self.extent = [l, r, b, t]
         
-    def saveani(self, filename, **kwargs):
-        fps = kwargs.pop('fps', self.fps)
-        self.ani.save(filename, fps=fps, **kwargs)
+        if figsize is None:
+            figsize = [8,8*wratio+0.2]
+
+        self.fig, self.ax = plt.subplots(figsize=figsize, dpi=dpi, num=self.label)
+        self.im = self.ax.imshow(self.data[self.t], self.cmap, extent=self.extent, origin='lower')
+        if self.clim is not None:
+            self.im.set_clim(self.clim)
+        self.ax.set_title('t = 0 (sec)')
+        self.ax.set_xlabel('X (km)')
+        self.ax.set_ylabel('Y (km)')
+        self.fig.canvas.mpl_connect('key_press_event', self._onKey)
+        self.fig.canvas.mpl_connect('motion_notify_event', self._circleHelp)
+        self.fig.tight_layout()
+        self.fig.show()
+
+    def _circleHelp(self, event):
+        if event.inaxes == self.ax and len(self.slitPoint) == 1:
+            if self.lplot is not None:
+                for ii in self.lplot:
+                    ii.remove()
+            self.lplot = []
+            x1, y1 = self.slitPoint[0]
+            x2 = event.xdata
+            y2 = event.ydata
+            self.lplot += [self.ax.plot([x1,x2], [y1,y2], color='r', ls='dashed', alpha=0.3, path_effects=self.outline)[0]]
+            self.fig.canvas.draw_idle()
+        elif event.inaxes == self.ax and len(self.slitPoint) == 2:
+            if self.cplot is not None:
+                for ii in self.cplot:
+                    ii.remove()
+            self.cplot = []
+            xc, yc = self.slitPoint[0]
+            x1, y1 = self.slitPoint[1]
+            x2 = event.xdata
+            y2 = event.ydata
+            r = np.sqrt((x1-xc)**2 + (y1-yc)**2)
+            r2 = np.sqrt((x2-xc)**2 + (y2-yc)**2)
+            theta = np.arccos(((x2-xc)*(x1-xc)+(y2-yc)*(y1-yc))/(r*r2))
+            a1 = (y1-yc)/(x1-xc)
+            yint2 = y2-a1*x2
+            yint1 = y1-a1*x1
+            if (yint2 < yint1 and x1>=xc) or (yint2 > yint1 and x1<xc):
+                theta *= -1
+            # sign = np.arctan2(y2-y1,x2-x1)
+            # if sign < 0:
+            #     theta *=-1
+            tt = np.arctan2(y2-yc,x2-xc)
+            t1 = np.arctan2(y1-yc,x1-xc)
+            sign = -1 if (tt >= np.pi/2 and tt <= np.pi) or (tt < -np.pi/2 and tt > -np.pi) else 1
+            a = (y2-yc)/(x2-xc)
+            xe = sign*np.sqrt(r**2/(1+a**2))+xc
+            ye = a*(xe-xc)+yc
+
+            atheta = np.linspace(0, theta)
+            x = xc + r*np.cos(atheta+t1)
+            y = yc + r*np.sin(atheta+t1)
+            self.cplot += [self.ax.plot([xc,x1], [yc,y1], color='k', ls='dashed', alpha=0.3)[0]]
+            self.cplot += [self.ax.plot([xc,xe], [yc,ye], color='k', ls='dashed', alpha=0.3)[0]]
+            self.cplot += [self.ax.plot(x, y, color='r', ls='dashed', alpha=0.3, path_effects=self.outline)[0]]
+            self.fig.canvas.draw_idle()
+
+    def makeTD(self, sp):
+        """
+        Make TD map for a given slit position.
+        
+        sp: `list`
+            slit position.
+        """
+        nsp = len(sp)
+        if nsp == 1:
+            raise ValueError("The number of slit point should be larger than two.")
+        elif nsp == 2:
+            x1, y1 = sp[0]
+            x2, y2 = sp[1]
+            length = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+            nl = int(length/self.dx)*2
+            
+            x = np.linspace(x1, x2, nl)[None,:]*np.ones((self.nt,nl))
+            y = np.linspace(y1, y2, nl)[None,:]*np.ones((self.nt,nl))
+            self.xslit = np.array([x1, x2])
+            self.yslit = np.array([y1, y2])
+        elif nsp == 3:
+            xc, yc = sp[0]
+            x1, y1 = sp[1]
+            x2, y2 = sp[2]
+            r = np.sqrt((x1-xc)**2 + (y1-yc)**2)
+            r2 = np.sqrt((x2-xc)**2 + (y2-yc)**2)
+            t1 = np.arctan2(y1-yc,x1-xc)
+            theta = np.arccos(((x2-xc)*(x1-xc)+(y2-yc)*(y1-yc))/(r*r2))
+            a1 = (y1-yc)/(x1-xc)
+            yint2 = y2-a1*x2
+            yint1 = y1-a1*x1
+            if (yint2 < yint1 and x1>=xc) or (yint2 > yint1 and x1<xc):
+                theta *= -1
+          
+            length = abs(theta*r)
+            nl = int(length/self.dx)*2
+            atheta = np.linspace(0, theta, nl)
+            x = xc + r*np.cos(atheta+t1)[None,:]*np.ones((self.nt,nl))
+            y = yc + r*np.sin(atheta+t1)[None,:]*np.ones((self.nt,nl))
+            self.xslit = x[0]
+            self.yslit = y[0]
+        else:
+            x = np.zeros(nsp)
+            y = np.zeros(nsp)
+            for i,ss in enumerate(sp):
+                x[i] = ss[0]
+                y[i] = ss[1]
+            theta = np.arctan2(y[-1]-y[0],x[-1]-x[0])
+            xt = x*np.cos(theta) + y*np.sin(theta)
+            yt = -x*np.sin(theta) + y*np.cos(theta)
+            cs = CS(xt, yt)
+            seg = np.linspace(xt[0], xt[-1], 2000)
+            yseg = cs(seg)
+            ds = np.sqrt((np.roll(seg,-1) - seg)**2 + (np.roll(yseg,-1)-yseg)**2)
+            length = ds[:-1].sum()
+            nl = int(length/self.dx)*2
+            dl = length/nl
+            cl = ds[:-1].cumsum()
+            self.cl = cl
+            lcs = CS(cl, seg[1:])
+            xxt = np.zeros(nl)
+            il = np.linspace(0, length, nl)
+            xxt[0] = xt[0]
+            xxt[1:] = lcs(il[1:])
+            yyt = cs(xxt)
+            x = xxt*np.cos(theta) - yyt*np.sin(theta)
+            y = xxt*np.sin(theta) + yyt*np.cos(theta)
+            x = x[None,:]*np.ones((self.nt, nl))
+            y = y[None,:]*np.ones((self.nt, nl))
+            self.xslit = seg*np.cos(theta) - yseg*np.sin(theta)
+            self.yslit = seg*np.sin(theta) + yseg*np.cos(theta)
+
+        self.dl = length/nl
+        inp = np.array([(self.time[:,None] * np.ones((self.nt,nl))).flatten(), y.flatten(), x.flatten()])
+        return self.interp(inp.T).reshape((self.nt,nl)).T
+
+    def clear_marker(self):
+        if len(self.slitPoint) == 3:
+            self.pslitPoint[2].remove()
+            self.pslitPoint[0].set_color('b')
+            self.pslitPoint[0].set_marker('x')
+            self.pslitPoint[1].set_color('r')
+            self.pslitPoint[1].set_marker('+')
+        else:
+            for p in self.pslitPoint[1:]:
+                p.remove()
+
+    def clear_slit(self):
+        lines = self.ax.get_lines()
+        for l in lines:
+            l.remove()
+        self.fig.canvas.draw_idle()
+
+    def _onKey(self, event):
+        if event.key == 'left':
+            self._prev()
+        elif event.key == 'right':
+            self._next()
+        elif event.key == ' ' and event.inaxes == self.ax:
+            if self.onSlit:
+                self.clear_slit()
+                self.onSlit = False
+            # point to make tdmap slit
+            self.slitPoint += [[event.xdata, event.ydata]]
+            if len(self.slitPoint) == 1:
+                c = 'r'
+            else:
+                c = 'lime'
+            if len(self.slitPoint) == 2:
+                if self.lplot is not None:
+                    for ii in self.lplot:
+                        ii.remove()
+                self.lplot = None
+            if len(self.slitPoint) == 3:
+                if self.cplot is not None:
+                    for ii in self.cplot:
+                        ii.remove()
+                self.cplot = None
+            self.pslitPoint += [self.ax.plot(self.slitPoint[-1][0], self.slitPoint[-1][1], '+', color=c)[0]]
+            self.fig.canvas.draw_idle()
+        elif event.key == 'c' and event.inaxes == self.ax:
+            if self.lplot is not None:
+                    for ii in self.lplot:
+                        ii.remove()
+            if self.cplot is not None:
+                    for ii in self.cplot:
+                        ii.remove()
+            self.lplot = None
+            self.cplot = None
+            # make td map
+            self.TD = self.makeTD(self.slitPoint)
+            if self.a_fig is not None:
+                plt.close(self.a_fig)
+            self.analysis = analysisTDmap(self.TD, self.dl, self.dt, cmap=self.cmap, parent=self, clim=self.clim, t=self.t, label=self.label)
+            self.a_fig = self.analysis.fig
+            self.a_ax = self.analysis.ax
+            self.slit = self.ax.plot(self.xslit, self.yslit, color='lime')[0]
+            self.clear_marker()
+            self.pslitPoint = []
+            self.slitPoint = []
+            self.onSlit = True
+            self.fig.canvas.draw_idle()
+        elif event.key == 'escape':
+            if len(self.slitPoint) != 0:
+                if self.lplot is not None:
+                    if len(self.lplot) >= 1:
+                        self.lplot.pop(-1).remove()
+                self.lplot = []
+                if self.cplot is not None:
+                    for ii in self.cplot:
+                        ii.remove()
+                self.cplot = None
+                self.pslitPoint.pop(-1).remove()
+                self.slitPoint.pop(-1)
+                self.fig.canvas.draw_idle()
+            if self.onSlit:
+                self.clear_slit()
+                self.onSlit = False
+        elif (event.key == 'cmd+h' or event.key == 'ctrl+h'):
+            if self.h_fig is not None:
+                plt.close(self.h_fig)
+                self.h_fig = None
+            else:
+                tm = 0.155
+                lm = 0.03
+                dh = 0.06
+                self.h_fig = plt.figure(num='Help box for MTD', figsize=[5,4], facecolor='linen')
+                self.h_fig.text(0.5, 1-tm+2*dh, '<Interactive keys>', ha='center', va='top', size=15, weight='bold')
+                self.h_fig.text(lm, 1-tm, 'left: Previous frame', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-dh, 'right: Next frame', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-2*dh, 'spacebar: Select TD slit position (npoints should be >=2)\n    * if npoints=2, make linear slit\n        (1st: start point, 2nd: end point)\n    * if npoints=3, make arc-shaped slit\n        (1st=center, 2nd: start point, 3rd: endpoint)\n    * if npoints>3, make arbitrary curve by interpolation\n        (1st: start point, n-th: end point)', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-8*dh, 'c: Create TD map', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-9*dh, 'esc: erase the last slit position\n  or if you draw the slit already erase the slit', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-10.8*dh, 'cmd+h or ctrl+h: open the help box figure', ha='left', va='top', size=12)
+                self.h_fig.show()
+
+    def _next(self):
+        if self.t < self.nt-1:
+            self.t += 1
+        elif self.t >= self.nt-1:
+            self.t = 0
+        self.chTime(self.t)
+
+    def _prev(self):
+        if self.t > 0:
+            self.t -= 1
+        elif self.t <= 0:
+            self.t = self.nt-1
+        self.chTime(self.t)
+    
+    def chTime(self, t):
+        self.t = t
+        self.im.set_data(self.data[self.t])
+        self.ax.set_title(f't = {self.t*self.dt} (sec)')
+        if self.analysis is not None:
+            self.analysis.t = self.t
+            self.analysis.chTime()
+        self.fig.canvas.draw_idle()
+
+    def save(self, fname=None):
+        """
+        extension should be npz
+        """
+        if fname is None:
+            fname = join(getcwd(), f"{self.label}.npz")
+        if fname.split('.')[-1] != 'npz':
+            raise ValueError("File extension should be npz.")
+        if self.analysis is None:
+            np.savez(fname, TD=self.TD, Slit=[self.xslit, self.yslit], dl=self.dl, dx=self.dx, dy=self.dy, dt=self.dt)
+        else:
+            np.savez(fname, TD=self.TD, Slit=[self.xslit, self.yslit], dl=self.dl, dx=self.dx, dy=self.dy, dt=self.dt, vposition=self.spGrad, velocity=self.sv, boolFit=self.sfit, period=self.Tperiod, pposition=self.Tline_pos, wavelength=self.Ddistance, wposition=self.Dline_pos)
+
+class analysisTDmap:
+    def __init__(self, TD, dl, dt, cmap=None, figsize=None, dpi=100, parent=None, clim=None, t=0, label=None):
+        self.TD = TD
+        self.dl = dl
+        self.dt = dt
+        self.nl, self.nt = TD.shape
+        self.clim = clim
+        self.parent = parent
+
+        self.time = np.arange(0, self.nt)*self.dt
+        self.distance = np.arange(0, self.nl)*self.dl
+        self.t = t
+        self.r = 0
+        self.idx = False
+        self.idxT = False
+        self.idxD = False
+        self.marker = [None]*2
+        self.point = [None]*2
+        self.markerT = [None]*2
+        self.pointT = [None]*2
+        self.markerD = [None]*2
+        self.pointD = [None]*2
+        self.slits = []
+        self.vtexts = []
+        self.tpp = []
+        self.spGrad = []
+        self.sv = []
+        self.sfit = []
+        self.Tperiod = []
+        self.Tlines = []
+        self.Tline_pos = []
+        self.pTexts = []
+        self.Ddistance = []
+        self.Dlines = []
+        self.Dline_pos = []
+        self.dTexts = []
+        self.h_fig = None
+
+        # figure window label
+        afl = plt.get_figlabels()
+        if label is None:
+            label = 'Unknown-TD'
+        else:
+            label = label+'-TD'
+        if label in afl:
+            l0 = label.split('-TD')[0]
+            ii = 0
+            tmp2 = []
+            for aa in afl:
+                tmp = aa.split(f'{l0}_case')
+                if len(tmp) > 1:
+                    ii += 1
+                    tmp2 += [int(tmp[-1])]
+            if ii == 0:
+                label = l0+'_case2-TD'
+            else:
+                print(1)
+                label = l0+f'_case{max(tmp2)+1}-TD'
+        self.label = label
+        l = -0.5*dt
+        r = (self.nt - 0.5)*dt
+        b = -dl*0.5
+        t = (self.nl - 0.5)*dl
+        extent = [l, r, b, t]
+
+        figsize = [19,8]
+
+        self.fig, self.ax = plt.subplots(figsize=figsize, dpi=dpi, label=label)
+        fratio = figsize[1]/figsize[0]
+        ymargin = 0.07
+        xmargin = (ymargin+0.02) * fratio
+
+        self.ax.set_position([xmargin, ymargin, (1-2.5*xmargin)/9*8, (1-2.5*ymargin)/3*2])
+        self.axT = self.fig.add_subplot(111, sharex=self.ax)
+        self.axT.set_position([xmargin, ymargin*2+(1-2.5*ymargin)/3*2, (1-2.5*xmargin)/9*8, (1-2.5*ymargin)/3])
+        self.axD = self.fig.add_subplot(111, sharey=self.ax)
+        self.axD.set_position([xmargin*2+(1-2.5*xmargin)/9*8, ymargin, (1-2.5*xmargin)/9, (1-2.5*ymargin)/3*2])
+        self.imTD = self.ax.imshow(TD, cmap, origin='lower', extent=extent)
+        if self.clim is not None:
+            self.imTD.set_clim(self.clim)
+        self.clim = self.imTD.get_clim()
+        self.ax.set_aspect(aspect='auto', adjustable='box')
+        self.ax.set_xlabel('Time (sec)')
+        self.ax.set_ylabel('Distance (km)')
+        self.TS = self.axT.plot(self.time, TD[self.r], color='k')[0]
+        self.DS = self.axD.plot(TD[:,self.t], self.distance, color='k')[0]
+        self.axD.set_xlim(self.TD.min(), self.TD.max())
+        self.axT.set_ylim(self.TD.min(), self.TD.max())
+        self.hline = self.ax.plot([l, r], [self.r*self.dl, self.r*self.dl], color='darkcyan', ls='dashed', dashes=(5, 10))[0]
+        self.hline_sub = self.axD.plot(self.axD.get_xlim(), [self.r*self.dl, self.r*self.dl], color='darkcyan', ls='dashed', dashes=(5, 10))[0]
+        self.vline = self.ax.plot([self.t*self.dt, self.t*self.dt], [b, t], color='darkcyan', ls='dashed', dashes=(5, 10))[0]
+        self.vline_sub = self.axT.plot([self.t*self.dt, self.t*self.dt], self.axT.get_ylim(), color='darkcyan', ls='dashed', dashes=(5, 10))[0]
+        self.ax.set_xlim(l, r)
+        self.ax.set_ylim(b, t)
+
+        # x and y axis lines
+        m = (self.clim[0]+self.clim[1])/2
+        self.axT.plot([l,r], [m,m], color='gray', ls='dashed')
+        self.axD.plot([m,m], [b,t], color='gray', ls='dashed')
+
+        self.fig.canvas.mpl_connect('key_press_event', self._onKey)
+        self.fig.show()
+        
+    def clear_marker(self):
+        if self.marker[1] is not None:
+            for mm in self.marker:
+                mm.remove()
+            self.marker = [None]*2
+            self.point = [None]*2
+            self.fig.canvas.draw_idle()
+
+    def clear_markerT(self):
+        if self.markerT[1] is not None:
+            for mm in self.markerT:
+                mm.remove()
+            self.markerT = [None]*2
+            self.pointT = [None]*2
+            self.fig.canvas.draw_idle()
+
+    def clear_markerD(self):
+        if self.markerD[1] is not None:
+            for mm in self.markerD:
+                mm.remove()
+            self.markerD = [None]*2
+            self.pointD = [None]*2
+            self.fig.canvas.draw_idle()
+
+    def clear_slit_text(self):
+        for ss in self.slits:
+            ss.remove()
+        for tt in self.vtexts:
+            tt.remove()
+        for tmp in self.tpp:
+            tmp.remove()
+        self.slits = []
+        self.vtexts = []
+        self.tpp = []
+        self.fig.canvas.draw_idle()
+
+    def calTDvel(self):
+        p1, p2 = self.point
+
+        x1, y1 = p1
+        x2, y2 = p2
+
+        yp1 = int(y1/self.dl)
+        xp1 = int(x1/self.dt)
+        yp2 = int(y2/self.dl)
+        xp2 = int(x2/self.dt)
+
+        a = (yp2-yp1)/(xp2-xp1)
+        sign = np.sign(yp2-yp1)
+        
+        yy = np.arange(yp1, yp2+sign, sign)
+        xx = np.zeros(len(yy))
+        for ii, yi in enumerate(yy):
+            xi = int(round((yi-yp1)/a+xp1))
+            dd = self.TD[yi,xi-2:xi+3]
+            p = np.polyfit(np.arange(xi-2,xi+3), dd, 2)
+            xi2 = -p[1]/2/p[0]
+            if abs(xi2-xi) > 3.5:
+                xi2 = xi
+            xx[ii] = xi2
+
+        ps = np.polyfit(xx, yy, 1)
+        self.v = ps[0]*self.dl/self.dt
+        xf = np.array([xp1, xp2])
+        yf = np.polyval(ps, xf)*self.dl
+        xf *= self.dt
+
+        self.clear_marker()
+        self.tpp += [self.ax.plot(xx*self.dt, yy*self.dl, 'bx')[0]] # test
+        self.slits += [self.ax.plot(xf, yf, color='lime')[0]]
+        self.vtexts += [self.ax.text(xf.max()+self.dt*2, yf[xf.argmax()]+sign*self.dl*2, f'{self.v:.2f} km/s', ha='left', color='k', bbox=dict(boxstyle="round",ec='none',fc='w', alpha=0.3))]
+        self.spGrad += [[xf, yf]]
+        self.sv += [self.v]
+        self.sfit += [True]
+        if self.parent is not None:
+            self.parent.spGrad = self.spGrad
+            self.parent.sv = self.sv
+            self.parent.sfit = self.sfit
+        self.fig.canvas.draw_idle()
+
+    def calTDvel_simple(self):
+        p1, p2 = self.point
+        x1, y1 = p1
+        x2, y2 = p2
+        xf = np.array([x1,x2])
+        yf = np.array([y1,y2])
+        a = (y2-y1)/(x2-x1)
+        sign = np.sign(a)
+                
+        self.clear_marker()
+        self.slits += [self.ax.plot(xf, yf, color='cyan')[0]]
+        self.vtexts += [self.ax.text(xf.max()+self.dt*2, yf[xf.argmax()]+sign*self.dl*2, f'{a:.2f} km/s', ha='left', color='k', bbox=dict(boxstyle="round",ec='none',fc='w', alpha=0.3))]
+        self.tpp += [None]
+        self.spGrad += [[xf, yf]]
+        self.sv += [a]
+        self.sfit += [False]
+        if self.parent is not None:
+            self.parent.spGrad = self.spGrad
+            self.parent.sv = self.sv
+            self.parent.sfit = self.sfit
+        self.fig.canvas.draw_idle()
+
+    def calPeriod(self):
+        t1, t2 = self.pointT
+        tf = np.array([t1,t2])
+        self.clear_markerT()
+
+        period = abs(t2 - t1)
+        yy = (self.clim[0] + self.clim[1])/2
+        amp = abs(self.clim[0] - self.clim[1])
+        yerr = amp*0.05
+        self.Tperiod += [period]
+        self.Tlines += [self.axT.errorbar(tf, [yy, yy], yerr=[yerr,yerr], color='b')]
+        self.pTexts += [self.axT.text(tf.mean(), yy-amp*0.2, f'{period:.1f} sec', ha='center', color='k', bbox=dict(boxstyle="round",ec='none',fc='w', alpha=0.8))]
+        self.Tline_pos += [tf]
+        if self.parent is not None:
+                self.parent.Tperiod = self.Tperiod
+                self.parent.Tline_pos = self.Tline_pos
+        self.fig.canvas.draw_idle()
+
+    def calDistance(self):
+        d1, d2 = self.pointD
+        df = np.array([d1,d2])
+        self.clear_markerD()
+
+        distance = abs(d2 - d1)
+        xx = (self.clim[0] + self.clim[1])/2
+        amp = abs(self.clim[0] - self.clim[1])
+        xerr = amp*0.05
+        self.Ddistance += [distance]
+        self.Dlines += [self.axD.errorbar([xx, xx], df, xerr=[xerr,xerr], color='b')]
+        self.dTexts += [self.axD.text(xx+amp*0.1, df.mean(), f'{distance:.1f} km', ha='left', color='k', bbox=dict(boxstyle="round",ec='none',fc='w', alpha=0.8))]
+        self.Dline_pos += [df]
+        if self.parent is not None:
+                self.parent.Ddistance = self.Ddistance
+                self.parent.Dline_pos = self.Dline_pos
+        self.fig.canvas.draw_idle()
+
+    def _onKey(self, event):
+        if event.key == 'left':
+            self._prev()
+        elif event.key == 'right':
+            self._next()
+        elif event.key == 'down':
+            self._down()
+        elif event.key == 'up':
+            self._up()
+        elif event.key == ' ' and event.inaxes == self.ax:
+            self.point[self.idx] = [event.xdata, event.ydata]
+            if self.marker[self.idx] is None:
+                self.marker[self.idx] = self.ax.plot(event.xdata, event.ydata, 'x', color='lime')[0]
+            else:
+                self.marker[self.idx].set_xdata(event.xdata)
+                self.marker[self.idx].set_ydata(event.ydata)
+            self.idx ^= True
+            self.fig.canvas.draw_idle()
+        elif event.key == ' ' and event.inaxes == self.axT:
+            self.pointT[self.idxT] = event.xdata
+            if self.markerT[self.idxT] is None:
+                self.markerT[self.idxT] = self.axT.plot(event.xdata, event.ydata, 'x', color='lime')[0]
+            else:
+                self.markerT[self.idxT].set_xdata(event.xdata)
+                self.markerT[self.idxT].set_ydata(event.ydata)
+            self.idxT ^= True
+            self.fig.canvas.draw_idle()
+        elif event.key == ' ' and event.inaxes == self.axD:
+            self.pointD[self.idxD] = event.ydata
+            if self.markerD[self.idxD] is None:
+                self.markerD[self.idxD] = self.axD.plot(event.xdata, event.ydata, 'x', color='lime')[0]
+            else:
+                self.markerD[self.idxD].set_xdata(event.xdata)
+                self.markerD[self.idxD].set_ydata(event.ydata)
+            self.idxD ^= True
+            self.fig.canvas.draw_idle()
+        elif event.key == 'c' and self.point[1] is not None:
+            self.calTDvel()
+        elif event.key == 'v' and self.point[1] is not None:
+            self.calTDvel_simple()
+        elif (event.key == 'c' or event.key == 'v') and self.pointT[1] is not None:
+            self.calPeriod()
+        elif (event.key == 'c' or event.key == 'v') and self.pointD[1] is not None:
+            self.calDistance()
+        elif event.key == 'escape' and event.inaxes == self.ax:
+            if len(self.slits) >= 1:
+                self.slits.pop(-1).remove()
+                self.vtexts.pop(-1).remove()
+                self.spGrad.pop(-1)
+                self.sfit.pop(-1)
+                self.sv.pop(-1)
+                tmp = self.tpp.pop(-1)
+                if tmp is not None:
+                    tmp.remove()
+                if self.parent is not None:
+                    self.parent.spGrad = self.spGrad
+                    self.parent.sv = self.sv
+                    self.parent.sfit = self.sfit
+                self.fig.canvas.draw_idle()
+        elif event.key == 'escape' and event.inaxes == self.axT:
+            if len(self.Tperiod) >= 1:
+                self.Tperiod.pop(-1)
+                self.Tline_pos.pop(-1)
+                self.Tlines.pop(-1).remove()
+                self.pTexts.pop(-1).remove()
+                if self.parent is not None:
+                    self.parent.Tperiod = self.Tperiod
+                    self.parent.Tline_pos = self.Tline_pos
+                self.fig.canvas.draw_idle()
+        elif event.key == 'escape' and event.inaxes == self.axD:
+            if len(self.Ddistance) >= 1:
+                self.Ddistance.pop(-1)
+                self.Dline_pos.pop(-1)
+                self.Dlines.pop(-1).remove()
+                self.dTexts.pop(-1).remove()
+                if self.parent is not None:
+                    self.parent.Ddistance = self.Ddistance
+                    self.parent.Dline_pos = self.Dline_pos
+                self.fig.canvas.draw_idle()
+        elif (event.key == 'cmd+r' or event.key == 'ctrl+r') and event.inaxes == self.ax:
+            for i in range(len(self.slits)):
+                self.slits.pop(-1).remove()
+                self.vtexts.pop(-1).remove()
+                self.spGrad.pop(-1)
+                self.sfit.pop(-1)
+                self.sv.pop(-1)
+                tmp = self.tpp.pop(-1)
+                if tmp is not None:
+                    tmp.remove()
+            if self.parent is not None:
+                self.parent.spGrad = self.spGrad
+                self.parent.sv = self.sv
+                self.parent.sfit = self.sfit
+            self.fig.canvas.draw_idle()
+        elif (event.key == 'cmd+r' or event.key == 'ctrl+r') and event.inaxes == self.axT:
+            for i in  range(len(self.Tperiod)):
+                self.Tperiod.pop(-1)
+                self.Tline_pos.pop(-1)
+                self.Tlines.pop(-1).remove()
+                self.pTexts.pop(-1).remove()
+            if self.parent is not None:
+                self.parent.Tperiod = self.Tperiod
+                self.parent.Tline_pos = self.Tline_pos
+            self.fig.canvas.draw_idle()
+        elif (event.key == 'cmd+r' or event.key == 'ctrl+r') and event.inaxes == self.axD:
+            for i in range(len(self.Ddistance)):
+                self.Ddistance.pop(-1)
+                self.Dline_pos.pop(-1)
+                self.Dlines.pop(-1).remove()
+                self.dTexts.pop(-1).remove()
+            if self.parent is not None:
+                self.parent.Ddistance = self.Ddistance
+                self.parent.Dline_pos = self.Dline_pos
+            self.fig.canvas.draw_idle()
+        elif (event.key == 'cmd+h' or event.key == 'ctrl+h'):
+            if self.h_fig is not None:
+                plt.close(self.h_fig)
+                self.h_fig = None
+            else:
+                tm = 0.155
+                lm = 0.03
+                dh = 0.06
+                self.h_fig = plt.figure(num='Help box for ATD', figsize=[5,4], facecolor='azure')
+                self.h_fig.text(0.5, 1-tm+2*dh, '<Interactive keys>', ha='center', va='top', size=15, weight='bold')
+                self.h_fig.text(lm, 1-tm, 'left: Move left the vertical line', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-dh, 'right: Move right the vertical line', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-2*dh, 'bottom: Move down the horizontal line', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-3*dh, 'top: Move up the horizontal line', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-4*dh, 'spacebar on each axes: Mark the position\n                                     (need 2 position)', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-5.8*dh, 'c on TDmap: Calculate the gradient fitting the peak\n                     values of the ridges between two marked\n                     positions.', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-8.4*dh, 'v on any axes: Simply calculate the measurement\n                        between two marked positions.', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-10.2*dh, 'esc on each axes: Remove the last measurement', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-11.2*dh, 'ctrl+r or cmd+r: Remove the all measurement', ha='left', va='top', size=12)
+                self.h_fig.text(lm, 1-tm-12.2*dh, 'ctrl+h or cmd+h: Open the help box figure.', ha='left', va='top', size=12)
+                self.h_fig.show()
+
+                
+
+    def _next(self):
+        if self.t < self.nt-1:
+            self.t += 1
+        elif self.t >= self.nt-1:
+            self.t = 0
+        self.chTime()
+
+    def _prev(self):
+        if self.t > 0:
+            self.t -= 1
+        elif self.t <= 0:
+            self.t = self.nt-1
+        self.chTime()
+
+    def _down(self):
+        if self.r > 0:
+            self.r -= 1
+        elif self.r <= 0:
+            self.r = self.nl-1
+        self.chDistance()
+        
+    def _up(self):
+        if self.r < self.nl-1:
+            self.r += 1
+        elif self.r >= self.nl-1:
+            self.r = 0
+        self.chDistance()
+        
+    def chTime(self):
+        self.vline.set_xdata([self.t*self.dt, self.t*self.dt])
+        self.vline_sub.set_xdata([self.t*self.dt, self.t*self.dt])
+        self.DS.set_xdata(self.TD[:,self.t])
+        if self.parent is not None:
+            self.parent.t = self.t
+            self.parent.im.set_data(self.parent.data[self.t])
+            self.parent.ax.set_title(f't = {self.parent.t*self.dt} (sec)')
+            self.parent.fig.canvas.draw_idle()
+        self.hline_sub.set_xdata(self.axD.get_xlim())
+
+        self.fig.canvas.draw_idle()
+
+    def chDistance(self):
+        self.hline.set_ydata([self.r*self.dl, self.r*self.dl])
+        self.hline_sub.set_ydata([self.r*self.dl, self.r*self.dl])
+        self.TS.set_ydata(self.TD[self.r])
+        self.vline_sub.set_ydata(self.axT.get_ylim())
+        self.fig.canvas.draw_idle()
+
+    def save(self, fname=None):
+        """
+        """
+        if fname is None:
+            fname = join(getcwd(), f"{self.label}.npz")
+        if fname.split('.')[-1] != 'npz':
+            raise ValueError("File extension should be npz.")
+        np.savez(fname, TD=self.TD, dl=self.dl, dt=self.dt, vposition=self.spGrad, velocity=self.sv, boolFit=self.sfit, period=self.Tperiod, pposition=self.Tline_pos, wavelength=self.Ddistance, wposition=self.Dline_pos)

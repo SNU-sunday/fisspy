@@ -2963,22 +2963,22 @@ class prepGUI:
                             makedirs(dname)
                         fn = join(dname, fn)
                         
-                        if ch['STRTIME'].find('.') < 10:
-                            ch['STRTIME'] = ch['STRTIME'].replace('-', 'T').replace('.', '-')
-                        if ch['ENDTIME'].find('.') < 10:
-                            ch['ENDTIME'] = ch['ENDTIME'].replace('-', 'T').replace('.', '-')
-                        obstime = (Time(ch['STRTIME']).jd + Time(ch['ENDTIME']).jd)/2
+                        if h['STRTIME'].find('.') < 10:
+                            h['STRTIME'] = h['STRTIME'].replace('-', 'T').replace('.', '-')
+                        if h['ENDTIME'].find('.') < 10:
+                            h['ENDTIME'] = h['ENDTIME'].replace('-', 'T').replace('.', '-')
+                        obstime = (Time(h['STRTIME']).jd + Time(h['ENDTIME']).jd)/2
                         obstime = Time(obstime, format='jd').isot
 
                         hdu = fits.PrimaryHDU(cd2)
                         hdu.header['CRPIX1'] = (ch['crpix1']-5, 'reference pixel position')
                         hdu.header['CDELT1'] = (ch['cdelt1'], 'angstrom/pixel')
                         hdu.header['CRVAL1'] = (ch['crval1'], 'reference wavelength (angstrom)')
-                        hdu.header['EXPTIME'] = (ch['EXPTIME'], 'Second')
+                        hdu.header['EXPTIME'] = (h['EXPTIME'], 'Second')
                         hdu.header['OBSTIME'] = (obstime, 'Observation Time (UT)')
-                        hdu.header['DATE'] = (ch['DATE'], 'File Creation Date (UT)')
-                        hdu.header['STRTIME'] = (ch['STRTIME'], 'Scan Start Time')
-                        hdu.header['ENDTIME'] = (ch['ENDTIME'], 'Scan Finish Time')
+                        hdu.header['DATE'] = (h['DATE'], 'File Creation Date (UT)')
+                        hdu.header['STRTIME'] = (h['STRTIME'], 'Scan Start Time')
+                        hdu.header['ENDTIME'] = (h['ENDTIME'], 'Scan Finish Time')
                         hdu.header['TILT'] = (ch['tilt'], 'Degree')
                         hdu.header['COEF1_0'] = (ch['coef1_0'], 'Curvature correction coeff p0')
                         hdu.header['COEF1_1'] = (ch['coef1_1'], 'Curvature correction coeff p1')
