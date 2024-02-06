@@ -10,7 +10,6 @@ import matplotlib.patheffects as pe
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
-
 class makeTDmap:
     """
     Make Time-Distance map for given slit position interactively
@@ -45,7 +44,7 @@ class makeTDmap:
     c : calculate and show TD map on the new figure.
     ctrl+h, cmd+h: open help box
     """
-    def __init__(self, data, dx=1, dy=1, dt=1, cmap=None, figsize=None, dpi=100, clim=None, label=None):
+    def __init__(self, data, dx=1, dy=1, dt=1, cmap=None, figsize=None, dpi=100, clim=None, label=None, aspect=1/10):
         try:
             plt.rcParams['keymap.back'].remove('left')
             plt.rcParams['keymap.forward'].remove('right')
@@ -59,6 +58,7 @@ class makeTDmap:
 
         # set initial parameter
         self.data = data
+        self.aspect = aspect
         self.nt, self.ny, self.nx = data.shape
         self.dx = dx
         self.dy = dy
@@ -316,7 +316,7 @@ class makeTDmap:
             self.TD = self.makeTD(self.slitPoint)
             if self.a_fig is not None:
                 plt.close(self.a_fig)
-            self.analysis = analysisTDmap(self.TD, self.dl, self.dt, cmap=self.cmap, parent=self, clim=self.clim, t=self.t, label=self.label)
+            self.analysis = analysisTDmap(self.TD, self.dl, self.dt, cmap=self.cmap, parent=self, clim=self.clim, t=self.t, label=self.label, aspect=self.aspect)
             self.a_fig = self.analysis.fig
             self.a_ax = self.analysis.ax
             self.slit = self.ax.plot(self.xslit, self.yslit, color='lime')[0]
@@ -396,7 +396,17 @@ class makeTDmap:
             np.savez(fname, TD=self.TD, Slit=[self.xslit, self.yslit], dl=self.dl, dx=self.dx, dy=self.dy, dt=self.dt, vposition=self.spGrad, velocity=self.sv, boolFit=self.sfit, period=self.Tperiod, pposition=self.Tline_pos, wavelength=self.Ddistance, wposition=self.Dline_pos)
 
 class analysisTDmap:
-    def __init__(self, TD, dl, dt, cmap=None, figsize=None, dpi=100, parent=None, clim=None, t=0, label=None):
+    def __init__(self, TD, dl, dt, cmap=None, figsize=[19, 8], dpi=100, parent=None, clim=None, t=0, label=None, aspect=1/10):
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
+        try:
+            plt.rcParams['keymap.back'].remove('c')
+            plt.rcParams['keymap.forward'].remove('v')
+        except:
+            pass
         self.TD = TD
         self.dl = dl
         self.dt = dt
@@ -460,23 +470,45 @@ class analysisTDmap:
         t = (self.nl - 0.5)*dl
         extent = [l, r, b, t]
 
-        figsize = [19,8]
-
-        self.fig, self.ax = plt.subplots(figsize=figsize, dpi=dpi, label=label)
+        # figsize = [19,8]
+        fx, fy = figsize
         fratio = figsize[1]/figsize[0]
-        ymargin = 0.07
-        xmargin = (ymargin+0.02) * fratio
+        # xm = ymargin = 0.07
+        # ym = xmargin = (ymargin+0.02) * fratio
+
+        xM = 0.8
+        yM = xM*4/5
+        xm = xmargin = xM/fx
+        
+        kx = 8/9
+        ky = 2/3
+        yl = t-b
+        xl = r-l
+        xs = kx*fx*(1-2.5*xm)
+        ys = xs*yl*aspect/xl
+        fy = ys/ky+ 2.5*yM
+
+        if fy > 10:
+            fy = 10
+            ym = ymargin = yM/fy
+
+            ys2 = ky*fy*(1-2.5*ym)
+            xs2 = ys2*xl/(aspect*yl)
+            fx = xs2/kx+ 2.5*xM
+            xm = xmargin = xM/fx
+        ym = ymargin = yM/fy
+        self.fig, self.ax = plt.subplots(figsize=[fx,fy], dpi=dpi, label=label)
 
         self.ax.set_position([xmargin, ymargin, (1-2.5*xmargin)/9*8, (1-2.5*ymargin)/3*2])
         self.axT = self.fig.add_subplot(111, sharex=self.ax)
         self.axT.set_position([xmargin, ymargin*2+(1-2.5*ymargin)/3*2, (1-2.5*xmargin)/9*8, (1-2.5*ymargin)/3])
         self.axD = self.fig.add_subplot(111, sharey=self.ax)
         self.axD.set_position([xmargin*2+(1-2.5*xmargin)/9*8, ymargin, (1-2.5*xmargin)/9, (1-2.5*ymargin)/3*2])
-        self.imTD = self.ax.imshow(TD, cmap, origin='lower', extent=extent)
+        self.imTD = self.ax.imshow(TD, cmap, origin='lower', extent=extent, aspect=aspect)
         if self.clim is not None:
             self.imTD.set_clim(self.clim)
         self.clim = self.imTD.get_clim()
-        self.ax.set_aspect(aspect='auto', adjustable='box')
+        # self.ax.set_aspect(aspect='auto', adjustable='box')
         self.ax.set_xlabel('Time (sec)')
         self.ax.set_ylabel('Distance (km)')
         self.TS = self.axT.plot(self.time, TD[self.r], color='k')[0]
@@ -494,6 +526,20 @@ class analysisTDmap:
         m = (self.clim[0]+self.clim[1])/2
         self.axT.plot([l,r], [m,m], color='gray', ls='dashed')
         self.axD.plot([m,m], [b,t], color='gray', ls='dashed')
+
+        # velocity slope
+        xticks = self.ax.get_xticks()
+        dx = xticks[1] - xticks[0]
+        xm = np.abs([xticks[0], xticks[-1]]).max()
+        xticks = np.arange(-xm,xm,dx)
+        nxt = len(xticks)
+        self.glines = [None]*nxt
+        tt = np.array([0, self.time[-1]])
+        for i, xt in enumerate(xticks):
+            tt[0] = xt
+            dd = (tt-xt)/aspect
+            self.glines[i] = self.ax.plot(tt, dd, ls='dashed', color='silver')[0]
+            self.glines[i].set_visible(False)
 
         self.fig.canvas.mpl_connect('key_press_event', self._onKey)
         self.fig.show()
@@ -771,6 +817,17 @@ class analysisTDmap:
                 self.h_fig.text(lm, 1-tm-11.2*dh, 'ctrl+r or cmd+r: Remove the all measurement', ha='left', va='top', size=12)
                 self.h_fig.text(lm, 1-tm-12.2*dh, 'ctrl+h or cmd+h: Open the help box figure.', ha='left', va='top', size=12)
                 self.h_fig.show()
+        elif event.key == 'm':
+            self.t = int(round(event.xdata/self.dt))
+            self.chTime()
+            self.r = int(round(event.ydata/self.dl))
+            self.chDistance()
+        elif event.key == 'cmd+g' or event.key =='ctrl+g':
+            v = self.glines[0].get_visible()
+            v ^= True
+            for gl in self.glines:
+                gl.set_visible(v)
+            self.fig.canvas.draw_idle()
 
                 
 
