@@ -1176,10 +1176,7 @@ def wv_calib_atlas(data, header, cent_wv=False):
         while abs(wsh) >= 1e-1:
             if wmax == 0:
                 sh = alignoffset(prof, refI)
-            elif wmax > 0:
-                print(wmax)
-                print(prof.shape)
-                print(refI.shape)
+            elif int(round(wmax)) >= 1:
                 sh = alignoffset(prof[:,:-int(wmax)], refI[:,:-int(wmax)])
             else:
                 sh = alignoffset(prof[:,-int(wmax):], refI[:,-int(wmax):])
