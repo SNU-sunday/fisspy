@@ -18,13 +18,13 @@ from scipy.fftpack import fft, ifft
 def fname2isot(f):
     rf = basename(f).replace('_BiasDark', '')
     sp = rf.split('_')
-    YY = sp[-3][:4]
-    MM = sp[-3][4:6]
-    DD = sp[-3][6:8]
+    YY = sp[1][:4]
+    MM = sp[1][4:6]
+    DD = sp[1][6:8]
 
-    hh = sp[-2][:2]
-    mm = sp[-2][2:4]
-    ss = sp[-2][4:]
+    hh = sp[2][:2]
+    mm = sp[2][2:4]
+    ss = sp[2][4:]
 
     return f"{YY}-{MM}-{DD}T{hh}:{mm}:{ss}"
 
