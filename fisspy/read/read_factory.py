@@ -15,7 +15,7 @@ import astropy.units as u
 from matplotlib import gridspec
 from fisspy.analysis.wavelet import Wavelet
 from matplotlib import ticker
-from fisspy.analysis.tdmap import TDmap
+# from fisspy.analysis.tdmap import TDmap
 #from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 __author__= "Juhyung Kang"
@@ -1113,18 +1113,18 @@ class FD:
         self.peakPeriodLWS.set_text(
                 r'P$_{peak, LWS}$=%.2f min'%peakPLWS)
 
-    def TD(self, ID=0, filterRange=None):
-        hdu = fits.PrimaryHDU(self.data[:,:,:,ID])
-        h= hdu.header
-        h['cdelt1'] = self.xDelt
-        h['cdelt2'] = self.yDelt
-        h['cdelt3'] = self.dt
-        h['crval1'] = self.xpos
-        h['crval2'] = self.ypos
-        h['sttime'] = self.Time[0].value
+    # def TD(self, ID=0, filterRange=None):
+    #     hdu = fits.PrimaryHDU(self.data[:,:,:,ID])
+    #     h= hdu.header
+    #     h['cdelt1'] = self.xDelt
+    #     h['cdelt2'] = self.yDelt
+    #     h['cdelt3'] = self.dt
+    #     h['crval1'] = self.xpos
+    #     h['crval2'] = self.ypos
+    #     h['sttime'] = self.Time[0].value
 
-        return TDmap(self.data[:,:,:,ID], h, self.time,
-                     filterRange=filterRange, cmap=self.cmap[ID])
+    #     return TDmap(self.data[:,:,:,ID], h, self.time,
+    #                  filterRange=filterRange, cmap=self.cmap[ID])
 
     def set_clim(self, cmin, cmax):
         self.imRaster.set_clim(cmin, cmax)
