@@ -219,8 +219,7 @@ class FISS:
     >>> fiss = read.FISS(fisspy.data.sample.FISS_IMAGE)
     """
 
-    def __init__(self, file, x1=0, x2=None, y1=0, y2=None, ncoeff=False, noiseSuppression=False,
-                 simpleWaveCalib=True, absScale=True, **kwargs):
+    def __init__(self, file, x1=0, x2=None, y1=0, y2=None, ncoeff=False, noiseSuppression=False, simpleWaveCalib=True, absScale=True, **kwargs):
         if file.find('1.fts') != -1:
             self.ftype = 'proc'
         elif file.find('c.fts') != -1:

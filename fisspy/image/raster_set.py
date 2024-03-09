@@ -8,8 +8,34 @@ from fisspy.preprocess import proc_base
 from astropy.time import Time
 from os.path import join, basename
 
+__author__ = "Juhyung Kang"
+
 class makeRasterSet:
     def __init__(self, flistA, flistB, flatA, flatB, wvset=None, ii=0, show=True):
+        """
+        Make Raster image set
+
+        Parameters
+        ----------
+        flistA: `list`
+            list of the cam A file (one among raw, proc, comp data)
+        flistB: `list`
+            list of the cam B file (one among raw, proc, comp data)
+        flatA: `~numpy.ndarray`
+            raw flat image for cam A
+        flatB: `~numpy.ndarray`
+            raw flat image for cam B
+        wvset: `~numpy.ndarray` (optional)
+            1D-array for relative wavelength set to draw raster image.
+            default is [-4, -0.7, -0.5, -0.2, 0, 0.2, 0.5, 0.7]
+        ii: `int` (optional)
+            time index to show initially
+            default is 0
+        show: `bool` (optional)
+            show plot
+            default is True
+            Please set this value to False to save the image or animation.
+        """
         self.show = show
         if show:
             plt.ion()
