@@ -7,7 +7,7 @@ from fisspy import cm
 import matplotlib.pyplot as plt
 from astropy.constants import c
 from fisspy.analysis.doppler import lambdameter
-from fisspy.image import interactive_image as IAI
+from fisspy.image import interactive_image as II
 from fisspy.read.readbase import getRaster, getHeader, readFrame
 from fisspy.analysis.filter import FourierFilter
 from astropy.time import Time
@@ -148,7 +148,7 @@ class rawData:
         self.wv = wv
         self.imInterp = kwargs.get('interpolation', 'bilinear')
         kwargs['interpolation'] = self.imInterp
-        self.iIm = IAI.singleBand(self, x, y, wv,
+        self.iIm = II.singleBand(self, x, y, wv,
                                   scale=scale, sigFactor=sigFactor,
                                   helpBox=helpBox, **kwargs)  # Basic resource to make interactive image is `~fisspy.image.tdmap.TDmap`
         plt.show()
@@ -255,20 +255,20 @@ class FISS:
         self.noiseSuppression = noiseSuppression
         if noiseSuppression:
             self._noiseSuppression()
-
-        if self.band == '6562':
+        tmp = self.header['crval1']
+        if (tmp > 6562.8-5)*(tmp < 6562.8+5):
             self.cam = 'A'
             self.set = '1'
             self.cmap = cm.ha
-        elif self.band == '8542':
+        elif (tmp > 8542.1-5)*(tmp < 8542.1+5):
             self.cam = 'B'
             self.set = '1'
             self.cmap = cm.ca
-        elif self.band == '5889':
+        elif (tmp > 5889-5)*(tmp < 5889+5):
             self.cam = 'A'
             self.set = '2'
             self.cmap = cm.na
-        elif self.band == '5434':
+        elif (tmp > 5434-5)*(tmp < 5434+5):
             self.cam = 'B'
             self.set = '2'
             self.cmap = cm.fe
@@ -278,6 +278,7 @@ class FISS:
         self.extentSpectro = [self.wave.min()-self.wvDelt/2,
                               self.wave.max()+self.wvDelt/2,
                               0, self.ny*self.yDelt]
+        self.lv = None
 
     def reload(self, x1=0, x2=None, y1=0, y2=None, ncoeff=False, noiseSuppression=False):
         """
@@ -349,6 +350,7 @@ class FISS:
         but if absScale is False, the central wavelength is set to be zero.
         """
         method = kwargs.pop('method', True)
+        
         if simpleWaveCalib:
             self.lamb0 = self.header['crval1']
             if absScale:
@@ -423,54 +425,27 @@ class FISS:
                                    mode= mode)
         self.noiseSuppression = True
 
-
-    def lambdaMeter(self, hw= 0.03, sp= 5e3, wvRange= False,
-                    wvinput= True, shift2velocity= True):
+    def lambdameter(self, **kw):
         """
         Calculate the doppler shift by using lambda-meter (bisector) method.
 
         Parameters
         ----------
-        shift2velocity: `bool`
-            Convert doppler shift value with the velocity (unit: km s^-1)
-        wvinput : bool
-            There are two cases.
+        **kw:
+            kwargs parameters of the `fisspy.analysis.doppler.lambdameter`
 
-        * Case wvinput==True
-
-                hw : float
-                    A half width of the horizontal line segment.
-
-            Returns
-            -------
-            wc : nd ndarray
-                n dimensional array of central wavelength values.
-            intc : nd ndarray
-                n dimensional array of intensies of the line segment.\\
-
-        * Case wvinput==False
-
-                sp : float
-                    An intensity of the horiznotal segment.
-
-            Returns
-            -------
-            wc : nd ndarray
-                n dimensional array of central wavelength values.
-            hwc : nd ndarray
-                n dimensional array of half widths of the line segment.
+        Returns
+        -------
+        wc : `~numpy.ndarray`
+            n dimensional array of central wavelength values.
+        intc : `~numpy.ndarray`
+            n dimensional array of intensies of the line segment.
 
         """
-        lineShift, intensity = lambdameter(self.wave, self.data,
-                                           ref_spectrum= self.refProfile,
-                                           wvRange= wvRange, hw= hw,
-                                           wvinput= wvinput)
-
-        if shift2velocity:
-            LOSvelocity = (lineShift-self.centralWavelength) * c.to('km/s').value/self.lamb0
-            return LOSvelocity, intensity
-        else:
-            return lineShift, intensity
+        self.hw = kw.get('hw', 0.05)
+        self.lwc, self.lic = lambdameter(self.wave, self.data, **kw)
+        self.lv = (self.lwc-self.centralWavelength)/self.centralWavelength * 3e5
+        
 
     def imshow(self, x=None, y=None, wv=None, scale='minMax',
                sigFactor=3, helpBox=True, **kwargs):
@@ -509,11 +484,11 @@ class FISS:
         except:
             pass
 
-        if not x:
+        if x is None:
             x = self.nx//2*self.xDelt
-        if not y:
+        if y is None:
             y = self.ny//2*self.yDelt
-        if not wv:
+        if wv is None:
             wv = self.centralWavelength
         self.x = x
         self.y = y
@@ -521,7 +496,7 @@ class FISS:
         self.imInterp = kwargs.get('interpolation', 'bilinear')
         self.cmap = kwargs.pop('cmap', self.cmap)
         kwargs['interpolation'] = self.imInterp
-        self.iIm = IAI.singleBand(self, x, y, wv,
+        self.iIm = II.singleBand(self, x, y, wv,
                                   scale=scale, sigFactor=sigFactor,
                                   helpBox=helpBox, **kwargs)  # Basic resource to make interactive image is `~fisspy.image.tdmap.TDmap`
 
@@ -542,6 +517,125 @@ class FISS:
         self.iIm.x = x
         self.iIm.y = y
         self.iIm._chSpect()
+
+    def vshow(self, x=None, y=None, **kw):
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
+
+        if x is None:
+            x = self.nx//2*self.xDelt
+        if y is None:
+            y = self.ny//2*self.yDelt
+
+        self.xpix = round((x-self.xDelt/2)/self.xDelt)
+        self.x = self.xpix*self.xDelt+self.xDelt/2
+        self.ypix = round((y-self.yDelt/2)/self.yDelt)
+        self.y = self.ypix*self.yDelt+self.yDelt/2
+
+        self.lambdameter(**kw)
+        
+        # figure setting
+        self.fig = plt.figure(figsize=[18,7])
+        gs = gridspec.GridSpec(1, 5)
+        self.axI = self.fig.add_subplot(gs[0,0])
+        self.axV = self.fig.add_subplot(gs[0,1], sharex=self.axI, sharey=self.axI)
+        self.axSpec = self.fig.add_subplot(gs[0,2:])
+        self.axI.set_xlabel('X (arcsec)')
+        self.axI.set_ylabel('Y (arcsec)')
+        self.axSpec.set_xlabel(r'Wavelength ($\AA$)')
+        self.axSpec.set_ylabel('Intensity (Count)')
+        self.axI.set_title("Intensity")
+        self.axV.set_title("Velocity (km/s)")
+        self.axSpec.set_title(r"X = %.2f'', Y = %.2f'' (X$_{pix}$ = %i, Y$_{pix}$ = %i), $\Delta\lambda$ = %.2f"%(self.x, self.y, self.xpix, self.ypix, self.hw))
+        self.axI.set_xlim(self.extentRaster[0], self.extentRaster[1])
+        self.axI.set_ylim(self.extentRaster[2], self.extentRaster[3])
+        self.axSpec.set_xlim(self.wave.min(), self.wave.max())
+        self.axSpec.set_ylim(self.data[self.ypix, self.xpix].min()-100,
+                                self.data[self.ypix, self.xpix].max()+100)
+        self.axSpec.minorticks_on()
+        self.axSpec.tick_params(which='both', direction='in')
+
+        # Draw
+        self.imI = self.axI.imshow(self.lic, self.cmap, origin='lower', extent=self.extentRaster)
+        tmp = self.lic.copy().flatten()
+        tmp.sort()
+        m = tmp[200:-200].mean()
+        std = tmp[200:-200].std()
+        Imin = m-std*3
+        Imax = m+std*3
+        # Imin = tmp[200:-200].min()
+        # Imax = tmp[200:-200].max()
+        self.imI.set_clim(Imin, Imax)
+        self.imV = self.axV.imshow(self.lv, plt.cm.RdBu_r, origin='lower', extent=self.extentRaster, clim=[-10, 10])
+        self.pSpec = self.axSpec.plot(self.wave, self.data[self.ypix, self.xpix], color='k')[0]
+        self.pHL = self.axSpec.plot([self.lwc[self.ypix, self.xpix]-self.hw, self.lwc[self.ypix, self.xpix]+self.hw],
+                                    [self.lic[self.ypix, self.xpix], self.lic[self.ypix, self.xpix]], color='r')[0]
+        self.pVL = self.axSpec.plot([self.lwc[self.ypix, self.xpix], self.lwc[self.ypix, self.xpix]],
+                                    [1e4, 0], color='r')[0]
+        self.pointI = self.axI.scatter(self.x, self.y, 50, marker='x', color='r')
+        self.pointV = self.axV.scatter(self.x, self.y, 50, marker='x', color='r')
+
+        self.fig.tight_layout()
+        self.fig.canvas.mpl_connect('key_press_event', self._onKey_vs)
+        self.fig.show()
+
+    def _onKey_vs(self, event):
+        if event.key == 'left' or event.key == 'ctrl+left' or event.key == 'cmd+left':
+            if self.xpix > 0:
+                self.xpix -= 1
+            else:
+                self.xpix = self.nx-1
+            self.x = self.xpix*self.xDelt+self.xDelt/2
+            self._chPos()
+        elif event.key == 'right' or event.key == 'ctrl+right' or event.key == 'cmd+right':
+            if self.xpix < self.nx-1:
+                self.xpix += 1
+            else:
+                self.xpix = 0
+            self.x = self.xpix*self.xDelt+self.xDelt/2
+            self._chPos()
+        elif event.key == 'down' or event.key == 'ctrl+down' or event.key == 'cmd+down':
+            if self.ypix > 0:
+                self.ypix -= 1
+            else:
+                self.ypix = self.ny-1
+            self.y = self.ypix*self.yDelt+self.yDelt/2
+            self._chPos()
+        elif event.key == 'up' or event.key == 'ctrl+up' or event.key == 'cmd+up':
+            if self.ypix < self.ny-1:
+                self.ypix += 1
+            else:
+                self.ypix = 0
+            self.y = self.ypix*self.yDelt+self.yDelt/2
+            self._chPos()
+        elif event.key == ' ' and (event.inaxes == self.axI or event.inaxes == self.axV):
+            self.x = event.xdata
+            self.y = event.ydata
+            self.xpix = int(round((self.x-self.xDelt/2)/self.xDelt))
+            self.ypix = int(round((self.y-self.yDelt/2)/self.yDelt))
+            self._chPos()
+
+    def _chPos(self):
+        self.pSpec.set_ydata(self.data[self.ypix, self.xpix])
+        self.pHL.set_xdata([self.lwc[self.ypix, self.xpix]-self.hw, self.lwc[self.ypix, self.xpix]+self.hw])
+        self.pHL.set_ydata([self.lic[self.ypix, self.xpix], self.lic[self.ypix, self.xpix]])
+        self.pVL.set_xdata([self.lwc[self.ypix, self.xpix], self.lwc[self.ypix, self.xpix]])
+        self.pointI.set_offsets([self.x, self.y])
+        self.pointV.set_offsets([self.x, self.y])
+        self.axSpec.set_ylim(self.data[self.ypix, self.xpix].min()-100,
+                                self.data[self.ypix, self.xpix].max()+100)
+        self.fig.canvas.draw_idle()
+    
+    def chIclim(self, cmin, cmax):
+        self.imI.set_clim(cmin, cmax)
+        self.fig.canvas.draw_idle()
+    
+    def chVclim(self, cmin, cmax):
+        self.imV.set_clim(cmin, cmax)
+        self.fig.canvas.draw_idle()
 
 class FD:
     """

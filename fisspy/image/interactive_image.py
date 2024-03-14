@@ -95,21 +95,22 @@ class singleBand:
             ax = helpFig.add_subplot(111)
             ax.set_position([0,0,1,1])
             ax.set_axis_off()
-            ax.text(0.05,0.9,'ctrl+h: Reset to original setting')
-            ax.text(0.05,0.8,'ctrl+right: Move to right')
-            ax.text(0.05,0.7,'ctrl+left: Move to left')
-            ax.text(0.05,0.6,'ctrl+up: Move to up')
-            ax.text(0.05,0.5,'ctrl+down: Move to down')
+            ax.text(0.05,0.9,'ctrl/cmd+h: Reset to original setting')
+            ax.text(0.05,0.8,'ctrl/cmd+right: Move to right')
+            ax.text(0.05,0.7,'ctrl/cmd+left: Move to left')
+            ax.text(0.05,0.6,'ctrl/cmd+up: Move to up')
+            ax.text(0.05,0.5,'ctrl/cmd+down: Move to down')
             ax.text(0.05,0.4,'right: Increase the wavelength')
             ax.text(0.05,0.3,'left: Decrease the wavelength')
             ax.text(0.05,0.2,'spacebar: Change to current mouse point')
+            ax.text(0.05,0.1,'ctrl/cmd+b: Show previous point')
 
 
         #figure setting
-        figsize = kwargs.pop('figsize', [10, 6])
+        figsize = kwargs.pop('figsize', [15, 9])
         self.cmap = kwargs.pop('cmap', fiss.cmap)
         self.fig = plt.figure(figsize=figsize)
-        self.fig.canvas.set_window_title(self.band)
+        # self.fig.canvas.set_window_title(self.band)
         self.imInterp = kwargs.get('interpolation', fiss.imInterp)
         gs = gridspec.GridSpec(2, 3)
         self.axRaster = self.fig.add_subplot(gs[:, 0])
@@ -198,7 +199,7 @@ class singleBand:
 
         ### Interactive keyboard input
         # Position
-        if event.key == 'ctrl+right':
+        if event.key == 'ctrl+right' or event.key == 'cmd+right':
             if self.x < self._xMax:
                 self.x += self.xDelt
             else:
@@ -206,7 +207,7 @@ class singleBand:
             self.xb = self.x0
             self.yb = self.y0
             self.wvb = self.wv0
-        elif event.key == 'ctrl+left':
+        elif event.key == 'ctrl+left' or event.key == 'cmd+left':
             if self.x > self._xMin:
                 self.x -= self.xDelt
             else:
@@ -214,7 +215,7 @@ class singleBand:
             self.xb = self.x0
             self.yb = self.y0
             self.wvb = self.wv0
-        elif event.key == 'ctrl+up':
+        elif event.key == 'ctrl+up' or event.key == 'cmd+up':
             if self.y < self._yMax:
                 self.y += self.yDelt
             else:
@@ -222,7 +223,7 @@ class singleBand:
             self.xb = self.x0
             self.yb = self.y0
             self.wvb = self.wv0
-        elif event.key == 'ctrl+down':
+        elif event.key == 'ctrl+down' or event.key == 'cmd+down':
             if self.y > self._yMin:
                 self.y -= self.yDelt
             else:
@@ -263,11 +264,11 @@ class singleBand:
             self.wvb = self.wv0
             self.xb = self.x0
             self.yb = self.y0
-        elif event.key == 'ctrl+h':
+        elif event.key == 'ctrl+h' or event.key == 'cmd+h':
             self.wv = self.wvH
             self.x = self.xH
             self.y = self.yH
-        elif event.key == 'ctrl+b':
+        elif event.key == 'ctrl+b' or event.key == 'cmd+b':
             x = self.x
             y = self.y
             wv = self.wv
@@ -454,7 +455,7 @@ class dualBand:
         #figure setting
         figsize = kwargs.pop('figsize', [12, 6])
         self.fig = plt.figure(figsize=figsize)
-        self.fig.canvas.set_window_title('Dual Band Image')
+        # self.fig.canvas.set_window_title('Dual Band Image')
         self.imInterp = kwargs.get('interpolation', 'bilinear')
         gs = gridspec.GridSpec(2,4)
         self.axRasterA = self.fig.add_subplot(gs[:,0])
@@ -555,7 +556,7 @@ class dualBand:
         plt.show()
     def _on_key(self, event):
 
-        if event.key == 'ctrl+right':
+        if event.key == 'ctrl+right' or event.key == 'cmd+right':
             if self.x < self._xMax:
                 self.x += self.xDelt
             else:
@@ -564,7 +565,7 @@ class dualBand:
             self.yb = self.y0
             self.wvAb = self.wvA0
             self.wvBb = self.wvB0
-        elif event.key == 'ctrl+left':
+        elif event.key == 'ctrl+left' or event.key == 'cmd+left':
             if self.x > self._xMin:
                 self.x -= self.xDelt
             else:
@@ -573,7 +574,7 @@ class dualBand:
             self.yb = self.y0
             self.wvAb = self.wvA0
             self.wvBb = self.wvB0
-        elif event.key == 'ctrl+up':
+        elif event.key == 'ctrl+up' or event.key == 'cmd+up':
             if self.y < self._yMax:
                 self.y += self.yDelt
             else:
@@ -582,7 +583,7 @@ class dualBand:
             self.yb = self.y0
             self.wvAb = self.wvA0
             self.wvBb = self.wvB0
-        elif event.key == 'ctrl+down':
+        elif event.key == 'ctrl+down' or event.key == 'cmd+down':
             if self.y > self._yMin:
                 self.y -= self.yDelt
             else:
@@ -647,12 +648,12 @@ class dualBand:
             self.yb = self.y0
             self.wvAb = self.wvA0
             self.wvBb = self.wvB0
-        elif event.key == 'ctrl+h':
+        elif event.key == 'ctrl+h' or event.key == 'cmd+h':
             self.wvA = self.wvAH
             self.wvB = self.wvBH
             self.x = self.xH
             self.y = self.yH
-        elif event.key == 'ctrl+b':
+        elif event.key == 'ctrl+b' or event.key == 'cmd+b':
             x = self.x
             y = self.y
             wvA = self.wvA
