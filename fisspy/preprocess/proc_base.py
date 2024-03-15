@@ -12,7 +12,7 @@ from astropy.time import Time
 from scipy.signal import find_peaks
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
-from fisspy.analysis.wavelet import Wavelet
+from ..analysis.wavelet import Wavelet
 from scipy.fftpack import fft, ifft
 
 def fname2isot(f):

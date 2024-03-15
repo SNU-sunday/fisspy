@@ -2,7 +2,7 @@ from __future__ import absolute_import, division
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from fisspy.read.readbase import getRaster as _getRaster
+from ..read.readbase import getRaster as _getRaster
 from fisspy.image.base import alignoffset, shift3d
 
 __author__ = "Juhyung Kang"

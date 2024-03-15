@@ -1,10 +1,10 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
-from os.path import join, dirname, basename, isdir
+from os.path import join, basename, isdir
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
-from fisspy.preprocess import proc_base
-from fisspy.analysis.wavelet import Wavelet
+from ..preprocess import proc_base
+from ..analysis.wavelet import Wavelet
 from glob import glob
 from astropy.io import fits
 from scipy.optimize import curve_fit
@@ -12,7 +12,6 @@ from astropy.time import Time
 from os import makedirs
 from fisspy import cm
 from scipy.signal import find_peaks
-from fisspy.image.base import alignoffset, shift
 
 def qSleep(sec):
     ms = int(sec*1e3)

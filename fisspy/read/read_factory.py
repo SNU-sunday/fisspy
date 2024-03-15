@@ -1,20 +1,21 @@
 from __future__ import absolute_import, division
 import numpy as np
 from astropy.io import fits
-from scipy.signal import savgol_filter
-from scipy.signal import fftconvolve as conv
-from fisspy import cm
-import matplotlib.pyplot as plt
-from astropy.constants import c
-from fisspy.analysis.doppler import lambdameter
-from fisspy.image import interactive_image as II
-from fisspy.read.readbase import getRaster, getHeader, readFrame
-from fisspy.analysis.filter import FourierFilter
 from astropy.time import Time
+import astropy.constants as ac
 import astropy.units as u
+from scipy.signal import fftconvolve as conv
+import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from fisspy.analysis.wavelet import Wavelet
 from matplotlib import ticker
+from fisspy import cm
+from .readbase import getRaster, getHeader, readFrame
+from ..analysis.doppler import lambdameter
+from ..image import interactive_image as II
+from ..correction.get_inform import LineName
+from ..analysis.filter import FourierFilter
+from ..analysis.wavelet import Wavelet
+from ..correction.correction import wvCalib, smoothingProf
 # from fisspy.analysis.tdmap import TDmap
 #from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -177,40 +178,41 @@ class FISS:
 
     Parameters
     ----------
-    file : `str`
+    file: `str`
         File name of the FISS fts data.
-    x1 : `int`, optional
+    x1: `int`, optional
         A left limit index of the frame along the scan direction
-    x2 : `int`, optional
+    x2: `int`, optional
         A right limit index of the frame along the scan direction
         If None, read all data from x1 to the end of the scan direction.
-    y1 : `int`, optional
+    y1: `int`, optional
         A left limit index of the frame along the scan direction
-    y2 : `int`, optional
+    y2: `int`, optional
         A right limit index of the frame along the scan direction
         If None, read all data from x1 to the end of the scan direction.
-    noceff : `int`, optional
+    noceff: `int`, optional
         The number of coefficients to be used for
         the construction of frame in a pca file.
-    noiseSuprresion : `bool`, optional
-        If True Savitzky-Golay noise filter is applied in the wavelength axis.
-        Default is False.
-    simpleWvCalib : `bool`, optional
-        If True wavelength is simply calibrated by using the header parameters.
-        Default is True.
-    absScale : `bool`, optional
-        If False the central wavelength is set to be zero.
-        If True the central wavelength is set to be wavelength at lab frame.
-        It works if simpleWvCalibration is True.
-        Default is True
+    smoothingMethod: `str`, optional
+        If it is not given, do not apply the noise filter.
+        If 'savgol', apply the Savitzky-Golay noise filter in the wavelength axis.
+        If 'gauss', apply the Gaussian noise filter in the wavelength axis.
+        Default is None.
+    wvCalibMethod: `str`, optional
+        Method to calibrate wavelength.
+        'simple': calibration with the information of the header.
+        'center': calibration with the center of the main line.
+        'photo': calibration with the photospheric line and the main line.
+        Default is 'simple'.
 
     Other Parameters
     ----------------
-    **kwargs : `~scipy.signal.savgol_filter` properties
+    **kwargs : `~scipy.signal.savgol_filter` properties or `~scipy.ndimage.gaussian_filter1d` properties.
 
     See also
     --------
-    `~scipy.signal.savgol_filter`
+    `~scipy.signal.savgol_filter`.
+    `~scipy.ndimage.gaussian_filter1d`
 
     Examples
     --------
@@ -219,7 +221,7 @@ class FISS:
     >>> fiss = read.FISS(fisspy.data.sample.FISS_IMAGE)
     """
 
-    def __init__(self, file, x1=0, x2=None, y1=0, y2=None, ncoeff=False, noiseSuppression=False, simpleWaveCalib=True, absScale=True, **kwargs):
+    def __init__(self, file, x1=0, x2=None, y1=0, y2=None, ncoeff=False, smoothingMethod=None, wvCalibMethod='photo', **kwargs):
         if file.find('1.fts') != -1:
             self.ftype = 'proc'
         elif file.find('c.fts') != -1:
@@ -249,26 +251,30 @@ class FISS:
             self.band = str(self.header['gratwvln'])[:4]
 
         self.refProfile = self.data.mean((0,1))
-        self.wave = self._waveCalibration(simpleWaveCalib= simpleWaveCalib,
-                                        absScale= absScale, **kwargs)
+        self.wave = self.wvCalib(method=wvCalibMethod)
+        self.cwv = self.centralWavelength = cwv = self.header['crval1']
 
-        self.noiseSuppression = noiseSuppression
-        if noiseSuppression:
-            self._noiseSuppression()
-        tmp = self.header['crval1']
-        if (tmp > 6562.8-5)*(tmp < 6562.8+5):
+        self.smoothing = False
+        if smoothingMethod is not None:
+            self.smoothing = True
+        if self.smoothing:
+            self.smoothingProf(method=smoothingMethod, **kwargs)
+        
+
+        self.line = LineName(cwv)
+        if self.line == 'Ha':
             self.cam = 'A'
             self.set = '1'
             self.cmap = cm.ha
-        elif (tmp > 8542.1-5)*(tmp < 8542.1+5):
+        elif self.line == 'Ca':
             self.cam = 'B'
             self.set = '1'
             self.cmap = cm.ca
-        elif (tmp > 5889-5)*(tmp < 5889+5):
+        elif self.line == 'Na':
             self.cam = 'A'
             self.set = '2'
             self.cmap = cm.na
-        elif (tmp > 5434-5)*(tmp < 5434+5):
+        elif self.line == 'Fe':
             self.cam = 'B'
             self.set = '2'
             self.cmap = cm.fe
@@ -280,7 +286,7 @@ class FISS:
                               0, self.ny*self.yDelt]
         self.lv = None
 
-    def reload(self, x1=0, x2=None, y1=0, y2=None, ncoeff=False, noiseSuppression=False):
+    def reload(self, x1=0, x2=None, y1=0, y2=None, ncoeff=False, smoothingMethod=None, **kwargs):
         """
         Reload the FISS data.
 
@@ -299,9 +305,20 @@ class FISS:
         noceff : `int`, optional
             he number of coefficients to be used for
             the construction of frame in a pca file.
-        noiseSuprresion : `bool`, optional
-            If True Savitzky-Golay noise filter is applied in the wavelength axis.
-            Default is False.
+        smoothingMethod: `str`, optional
+            If it is not given, do not apply the noise filter.
+            If 'savgol', apply the Savitzky-Golay noise filter in the wavelength axis.
+            If 'gauss', apply the Gaussian noise filter in the wavelength axis.
+            Default is None.
+
+        Other Parameters
+        ----------------
+        **kwargs : `~scipy.signal.savgol_filter` properties or `~scipy.ndimage.gaussian_filter1d` properties.
+
+        See also
+        --------
+        `~scipy.signal.savgol_filter`.
+        `~scipy.ndimage.gaussian_filter1d`
         """
         self.data = readFrame(self.filename, self.pfile, x1=x1, x2=x2, y1=y1, y2=y2, ncoeff=ncoeff)
         self.ny, self.nx, self.nwv = self.data.shape
@@ -314,8 +331,11 @@ class FISS:
         self.extentSpectro = [self.wave.min()-self.wvDelt/2,
                               self.wave.max()+self.wvDelt/2,
                               0, self.ny*self.yDelt]
-        if noiseSuppression:
-            self._noiseSuppression()
+        
+        if smoothingMethod is None:
+            self.smoothing = True
+        if self.smoothing:
+            self.smoothingProf(method=smoothingMethod, **kwargs)
 
     def getRaster(self, wv, hw=0.05):
         """
@@ -340,90 +360,47 @@ class FISS:
         return getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
 
 
-    def _waveCalibration(self, simpleWaveCalib= True, absScale= True,
-                         **kwargs):
+    def wvCalib(self, profile=None, method='photo'):
         """
         Wavelength calibration
 
-        If SimpleWvCalib is True, the wavelength is calibrated by using information in header.
-        If absScale is True, the central wavelength is set to be wavelength in the lab frame,
-        but if absScale is False, the central wavelength is set to be zero.
+        Parameters
+        ---------
+        profile: `~numpy.ndarray`
+            Spectrum
+        method: `str`
+            Method to calibrate wavelength.
+            'simple': calibration with the information of the header.
+            'center': calibration with the center of the main line.
+            'photo': calibration with the photospheric line and the main line.
+            Default is 'simple'.
+
+        Returns
+        -------
+        wv: `~numpy.ndarray`
+            Wavelength.
         """
-        method = kwargs.pop('method', True)
-        
-        if simpleWaveCalib:
-            self.lamb0 = self.header['crval1']
-            if absScale:
-                self.centralWavelength = self.header['crval1']
-                return (np.arange(self.nwv) -
-                        self.header['crpix1']) * self.header['cdelt1'] + self.header['crval1']
-            else:
-                self.centralWavelength = 0
-                return (np.arange(self.nwv) -
-                        self.header['crpix1']) * self.header['cdelt1']
+        if profile is None:
+            pf = self.refProfile
         else:
-            if method:
-                if self.band == '6562':
-                    line=np.array([6561.097,6564.206])
-                    lamb0=6562.817
-                    dldw=0.019182
-                elif self.band == '8542':
-                    line=np.array([8540.817,8546.222])
-                    lamb0=8542.090
-                    dldw=-0.026252
-                elif self.band == '5889':
-                    line=np.array([5889.951,5892.898])
-                    lamb0=5889.9509
-                    dldw=0.016847
-                elif self.band == '5434':
-                    line=np.array([5434.524,5436.596])
-                    lamb0=5434.5235
-                    dldw=-0.016847
-            else:
-                if self.band == '6562':
-                    line=np.array([6562.817,6559.580])
-                    lamb0=6562.817
-                    dldw=0.019182
-                elif self.band == '8542':
-                    line=np.array([8542.089,8537.930])
-                    lamb0=8542.090
-                    dldw=-0.026252
+            pf = profile
+        return wvCalib(pf, self.header, method=method)
 
-        w = np.arange(self.nwv)
-        wl = np.zeros(2)
-        wc = self.refProfile[20:self.nwv-20].argmin() + 20
-        lamb = (w - wc) * dldw + lamb0
+    def smoothingProf(self, method='savgol', **kwargs):
+        """
+        Parameters
+        ----------
+        method: `str`, optional
+            If 'savgol', apply the Savitzky-Golay noise filter in the wavelength axis.
+            If 'gauss', apply the Gaussian noise filter in the wavelength axis.
+            Default is 'savgol'.
 
-        for i in range(2):
-            mask = np.abs(lamb - line[i]) <= 0.3
-            wtmp = w[mask]
-            ptmp = conv(self.refProfile[mask], [-1, 2, -1], 'same')
-            mask2 = ptmp[1:-1].argmin() + 1
-            try:
-                wtmp = wtmp[mask2-3:mask2+4]
-                ptmp = ptmp[mask2-3:mask2+4]
-            except:
-                raise ValueError('Fail to wavelength calibration\n'
-                'please change the method %s to %s' %(repr(method), repr(not method)))
-            c = np.polyfit(wtmp - np.median(wtmp), ptmp, 2)
-            wl[i] = np.median(wtmp) - c[1]/(2*c[0])
-
-        dldw = (line[1] - line[0])/(wl[1] - wl[0])
-        wc = wl[0] - (line[0] - lamb0)/dldw
-        return (w - wc) * dldw
-
-    def _noiseSuppression(self, **kwargs):
-        window_length = kwargs.pop('window_length', 7)
-        polyorder = kwargs.pop('polyorder', 2)
-        deriv = kwargs.pop('deriv', 0)
-        delta = kwargs.pop('delta', 1.0)
-        mode = kwargs.pop('mode', 'interp')
-        cval = kwargs.pop('cval', 0.0)
-
-        self.data = savgol_filter(self.data, window_length, polyorder,
-                                   deriv= deriv, delta= delta, cval= cval,
-                                   mode= mode)
-        self.noiseSuppression = True
+        Other Parameters
+        ----------------
+        **kwargs : `~scipy.signal.savgol_filter` properties or `~scipy.ndimage.gaussian_filter1d` properties.
+        """
+        self.data = smoothingProf(self.data, method=method, **kwargs)
+        self.smoothing = True
 
     def lambdameter(self, **kw):
         """
@@ -432,7 +409,7 @@ class FISS:
         Parameters
         ----------
         **kw:
-            kwargs parameters of the `fisspy.analysis.doppler.lambdameter`
+            See `~fisspy.analysis.doppler.lambdameter`
 
         Returns
         -------
@@ -444,9 +421,8 @@ class FISS:
         """
         self.hw = kw.get('hw', 0.05)
         self.lwc, self.lic = lambdameter(self.wave, self.data, **kw)
-        self.lv = (self.lwc-self.centralWavelength)/self.centralWavelength * 3e5
+        self.lv = (self.lwc-self.centralWavelength)/self.centralWavelength * ac.c.to('km/s').value
         
-
     def imshow(self, x=None, y=None, wv=None, scale='minMax',
                sigFactor=3, helpBox=True, **kwargs):
         """

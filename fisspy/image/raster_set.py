@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from fisspy.read.readbase import getHeader, readFrame
+from ..read.readbase import getHeader, readFrame
 from fisspy import cm
 from astropy.io import fits
-from fisspy.preprocess import proc_base
+from ..preprocess import proc_base
 from astropy.time import Time
 from os.path import join, basename
 

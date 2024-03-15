@@ -8,8 +8,40 @@ from os.path import join, dirname
 
 
 __author__= "Juhyung Kang"
-__email__ = "jhkang@astro.snu.ac.kr"
-__all__ = ["readFrame", "_readPCA", "getHeader", "getRaster"]
+__email__ = "jhkang0301@gmail.com"
+
+__all__ = ["Photolinewv", "readFrame", "_readPCA", "getHeader", "getRaster"]
+
+
+def Photolinewv(line, wvmin, wvmax):
+    """
+    To specicy the spectral line used to determine photospheric velocity 
+
+    Parameters
+    ----------
+    line : `str`
+        spectral band designation.
+    wvmin : `float`
+        minimum wavelength of the spectral band.
+    wvmax : `float`
+        maximum wavelength of the spectral band.
+
+    Returns
+    -------
+    wvp : `float`
+        laboratory wavelength of the photosperic line.
+    dwv : `float`
+        half of the wavelength range to be used 
+    """
+    if line == 'Ha':
+        wvp, dwv = 6559.580, 0.25
+    if line == 'Ca':
+        wvp,dwv = 8536.165, 0.25 
+        if (wvp > (wvmin+2*dwv))*(wvp < (wvmax-2*dwv)):
+            return wvp, dwv
+        wvp,dwv = 8548.079*(1+(-0.62)/3.e5), 0.25
+
+    return wvp, dwv
 
 def readFrame(file, pfile=False, x1=0, x2=None, y1=0, y2=None, ncoeff=False):
     """
@@ -56,9 +88,7 @@ def readFrame(file, pfile=False, x1=0, x2=None, y1=0, y2=None, ncoeff=False):
             spec = spec[:, y1:y2]
 
     spec = spec.transpose((1,0,2)).astype(float)
-
     return spec
-
 
 def _readPCA(file, pfile, x1=0, x2=None, y1=0, y2=None, ncoeff=False):
     """

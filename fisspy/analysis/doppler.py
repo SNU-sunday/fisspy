@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division
 import numpy as np
 from interpolation.splines import LinearSpline, CubicSpline
-from astropy.constants import c
 from scipy.signal import fftconvolve as conv
 
 __author__ = "Juhyung Kang"
@@ -171,7 +170,7 @@ def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm
     # correct instrumental shift by the seeing and vibration of the spectrograph.
     # Note that, this process can also be run after estimating the linecenter.
     if corInstShift:
-        from fisspy.correction.correction import get_InstShift
+        from ..correction.correction import get_InstShift
         if refSpec is None:
             raise ValueError('refSpec is not given.')
         wvoffset = get_InstShift(data0, refSpec, dw=dwv)
