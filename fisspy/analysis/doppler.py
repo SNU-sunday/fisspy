@@ -9,7 +9,7 @@ __email__ = "jhkang0301@gmail.com"
 __all__ = ['lambdameter']
 
 
-def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm', alpha=None, repeat=True, pr=False, corInstShift=False, refSpec=None):
+def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm', alpha=None, reguess=True, pr=False, corInstShift=False, refSpec=None):
     """
     Determine the Lambdameter chord center for a given half width or intensity.
 
@@ -42,8 +42,8 @@ def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm
     alpha: `bool`, optional
         Stepsize of the root-finding.
         We recommand you does not touch this value except for using chae's method.
-    repeat: `bool`, optional
-        Repeat the calculation for the failed position to derive the line center by changing the intial guess automatically.
+    reguess: `bool`, optional
+        reguess the initial guess and repeat the calculation for the failed position to derive the line center by changing the intial guess automatically.
         Default is True.
     pr: `bool`, optional
         Print the result.
@@ -113,7 +113,7 @@ def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm
     mm = more.sum()
     rep = 0
 
-    if repeat and irfm != 'ori':
+    if reguess and irfm != 'ori':
         # a = alpha
         # if a is None:
         #     a = 1
@@ -137,7 +137,7 @@ def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm
                     intc[w] = res[1][3]
                     mm += res[2][3]
             if pr:
-                print(f"#1st repeat: {rep}")
+                print(f"#1st reguess: {rep}")
                 print(f"#fail: {mm}")
             for rep2 in range(3):
                 mwc = np.median(wc)
@@ -160,7 +160,7 @@ def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm
                     intc[w] = res[1][3]
             if pr:
                 msk = np.abs(wc-np.median(wc)) > 1.5
-                print(f"#2nd repeat: {rep2}")
+                print(f"#2nd reguess: {rep2}")
                 print(f"#abnormal pixels: {msk.sum()}")
     else:
         if pr:
