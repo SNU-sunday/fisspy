@@ -28,8 +28,6 @@ def fname2isot(f):
 
     return f"{YY}-{MM}-{DD}T{hh}:{mm}:{ss}"
 
-
-
 def multiGaussian(x, *pars):
     ng = len(pars)//3
     y = np.zeros((len(x)))
@@ -66,7 +64,6 @@ def data_mask_and_fill(data, msk_range, axis=1, kind='nearest'):
     interp = interp1d(xt, tdata, axis=axis, kind=kind)
     mdata = interp(x)
     return mdata
-
 
 def cal_fringeGauss(wvlet, filterRange=[0,-1]):
     """
@@ -124,7 +121,6 @@ def cal_fringeSimple(wvlet, filterRange):
     wavelet[:,filterRange[1]:] = 0
 
     return wvlet.iwavelet(wavelet, wvlet.scale)
-
     
 def get_tilt_old(img, tilt=None, show=False):
     """
@@ -298,8 +294,6 @@ def get_tilt(img, tilt=None, show=False):
             pass
 
     return Tilt
-
-
 
 def piecewise_quadratic_fit(x, y, npoint=5):
     """
@@ -686,6 +680,7 @@ class calFlat:
             self.der2 -= self.der2[:,10:-10,10:-10].mean((1,2))[:,None, None]
             std = self.der2[:,10:-10,10:-10].std((1,2))[:,None,None]
             msk = np.exp(-0.5*np.abs((self.der2/std))**2)
+            self.msk0 = msk
             msk = savgol_filter(msk, window_length, polyorder,
                       deriv= deriv, delta= delta, cval= cval,
                       mode= mode, axis=2)
