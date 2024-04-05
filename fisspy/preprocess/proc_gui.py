@@ -12,6 +12,8 @@ from astropy.time import Time
 from os import makedirs
 from fisspy import cm
 from scipy.signal import find_peaks
+from scipy.interpolate import interp1d
+from statsmodels.tsa.ar_model import AutoReg
 
 def qSleep(sec):
     ms = int(sec*1e3)
@@ -99,6 +101,13 @@ class prepGUI:
                              "3-3: Spectrum Mask",
                              "3-4: Horizontal Frigne"]
         
+        self.initS1 = True
+        self.initS2 = True
+        self.initS3_1 = True
+        self.initS3_3 = True
+        self.initS4 = True
+        self.initS5 = True
+
         self.nStep = len(self.List_step)
         self.nsubStep = len(self.List_subStep)
         
@@ -749,39 +758,17 @@ class prepGUI:
             # get msk width
             self.HL_s3_3_GMW = QtWidgets.QHBoxLayout()
             self.L_s3_3_GMW = QtWidgets.QLabel()
-            self.L_s3_3_GMW.setText("Get mask width: ")
+            self.L_s3_3_GMW.setText("Masking: ")
             self.L_s3_3_GMW.setFont(self.fNormal)
 
-            self.B_s3_3_GMW = QtWidgets.QPushButton()
-            self.B_s3_3_GMW.setText("Run")
-            self.B_s3_3_GMW.setFont(self.fNormal)
-            self.B_s3_3_GMW.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
-            self.B_s3_3_GMW.clicked.connect(self.s3_3_Run)
+            self.B_s3_3_run = QtWidgets.QPushButton()
+            self.B_s3_3_run.setText("Run")
+            self.B_s3_3_run.setFont(self.fNormal)
+            self.B_s3_3_run.setStyleSheet(f"background-color: {self.btn_1}; color:{self.bg_primary};")
+            self.B_s3_3_run.clicked.connect(self.s3_3_Run)
 
             self.HL_s3_3_GMW.addWidget(self.L_s3_3_GMW)
-            self.HL_s3_3_GMW.addWidget(self.B_s3_3_GMW)
-
-            # msk width
-            self.HL_s3_3_MW = QtWidgets.QHBoxLayout()
-            self.L_s3_3_MW = QtWidgets.QLabel()
-            self.L_s3_3_MW.setText("Mask width: ")
-            self.L_s3_3_MW.setFont(self.fNormal)
-
-            self.LE_s3_3_MW = QtWidgets.QLineEdit()
-            self.LE_s3_3_MW.setText("0")
-            self.LE_s3_3_MW.setStyleSheet(f"background-color: {self.bg_second}; border: 1px solid {self.font_normal};")
-            self.LE_s3_3_MW.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
-
-            self.B_s3_3_Apply = QtWidgets.QPushButton()
-            self.B_s3_3_Apply.setText("Apply")
-            self.B_s3_3_Apply.setFont(self.fNormal)
-            self.B_s3_3_Apply.setStyleSheet(f"background-color: {self.bg_second};")
-            self.B_s3_3_Apply.clicked.connect(self.s3_3_Apply)
-
-            self.HL_s3_3_MW.addWidget(self.L_s3_3_MW)
-            self.HL_s3_3_MW.addWidget(self.LE_s3_3_MW)
-            self.HL_s3_3_MW.addWidget(self.B_s3_3_Apply)
-            self.B_s3_3_Apply.setEnabled(False)
+            self.HL_s3_3_GMW.addWidget(self.B_s3_3_run)
 
             # show image
             self.HL_s3_3_show = QtWidgets.QHBoxLayout()
@@ -847,13 +834,12 @@ class prepGUI:
             # addWidgets
             self.VL_s3_3.addWidget(self.L_s3_3_subStep)
             self.VL_s3_3.addLayout(self.HL_s3_3_GMW)
-            self.VL_s3_3.addLayout(self.HL_s3_3_MW)
             self.VL_s3_3.addLayout(self.HL_s3_3_show)
             self.VL_s3_3.addLayout(self.HL_s3_3_reset)
             self.VL_s3_3.addLayout(self.HL_s3_3_frame)
 
             self.vboxCtrl.addLayout(self.VL_s3_3)
-            self.subStepWidgets[2] = [self.L_s3_3_subStep, self.L_s3_3_GMW, self.B_s3_3_GMW, self.L_s3_3_MW, self.LE_s3_3_MW, self.B_s3_3_Apply, self.L_s3_3_res, self.B_s3_3_Blink, self.L_s3_3_frame, self.LE_s3_3_frame, self.L_s3_3_nframe, self.B_s3_3_pf, self.B_s3_3_nf, self.L_s3_3_reset, self.B_s3_3_reset]
+            self.subStepWidgets[2] = [self.L_s3_3_subStep, self.L_s3_3_GMW, self.B_s3_3_run, self.L_s3_3_res, self.B_s3_3_Blink, self.L_s3_3_frame, self.LE_s3_3_frame, self.L_s3_3_nframe, self.B_s3_3_pf, self.B_s3_3_nf, self.L_s3_3_reset, self.B_s3_3_reset]
 
             self.im_s3_3 = None
         
@@ -1475,14 +1461,21 @@ class prepGUI:
 
         
     def chFlat(self):
-        
+        self.initS1 = True
+        self.initS2 = True
+        self.initS3_1 = True
+        self.initS3_3 = True
+        self.initS4 = True
+        self.initS5 = True
         self.fidx = self.CB_s0_fflist.currentIndex()
         f = self.fflatL[self.fidx]
         n = f.find('A_Flat')
         if n != -1:
             ffoc = self.ffocA
+            self.bandA = True
         else:
             ffoc = self.ffocB
+            self.bandA = False
         self.CF = proc_base.calFlat(f, ffoc)
         self.frameNum = self.CF.nf//2
 
@@ -1517,7 +1510,11 @@ class prepGUI:
             self.stepNum += 1
             self.subStep(self.subStepNum+1)
         elif self.stepNum == 3 and self.subStepNum != self.nsubStep-1:
-            self.subStep(self.subStepNum+1)
+            if self.bandA and (self.subStepNum == 1 or self.subStepNum == 2):
+                self.subStepNum = 3
+                self.step(self.stepNum+1)
+            else:
+                self.subStep(self.subStepNum+1)
         elif self.stepNum == 3 and self.subStepNum == self.nsubStep-1:
             for wg in self.subStepWidgets[self.subStepNum]:
                 wg.setVisible(False)
@@ -1526,6 +1523,7 @@ class prepGUI:
             self.step(self.stepNum+1)
         else:
             self.stepNum == self.nStep-1
+        self.AutoRun()
         
 
     def Prev(self):
@@ -1535,7 +1533,11 @@ class prepGUI:
             for wg in self.StepWidgets[self.stepNum]:
                 wg.setVisible(False)
             self.stepNum -= 1
-            self.subStep(self.subStepNum)
+            if self.bandA and (self.subStepNum == 2 or self.subStepNum == 3):
+                self.subStepNum = 1
+                self.subStep(self.subStepNum)
+            else:
+                self.subStep(self.subStepNum)
         elif self.stepNum == 3 and self.subStepNum == 0:
             for wg in self.subStepWidgets[self.subStepNum]:
                 wg.setVisible(False)
@@ -1545,6 +1547,83 @@ class prepGUI:
             self.subStep(self.subStepNum-1)
         else:
             self.step(self.stepNum-1)
+        self.AutoRun()
+
+    def AutoRun(self):
+        if self.stepNum == 1:
+            if self.initS1:
+                self.log += "> Running automatically<br>> Please wait.<br>"
+                self._writeLog()
+                self.B_s1_run.setEnabled(False)
+                self.B_Next.setEnabled(False)
+                self.B_Prev.setEnabled(False)
+                self.s1_Run()
+                self.initS1 = False
+                self.B_s1_run.setEnabled(True)
+                self.B_Next.setEnabled(True)
+                self.B_Prev.setEnabled(True)
+        elif self.stepNum == 2:
+            if self.initS2:
+                self.log += "> Running automatically<br>> Please wait.<br>"
+                self._writeLog()
+                self.B_s2_run.setEnabled(False)
+                self.B_Next.setEnabled(False)
+                self.B_Prev.setEnabled(False)
+                self.s2_Run()
+                self.initS2 = False
+                self.B_s2_run.setEnabled(True)
+                self.B_Next.setEnabled(True)
+                self.B_Prev.setEnabled(True)
+        elif self.stepNum == 3 and self.subStepNum == 0:
+            if self.initS3_1:
+                self.log += "> Running automatically<br>> Please wait.<br>"
+                self._writeLog()
+                self.B_s3_1_run.setEnabled(False)
+                self.B_Next.setEnabled(False)
+                self.B_Prev.setEnabled(False)
+                self.s3_1_Run()
+                self.initS3_1 = False
+                self.B_s3_1_run.setEnabled(True)
+                self.B_Next.setEnabled(True)
+                self.B_Prev.setEnabled(True)
+        elif self.stepNum == 3 and self.subStepNum == 2:
+            if self.initS3_3:
+                self.log += "> Running automatically<br>> Please wait.<br>"
+                self._writeLog()
+                self.B_s3_3_run.setEnabled(False)
+                self.B_Next.setEnabled(False)
+                self.B_Prev.setEnabled(False)
+                self.s3_3_Run()
+                self.initS3_3 = False
+                self.B_s3_3_run.setEnabled(True)
+                self.B_Next.setEnabled(True)
+                self.B_Prev.setEnabled(True)
+        elif self.stepNum == 4:
+            if self.initS4:
+                self.log += "> Running automatically<br>> Please wait.<br>"
+                self._writeLog()
+                self.B_s4_run.setEnabled(False)
+                self.B_Next.setEnabled(False)
+                self.B_Prev.setEnabled(False)
+                self.s4_Run()
+                self.initS4 = False
+                self.B_s4_run.setEnabled(True)
+                self.B_Next.setEnabled(True)
+                self.B_Prev.setEnabled(True)
+        elif self.stepNum == 5:
+            if self.initS5:
+                self.log += "> Running automatically<br>> Please wait.<br>"
+                self._writeLog()
+                self.B_s5_Run.setEnabled(False)
+                self.B_Next.setEnabled(False)
+                self.B_Prev.setEnabled(False)
+                self.s5_Run()
+                self.initS5 = False
+                self.B_s5_Run.setEnabled(True)
+                self.B_Next.setEnabled(True)
+                self.B_Prev.setEnabled(True)
+
+
 
     def s0_step7(self):
         self.step(7)
@@ -1888,18 +1967,114 @@ class prepGUI:
             w[i] = int(cp[2]*1.2)
 
         self.msk_width = int(np.median(w))
-        self.LE_s3_3_MW.setText(f"{self.msk_width}")
         self.ms1 = self.s1.copy()
+
+        lF = self.CF.logF - self.yFringe
+        msk = proc_base.getMask(10**lF, power=6, fsig=1)
+        msk[...,-5:]=1
+        msk[...,:5]=1
+        msk = msk[...,5:-5]
+        lF = lF[...,5:-5]
+        s1 = self.s1[...,5:-5].copy()
+        wh = msk >= 0.3
+        bl = msk < 0.3
+        x = np.arange(s1.shape[-1])
+        lag = 10
+        self.log += f"> Loading 0/{self.CF.nf} frame<br>"
+        self.log += f"    >> 0%<br>"
         for i in range(self.CF.nf):
-            mskMin = self.cpos[i]-self.msk_width
-            mskMin = mskMin if mskMin >= 0 else 0
-            mskMax = self.cpos[i]+self.msk_width
-            mskMax = mskMax if mskMax <= self.CF.nw-1 else self.CF.nw-1
-            self.ms1[i] = proc_base.data_mask_and_fill(self.s1[i], [[mskMin], [mskMax]])
+            self.log = self.log.replace(f"{i}/{self.CF.nf}", f"{i+1}/{self.CF.nf}")
+            # ARcast (forecasting method)
+            x1 = x[bl[i,120]]
+            x2 = np.roll(x[bl[i,120]],1)
+            kk = np.arange(len(x1))[x1-x2 != 1]
+            nsp = len(kk)
+            for j in range(nsp):
+                self.log = self.log.replace(f">> 100%", f">> 0%")
+                self.log = self.log.replace(f">> {j/nsp*100:.0f}%", f">> {(j+1)/nsp*100:.0f}%")
+                self._writeLog()
+                if j == nsp-1:
+                    npredict = x1[-1] - x1[kk[j]] +1
+                else:
+                    npredict = kk[j+1] - kk[j]
+                ii = x1[kk[j]]//2-1
+                flag = lag if lag < ii else int(ii)
+                fskip = False
+                if int(ii) <= lag*1.5:
+                    fskip = True
+                elif int(ii) < lag*2:
+                    flag = 5
+                
+                if j != nsp-1:
+                    bst = x1[kk[j+1]-1]+1
+                else:
+                    bst = x1[-1]+1
+                ii = (s1.shape[-1]-bst)//2-1
+                blag = lag if lag < ii else int(ii)
+                bskip = False
+                if int(ii) <= lag*1.5:
+                    bskip = True
+                elif int(ii) < lag*2:
+                    blag = 5
+                fp = np.zeros(npredict)
+                bp = np.zeros(npredict)
+                bF0 = (np.arange(npredict)+1)/(npredict+1)
+                fF0 = 1 - bF0
+                bF = (1-bskip)*(bF0 + fskip*fF0)
+                fF = (1-fskip)*(fF0 + bskip*bF0)
+                
+                for l in range(s1.shape[1]):
+                    # foreward
+                    if not fskip:
+                        fm = AutoReg(s1[i,l,:x1[kk[j]]],lags=flag).fit()
+                        fp = fm.forecast(npredict)
+                    # backward
+                    if not bskip:
+                        bm = AutoReg(s1[i,l,bst:][::-1],lags=blag).fit()
+                        bp = bm.forecast(npredict)
+                    pred = fF*fp + bF*bp[::-1]
+                    if j != nsp-1:
+                        self.ms1[i,l,x1[kk[j]]+5:x1[kk[j+1]-1]+1+5] = pred
+                        # s1[i,l,x1[kk[j]]:x1[kk[j+1]-1]+1] = pred
+                    else:
+                        self.ms1[i,l,x1[kk[j]]+5:x1[-1]+1+5] = pred
+                        # s1[i,l,x1[kk[j]]:x1[-1]+1] = pred
+                    
+            # ARcast prediction
+            # x1 = x[bl[i,120]]
+            # x2 = np.roll(x[bl[i,120]],1)
+            # kk = np.arange(len(x1))[x1-x2 != 1]
+            # nsp = len(kk)
+            # for j in range(nsp):
+            #     self.log = self.log.replace(f">> 100%", f">> 0%")
+            #     self.log = self.log.replace(f">> {j/nsp*100:.0f}%", f">> {(j+1)/nsp*100:.0f}%")
+            #     self._writeLog()
+                
+            #     for l in range(s1.shape[1]):
+            #         tm = AutoReg(s1[i,l], lags=lag).fit()
+            #         if j != nsp-1:
+            #             pred = tm.predict(x1[kk[j]],x1[kk[j+1]-1])
+            #             self.ms1[i,l,x1[kk[j]]+5:x1[kk[j+1]-1]+1+5] = pred
+            #         else:
+            #             pred = tm.predict(x1[kk[j]],x1[-1])
+            #             self.ms1[i,l,x1[kk[j]]+5:x1[-1]+1+5] = pred
+            
+            # # interp
+            # inp = interp1d(x[wh[i,120]], self.s1[...,wh[i,120]][i], axis=1, kind='nearest', fill_value='extrapolate')
+            # self.ms1[i] = inp(x)
+            ## ori
+            # mskMin = self.cpos[i]-self.msk_width
+            # mskMin = mskMin if mskMin >= 0 else 0
+            # mskMax = self.cpos[i]+self.msk_width
+            # mskMax = mskMax if mskMax <= self.CF.nw-1 else self.CF.nw-1
+            # self.ms1[i] = proc_base.data_mask_and_fill(self.s1[i], [[mskMin], [mskMax]])
 
         self.mskShow = True
+        self.log += f"> Done.<br>"
+        self._writeLog()
         if self.im_s3_3 is None:
             self.im_s3_3 = self.ax_sub[2][0].imshow(self.ms1[self.frameNum][5:-5,5:-5], plt.cm.gray, origin='lower')
+            
             self.p_s3_3_mskMin = self.ax_sub[2][0].plot([self.cpos[self.frameNum]-5-self.msk_width, self.cpos[self.frameNum]-5-self.msk_width], [0,self.CF.ny-11], color='r', ls='dashed')[0]
             self.p_s3_3_mskMax = self.ax_sub[2][0].plot([self.cpos[self.frameNum]-5+self.msk_width, self.cpos[self.frameNum]-5+self.msk_width], [0,self.CF.ny-11], color='r', ls='dashed')[0]
             self.ax_sub[2][0].set_xlabel('Wavelength (pix)')
@@ -1909,30 +2084,13 @@ class prepGUI:
             self.im_s3_3.set_data(self.ms1[self.frameNum][5:-5,5:-5])
             self.p_s3_3_mskMin.set_xdata([self.cpos[self.frameNum]-5-self.msk_width, self.cpos[self.frameNum]-5-self.msk_width])
             self.p_s3_3_mskMax.set_xdata([self.cpos[self.frameNum]-5+self.msk_width, self.cpos[self.frameNum]-5+self.msk_width])
-        
-        self.B_s3_3_Apply.setEnabled(True)
+        cm = self.s1[...,5:-5].mean()
+        cstd = self.s1[...,5:-5].std()
+        self.im_s3_3.set_clim(cm-cstd*2, cm+cstd*2)
         self.B_s3_3_Blink.setEnabled(True)
         self.fig.canvas.draw_idle()
 
-    def s3_3_Apply(self):
-        self.log += f"> Change the width of the mask.<br>"
-        self._writeLog()
-        self.msk_wdith = int(self.LE_s3_3_MW.text())
 
-        for i in range(self.CF.nf):
-            mskMin = self.cpos[i]-self.msk_width
-            mskMin = mskMin if mskMin >= 0 else 0
-            mskMax = self.cpos[i]+self.msk_width
-            mskMax = mskMax if mskMax <= self.CF.nw-1 else self.CF.nw-1
-            self.ms1[i] = proc_base.data_mask_and_fill(self.s1[i], [mskMin, mskMax])
-
-        self.p_s3_3_mskMin.set_xdata([self.cpos[self.frameNum]-5-self.msk_width, self.cpos[self.frameNum]-5-self.msk_width])
-        self.p_s3_3_mskMax.set_xdata([self.cpos[self.frameNum]-5+self.msk_width, self.cpos[self.frameNum]-5+self.msk_width])
-
-        if self.mskShow == True:
-            self.im_s3_3.set_data(self.ms1[self.frameNum][5:-5,5:-5])
-
-        self.fig.canvas.draw_idle()
 
     def s3_3_Blink(self):
         self.mskShow = not self.mskShow
@@ -1950,7 +2108,6 @@ class prepGUI:
         self.log += f"> Remove the mask.<br>"
         self._writeLog()
         self.msk_wdith = 0
-        self.LE_s3_3_MW.setText("0")
         self.ms1 = self.s1.copy()
 
         if self.mskShow == True:
@@ -2600,7 +2757,6 @@ class prepGUI:
         self.B_s3_2_resShow.setEnabled(False)
         self.B_s3_2_blink.setEnabled(False)
 
-        self.B_s3_3_Apply.setEnabled(False)
         self.B_s3_3_Blink.setEnabled(False)
 
         self.B_s3_4_wvShow.setEnabled(False)

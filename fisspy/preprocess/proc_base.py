@@ -45,6 +45,43 @@ def Gaussian(x, *par):
     y = A*np.exp(-((x-m)/sig)**2)
     return y
 
+def getMask(data, power=4, fsig=1.2, **kwags):
+    wl = kwags.pop('window_length', 10)
+    po = kwags.pop('polyorder', 2)
+    dv = kwags.pop('deriv', 0)
+    delta = kwags.pop('delta', 1.0)
+    mode = kwags.pop('mode', 'interp')
+    cval = kwags.pop('cval', 0.0)
+
+    sh = data.shape
+    tmp0 = data[:,10:-10].mean(1)[:,None,:]*np.ones(sh)
+    tmp = tmp0[...,5:-5]
+    der2 = np.gradient(np.gradient(tmp, axis=2), axis=2)
+    der2 -= der2[:,10:-10,10:-10].mean((1,2))[:,None, None]
+    std = der2[:,10:-10,10:-10].std((1,2))[:,None,None]
+    msk = np.ones(sh, dtype='float')
+    msk[...,5:-5] = np.exp(-0.5*np.abs((der2/std))**2)
+    msk[...,5:-5] = savgol_filter(msk[...,5:-5], wl, po,
+                      deriv= dv, delta= delta, cval= cval,
+                      mode= mode, axis=2)
+    msk[msk > 1] = 1
+    msk[...,:5] = msk[...,6][...,None]
+    msk[...,-5:] = msk[...,-6][...,None]
+    for i in range(sh[0]):
+        ttmp = tmp0[i,100]
+        mm = ttmp[10:-10].argmin()+10
+        lb = mm-10
+        if lb < 0:
+            lb = 0
+        rb = mm+10
+        if rb >= sh[2]:
+            rb = sh[2]-1
+        x = np.arange(lb,rb)
+        c = (ttmp[10:50].mean()+ttmp[-50:-10].mean())/2
+        cp, cr = curve_fit(Gaussian, x, ttmp[lb:rb]-c, p0=[ttmp[mm], mm, 5])
+        msk[i,:,int(cp[1]-np.abs(cp[2])*fsig):int(cp[1]+np.abs(cp[2])*fsig)] = 0
+    return msk**power
+
 def data_mask_and_fill(data, msk_range, axis=1, kind='nearest'):
     shape = data.shape
     minMsk, maxMsk = msk_range
@@ -663,12 +700,6 @@ class calFlat:
         Flat: `~numpy.array`
             Master Flat
         """
-        window_length = 40
-        polyorder = 2
-        deriv = 0
-        delta = 1.0
-        mode = 'interp'
-        cval = 0.0
 
         if self.logF2 is None:
             logF =  self.logF
@@ -676,14 +707,7 @@ class calFlat:
             logF = self.logF2
 
         if msk is None:
-            self.der2 = np.gradient(np.gradient(logF, axis=2), axis=2)
-            self.der2 -= self.der2[:,10:-10,10:-10].mean((1,2))[:,None, None]
-            std = self.der2[:,10:-10,10:-10].std((1,2))[:,None,None]
-            msk = np.exp(-0.5*np.abs((self.der2/std))**2)
-            self.msk0 = msk
-            msk = savgol_filter(msk, window_length, polyorder,
-                      deriv= deriv, delta= delta, cval= cval,
-                      mode= mode, axis=2)
+            msk = getMask(10**logF, power=4)
         self.msk = msk
         
         # self.rmFlat2 = self.rmFlat + self.mlf.max(0) # y direction vignetting is removed (that is not intended problems)
@@ -996,17 +1020,19 @@ class calFlat:
 
 
         self.mlf = self.logF[:,5:-5].mean(1)
+        self.tap = aprof.copy()
         ap =  aprof
         self.lprof = lprof = np.median(self.logF[:,5:-5],1)
         rmin = ap[self.nf//2].argmin()
-        am1 = ap[self.nf//2,rmin-10:rmin+10].min()
-        am2 = ap[self.nf//2,-30:-10].mean()
-        ra = am2 - am1
-        pm1 = lprof[self.nf//2,rmin-10:rmin+10].min()
-        pm2 = ap[self.nf//2,-30:-10].mean()
-        rp = pm2 - pm1
-        r = rp/ra
-        ap *= r
+        A = ap[self.nf//2,rmin-10:rmin+10].min()
+        B = ap[self.nf//2,-30:-10].mean()
+        R = A-B
+        a = lprof[self.nf//2,rmin-10:rmin+10].min()
+        b = lprof[self.nf//2,-30:-10].mean()
+        r = a-b
+        ap *= r/R
+        A1 = ap[self.nf//2,rmin-10:rmin+10].min()
+        ap += a-A1
         # for i in range(self.nf):
         #     sh = int(self.tsh[i] - self.tsh[self.nf//2])
         #     # am1 = ap[i,rmin-sh-10:rmin-sh+10].min()
