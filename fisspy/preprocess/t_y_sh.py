@@ -1,11 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
-from fisspy.image.base import alignoffset, shift
+from fisspy.align import alignOffset
 from astropy.time import Time
-from fisspy.preprocess.proc_base import get_tilt, tilt_correction
 from scipy.signal import find_peaks
-from os.path import abspath
 
 def cal_shift(fl, fref):
     fl.sort()
@@ -38,7 +36,7 @@ def cal_shift(fl, fref):
         for whd in pks:
             rimg = rd2y[whd-16:whd+16, 10:-10]
             img = d2y[whd-16:whd+16, 10:-10]
-            tsh += alignoffset(img, rimg)[0,0]
+            tsh += alignOffset(img, rimg)[0,0]
         tsh /= npks
         sh[i] = tsh
     tt = tt[mask]

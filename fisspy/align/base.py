@@ -10,10 +10,10 @@ from scipy.fftpack import ifft2, fft2
 
 
 __author__ = "Juhyung Kang"
-__all__ = ['AlignOffset', 'CoordinateTransform', 'get_interpVal',
+__all__ = ['alignOffset', 'CoordinateTransform', 'get_interpVal',
            'rotImage', 'shiftImage']
 
-def AlignOffset(image0, template0, cor= None):
+def alignOffset(image0, template0, cor= None):
     """
     Calculate the align offset between two two-dimensional images
 
@@ -159,7 +159,7 @@ def CoordinateTransform(x, y, xc, yc, angle, dx=0, dy=0, inv=False):
         yt=(x-xc-dx)*np.sin(angle)+(y-yc-dy)*np.cos(angle)+yc
     return xt,yt
 
-def get_interpVal(img, xa, ya, xt, yt, missing=-1, cubic=False):
+def get_interpVal(img, xa, ya, xt, yt, missing=None, cubic=False):
     """
     To determine the image values at the specified position(s) using interpolation
 
@@ -175,10 +175,10 @@ def get_interpVal(img, xa, ya, xt, yt, missing=-1, cubic=False):
         Coordinates of the positions in the observed frame.
     yt : `~numpy.ndarray`
         Coordinates of the positions in the observed frame.
-    missing : (optional) `float`
+    missing : `float` (optional)
         The value of extrapolated position.
-        Default is -1, and it means the False.
-        If False, then extrapolate the given position.
+        If None, extrapolate the given position.
+        Default is None.
 
     Returns
     -------
@@ -189,8 +189,16 @@ def get_interpVal(img, xa, ya, xt, yt, missing=-1, cubic=False):
     """
     shape = img.shape
     ndim = img.ndim
+    rshape = []
+    rsize = 1
+    for i in range(ndim-2):
+        rshape += [shape[i]]
+        rsize *= shape[i]
+    rshape += [yt.shape[0], xt.shape[-1]]
+    rshape = tuple(rshape)
+    rsize *=  yt.shape[0]*xt.shape[-1]
     size = img.size
-    ones = np.ones(shape)
+    ones = np.ones(rshape)
 
     smin = np.zeros(ndim)
     smax = np.array(shape)-1
@@ -204,22 +212,22 @@ def get_interpVal(img, xa, ya, xt, yt, missing=-1, cubic=False):
     else:
         interp = LinearSpline(smin, smax, order, img)
 
-    inp = np.zeros((ndim,size))
+    inp = np.zeros((ndim,rsize))
     for i, sh in enumerate(shape[:-2]):
         tmp = np.arange(sh)[tuple([None]*i + [Ellipsis] + [None]*(ndim-1-i))]*ones
         inp[i] = tmp.reshape(size)
         
-    inp[-2] = (yt * ones).reshape(size)
-    inp[-1] = (xt * ones).reshape(size)
+    inp[-2] = (yt * ones).reshape(rsize)
+    inp[-1] = (xt * ones).reshape(rsize)
     # a = np.array((yt.reshape(size),xt.reshape(size)))
     b = interp(inp.T)
-    res = b.reshape(shape)
-    if missing != -1:
+    res = b.reshape(rshape)
+    if missing is not None:
         mask = np.invert((xt<=xa.max()) * (xt>=xa.min()) * (yt<=ya.max())*(yt>=ya.min())) * ones.astype(bool)
         res[mask] = missing
     return res
 
-def rotImg(img, angle, xc=False, yc=False, dx=0, dy=0, xmargin=0, ymargin=0, missing=0, cubic=False):
+def rotImage(img, angle, xc=False, yc=False, dx=0, dy=0, xmargin=0, ymargin=0, missing=0, cubic=False):
     """
     Rotate the input image.
 

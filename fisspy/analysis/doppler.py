@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division
 import numpy as np
 from interpolation.splines import LinearSpline, CubicSpline
-from scipy.signal import fftconvolve as conv
 
 __author__ = "Juhyung Kang"
 __email__ = "jhkang0301@gmail.com"

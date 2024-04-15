@@ -1,10 +1,13 @@
 from __future__ import absolute_import, division
 import numpy as np
-# from fisspy.align.base import AlignOffset
-from ..align.base import AlignOffset
+from ..align import alignOffset
 from .get_inform import LineName, centerWV, Pure
 from scipy.signal import savgol_filter
 from scipy.ndimage import gaussian_filter1d
+
+__author__ = "Juhyung Kang"
+__email__ = "jhkang0301@gmail.com"
+__all__ = ["get_InstShift", "get_Linecenter", "wvCalib", "smoothingProf", "CorSLA", "CorStrayLight", "CorAsymmetry"]
 
 def get_InstShift(data, refSpec, dw):
     """
@@ -45,7 +48,7 @@ def get_InstShift(data, refSpec, dw):
             data2der = np.gradient(np.gradient(data))
             data2der[:2] = data2der[-2:] = 0
             data2der = data2der * np.ones((4, sh[0]))
-        yoff, xoff = AlignOffset(data2der, refSpec2der)
+        yoff, xoff = alignOffset(data2der, refSpec2der)
         woffset = xoff*dw
     return woffset
 

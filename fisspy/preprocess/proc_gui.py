@@ -12,7 +12,6 @@ from astropy.time import Time
 from os import makedirs
 from fisspy import cm
 from scipy.signal import find_peaks
-from scipy.interpolate import interp1d
 from statsmodels.tsa.ar_model import AutoReg
 
 def qSleep(sec):

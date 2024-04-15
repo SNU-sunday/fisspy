@@ -2,6 +2,10 @@ from statsmodels.tsa.ar_model import AR
 import numpy as np
 from scipy.interpolate import interp1d
 
+__author__ = "Juhyung Kang"
+__email__ = "jhkang0301@gmail.com"
+__all__ = ["ARcast"]
+
 def ARcast(data,time,dt=False,axis=-1,missing=0):
     """
     Forecast the data by using AutoRegressive method.

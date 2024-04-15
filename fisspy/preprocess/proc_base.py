@@ -1,14 +1,13 @@
 import numpy as np
 from astropy.io import fits
 from interpolation.splines import LinearSpline, CubicSpline
-from fisspy.image.base import alignoffset, rot, shift
+from fisspy.align import shiftImage, alignOffset, rotImage
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from os.path import join, isdir, dirname, basename, abspath
 from os import getcwd, makedirs
 from glob import glob
 from astropy.time import Time
-# from interpolation import interp as interp1d
 from scipy.signal import find_peaks
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
@@ -195,11 +194,12 @@ def get_tilt_old(img, tilt=None, show=False):
     shy = 0
     iteration = 0
     while abs(tmp) > 1e-1:
-        sh = alignoffset(i2, i1)
+        sh = alignOffset(i2, i1)
         sh[1,0] = 0
         tmp = sh[0,0]
         shy += tmp
-        i2 = shift(i2, -sh, missing=-1, cubic=True)
+        # i2 = shift(i2, -sh, missing=-1, cubic=True)
+        i2 = shiftImage(i2, -sh, missing=None, cubic=True)
         iteration += 1
         if iteration == 10:
             print('break')
@@ -213,7 +213,7 @@ def get_tilt_old(img, tilt=None, show=False):
 
 
     if show:
-        rimg = rot(img, np.deg2rad(-Tilt), cubic=True, missing=-1)
+        rimg = rotImage(img, np.deg2rad(-Tilt), cubic=True, missing=None)
         
         fig, ax = plt.subplots(2,1, figsize=[6, 6], sharey=True, sharex=True)
         iimg = img - np.median(img, axis=0)
@@ -285,7 +285,7 @@ def get_tilt(img, tilt=None, show=False):
     for whd in pks:
         i1 = dy_img[whd-16:whd+16, wp:wp+16]
         i2 = dy_img[whd-16:whd+16, -(wp+16):-wp]
-        sh = alignoffset(i2, i1)
+        sh = alignOffset(i2, i1)
         shy += sh[0,0]
     shy /= npks
     
@@ -296,7 +296,7 @@ def get_tilt(img, tilt=None, show=False):
 
 
     if show:
-        rimg = rot(img, np.deg2rad(-Tilt), cubic=True, missing=-1)
+        rimg = rotImage(img, np.deg2rad(-Tilt), cubic=True, missing=None)
         
         fig, ax = plt.subplots(2,1, figsize=[6, 6], sharey=True, sharex=True)
         iimg = img - np.median(img, axis=0)
@@ -389,7 +389,7 @@ def get_curve_par(cData, show=False):
                 prof0 = d2Data[f,ny//2,wh-8:wh+8]*ones
                 for i, prof in enumerate(d2Data[f, ny//2 + direction::direction]):
                     prof = prof[wh-8:wh+8]*ones
-                    dwpk[pp,direction*(i+1) + ny//2] = alignoffset(prof, prof0)[1]
+                    dwpk[pp,direction*(i+1) + ny//2] = alignOffset(prof, prof0)[1]
                     dwpk[pp,direction*(i+1) + ny//2] += dwpk[pp,direction*(i) + ny//2]
                     prof0 = prof
         dw[f] = np.median(dwpk,axis=0)
@@ -443,7 +443,7 @@ def tilt_correction(img, tilt, cubic=True):
     ti: `~numpy.array`
         N-dimensional `~numpy.array` of tilt corrected image. 
     """
-    ti = rot(img, np.deg2rad(-tilt), cubic=cubic, missing=-1)
+    ti = rotImage(img, np.deg2rad(-tilt), cubic=cubic, missing=None)
 
     return ti
 
@@ -652,10 +652,10 @@ class calFlat:
                 if i == self.nf//2:
                     continue
                 spec = d2rlRF[i,wh-16:wh+16,5:-5]
-                sh = alignoffset(spec, ref)
+                sh = alignOffset(spec, ref)
                 sh[1,0] = 0
                 self.shyA[i] = -sh[0,0]
-                si[i] = shift(self.rlRF[i], -sh, missing=-1, cubic=True)
+                si[i] = shiftImage(self.rlRF[i], -sh, missing=None, cubic=True)
         else:
             si = self.rlRF
         
@@ -741,16 +741,16 @@ class calFlat:
         for k in range(self.nf-1):
             img1 = (logF[k+1] - Flat)[hy-10:hy+10].mean(0)*one
             img2 = (logF[k] - Flat)[hy-10:hy+10].mean(0)*one
-            sh = alignoffset(img1, img2)
+            sh = alignOffset(img1, img2)
             dx = int(np.round(sh[1]))
             if dx < 0:
                 img1 = (logF[k+1] - Flat)[hy-10:hy+10, :dx].mean(0)*one[:,:dx]
                 img2 = (logF[k] - Flat)[hy-10:hy+10, -dx:].mean(0)*one[:,-dx:]
-                sh, cor = alignoffset(img1, img2, cor=True)
+                sh, cor = alignOffset(img1, img2, cor=True)
             else:
                 img1 = (logF[k+1] - Flat)[hy-10:hy+10, dx:].mean(0)*one[:,dx:]
                 img2 = (logF[k] - Flat)[hy-10:hy+10, :-dx].mean(0)*one[:,:-dx]
-                sh, cor = alignoffset(img1, img2, cor=True)
+                sh, cor = alignOffset(img1, img2, cor=True)
             self.x[k+1] = self.x[k] + sh[1] + dx
             # print(f"k: {k+1}, x={self.x[k+1]}, cor={cor}")
         self.x -= np.median(self.x)
@@ -762,7 +762,7 @@ class calFlat:
             self.ref = np.gradient(np.gradient((logF[k]-Flat)[hy-10:hy+10].mean(0), axis=0), axis=0)*one
             for j in range(self.ny):
                 img = np.gradient(np.gradient((logF[k] - Flat)[j], axis=0), axis=0)*one
-                sh = alignoffset(img[:,5:-5], self.ref[:,5:-5])
+                sh = alignOffset(img[:,5:-5], self.ref[:,5:-5])
                 self.dx[k,j] = sh[1]
             self.dx[k] = piecewise_quadratic_fit(y, self.dx[k], 100)
 
@@ -928,7 +928,7 @@ class calFlat:
 
     def slitTest(self, i=3):
         if self.tfig == None:
-            rlogRF = rot(self.logRF, np.deg2rad(-self.tilt), cubic=True, missing=-1)
+            rlogRF = rotImage(self.logRF, np.deg2rad(-self.tilt), cubic=True, missing=None)
             self.tmpo = 10**(rlogRF - rlogRF.mean(1)[:,None,:])
             self.tmps = 10**(self.tsi - self.tsi.mean(1)[:,None,:])
             m = self.tmps.mean()
@@ -998,8 +998,8 @@ class calFlat:
             d2p = d2p*np.ones((4,nw))
             iteration = 0
             d2r = np.gradient(np.gradient(refI, axis=1), axis=1)
-            # sh = alignoffset(d2r[:,5:-5], d2p[:,5:-5])
-            sh = alignoffset(refI[:,5:-5], prof[5:-5]*np.ones((4,nw-10)))
+            # sh = alignOffset(d2r[:,5:-5], d2p[:,5:-5])
+            sh = alignOffset(refI[:,5:-5], prof[5:-5]*np.ones((4,nw-10)))
             
             wvl = wv.copy()
             self.tsh[i] += sh[1,0]
@@ -1007,8 +1007,8 @@ class calFlat:
                 wvl += sh[1,0]*dw
                 testI = interp(wvl[:,None])*np.ones((4,nw))
                 d2r = np.gradient(np.gradient(testI, axis=1), axis=1)
-                # sh = alignoffset(d2r[:, 5:-5], d2p[:, 5:-5])
-                sh = alignoffset(testI[:,5:-5], prof[5:-5]*np.ones((4,nw-10)))
+                # sh = alignOffset(d2r[:, 5:-5], d2p[:, 5:-5])
+                sh = alignOffset(testI[:,5:-5], prof[5:-5]*np.ones((4,nw-10)))
                 
                 self.tsh[i] += sh[1,0]
                 iteration += 1
@@ -1114,12 +1114,12 @@ def preprocess(f, outname, flat, slit, dark, tilt, curve_coeff, cent_wv=False, o
     shy = np.zeros(nx)
     for i, frd in enumerate(d2rd[::step]):
         spec = frd[wh-16:wh+16,5:-5]
-        sh = alignoffset(spec, ref)
+        sh = alignOffset(spec, ref)
         shy[i] = sh[0,0]
 
     sh[0,0] = np.median(shy)
     sh[1,0] = 0
-    smflat = shift(slit*flat, sh, missing=-1, cubic=True)
+    smflat = shiftImage(slit*flat, sh, missing=None, cubic=True)
     data = data/smflat
 
     ti = tilt_correction(data, tilt)
@@ -1196,12 +1196,12 @@ def wv_calib_atlas(data, header, cent_wv=False):
         iteration = 0
         while abs(wsh) >= 1e-1:
             if wmax == 0:
-                sh = alignoffset(prof, refI)
+                sh = alignOffset(prof, refI)
             elif wmax >= 1:
-                sh = alignoffset(prof[:,:-int(wmax)], refI[:,:-int(wmax)])
+                sh = alignOffset(prof[:,:-int(wmax)], refI[:,:-int(wmax)])
             else:
-                sh = alignoffset(prof[:,-int(wmax):], refI[:,-int(wmax):])
-            prof = shift(prof, -sh, missing=-1, cubic=True)
+                sh = alignOffset(prof[:,-int(wmax):], refI[:,-int(wmax):])
+            prof = shiftImage(prof, -sh, missing=None, cubic=True)
             wsh = sh[-1][0]
             wmax += wsh
             iteration += 1
@@ -1510,13 +1510,13 @@ def calShift(raw, sp, pks):
     for i, whd in enumerate(pks[ss:ee]):
         rimg = rd2y[whd-8:whd+8, 10:-10]
         img = d2y[whd-8:whd+8, 10:-10]
-        ash[i] = alignoffset(img, rimg)[0,0]
+        ash[i] = alignOffset(img, rimg)[0,0]
     sh = np.median(ash)
     s = np.zeros((2,1))
     mx = int(np.round(sh))
     s[0,0] = mx
     
-    ssp = shift(sp, s, missing=sp[5:-5,5:-5].mean())
+    ssp = shiftImage(sp, s, missing=sp[5:-5,5:-5].mean())
 
     tpks = find_peaks(d2y[5:-5,10], d2y[5:-5,10].std())[0]+5
     spks = pks+mx

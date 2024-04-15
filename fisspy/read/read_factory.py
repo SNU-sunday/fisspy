@@ -4,24 +4,19 @@ from astropy.io import fits
 from astropy.time import Time
 import astropy.constants as ac
 import astropy.units as u
-from scipy.signal import fftconvolve as conv
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from matplotlib import ticker
 from fisspy import cm
 from .readbase import getRaster, getHeader, readFrame
-from ..analysis.doppler import lambdameter
+from ..analysis import lambdameter
 from ..image import interactive_image as II
-from ..correction.get_inform import LineName
-from ..analysis.filter import FourierFilter
-from ..analysis.wavelet import Wavelet
-from ..correction.correction import wvCalib, smoothingProf
-# from fisspy.analysis.tdmap import TDmap
-#from mpl_toolkits.axes_grid1 import make_axes_locatable
+from ..correction import LineName, wvCalib, smoothingProf
+from ..analysis import FourierFilter, Wavelet, makeTDmap
 
 __author__= "Juhyung Kang"
-__email__ = "jhkang@astro.snu.ac.kr"
-__all__ = ["rawData", "FISS", "FD"]
+__email__ = "jhkang0301@gmail.com"
+__all__ = ["rawData", "FISS", "FD", "calibData"]
 
 class rawData:
     """
@@ -1269,6 +1264,32 @@ class calibData:
             self.image.set_data(self.data[self.num])
             self.num0 = self.num
         self.fig.canvas.draw_idle()
+
+class AlignCube:
+    """
+    Show align cube and make Time-Distance map.
+
+    Parameters
+    ----------
+    fname: `str`
+        File name of the align data cube.
+
+    Other Parameters
+    ----------------
+    **kwargs: `.makeTDmap` properties (optional)
+        Keyword arguments 
+    Returns
+    -------
+    """
+    def __init__(self, fname, **kwargs):
+        res = np.load(fname)
+        self.data = res['data']
+        self.time = res['time']
+        self.dt = res['dt']
+        self.dx = res['dx']
+        self.dy = res['dy']
+
+        self.td = makeTDmap(self.data, dx=self.dx, dy=self.dy, dt=self.dt, **kwargs)
 
 def _isoRefTime(refTime):
     year = refTime[:4]

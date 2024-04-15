@@ -10,6 +10,8 @@ import matplotlib.patheffects as pe
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
+__all__ = ["makeTDmap", "analysisTDmap"]
+
 class makeTDmap:
     """
     Make Time-Distance map for given slit position interactively
