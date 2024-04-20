@@ -1,0 +1,52 @@
+{% set name = "fisspy" %}
+{% set version = "1.0.0" %}
+
+package:
+  name: fisspy
+  version: {{ version }}
+
+source:
+  fn: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: ca576230dfae4b22b8739a4167842be07e03b41cd321c48e27cae79055448a21
+
+build:
+  number: 0
+  script: {{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - python
+    - pip
+  build:
+    - python
+    - setuptools
+  run:
+    - python
+    - numpy
+    - numba
+    - pyqt
+    - scipy
+    - astropy
+    - sunpy
+    - matplotlib
+    - interpolation
+    - statsmodels
+    - beautifulsoup4
+    - pandas
+    - ffmpeg
+
+test:
+  imports:
+    - fisspy
+  requires:
+    - pip
+  command:
+    - pip check
+
+about:
+  home: https://github.com/SNU-sunday/fisspy
+  license: BSD-2
+  summary: The Python Package for data analysis of the GST/FISS Instrument
+  description: |
+    None
+  doc_url: http://fiss.snu.ac.kr/fisspy/
