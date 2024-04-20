@@ -13,13 +13,13 @@ Requirement Package:
 * [NumPy](http://numpy.scipy.org/)
 * [Matplotlib](http://matplotlib.sourceforge.net/) >=3.0
 * [SciPy](http://www.scipy.org/) 
-* [sunpy](http://sunpy.org/) >=1.0.0
+* [sunpy](http://sunpy.org/) >=2.0.0
 * [Astropy](http://astropy.org)
 * [Interpolation](https://github.com/EconForge/interpolation.py) >=2.0.0
 
-Recommand to install the Python from the [Anaconda](https://www.continuum.io/why-anaconda).
+Recommend to install the Python from the [Anaconda](https://www.continuum.io/why-anaconda).
 
-To install this packages, first set the conda-forge server:
+To install these packages, first set the conda-forge server:
 
     conda config --append channels conda-forge
     
@@ -30,4 +30,4 @@ The easy way to install the FISSPy is:
 
 Tutorials
 ---------
-You can see the tutorials for the Python and the FISSPy in [here](http://astro.snu.ac.kr/~jhkang/tutorial/).
+You can see the tutorials for the FISSPy on [here](http://fiss.snu.ac.kr/fisspy/).

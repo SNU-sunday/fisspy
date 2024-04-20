@@ -5,6 +5,8 @@ from scipy.fftpack import fft, fftfreq, ifft
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
+__all__ = ["FourierFilter"]
+
 def FourierFilter(data, nt, dt, filterRange, axis=0):
     """
     Apply the Fourier bandpass filter.

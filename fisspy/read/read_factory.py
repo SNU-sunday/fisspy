@@ -1,26 +1,22 @@
 from __future__ import absolute_import, division
 import numpy as np
 from astropy.io import fits
-from scipy.signal import savgol_filter
-from scipy.signal import fftconvolve as conv
-from fisspy import cm
-import matplotlib.pyplot as plt
-from astropy.constants import c
-from fisspy.analysis.doppler import lambdameter
-from fisspy.image import interactive_image as IAI
-from fisspy.read.readbase import getRaster, getHeader, readFrame
-from fisspy.analysis.filter import FourierFilter
 from astropy.time import Time
+import astropy.constants as ac
 import astropy.units as u
+import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from fisspy.analysis.wavelet import Wavelet
 from matplotlib import ticker
-from fisspy.analysis.tdmap import TDmap
-#from mpl_toolkits.axes_grid1 import make_axes_locatable
+from .. import cm
+from .readbase import getRaster, getHeader, readFrame
+from ..analysis import lambdameter
+from ..image import interactive_image as II
+from ..correction import LineName, wvCalib, smoothingProf
+from ..analysis import FourierFilter, Wavelet, makeTDmap
 
 __author__= "Juhyung Kang"
-__email__ = "jhkang@astro.snu.ac.kr"
-__all__ = ["rawData", "FISS", "FD"]
+__email__ = "jhkang0301@gmail.com"
+__all__ = ["rawData", "FISS", "FD", "calibData"]
 
 class rawData:
     """
@@ -148,7 +144,7 @@ class rawData:
         self.wv = wv
         self.imInterp = kwargs.get('interpolation', 'bilinear')
         kwargs['interpolation'] = self.imInterp
-        self.iIm = IAI.singleBand(self, x, y, wv,
+        self.iIm = II.singleBand(self, x, y, wv,
                                   scale=scale, sigFactor=sigFactor,
                                   helpBox=helpBox, **kwargs)  # Basic resource to make interactive image is `~fisspy.image.tdmap.TDmap`
         plt.show()
@@ -177,40 +173,41 @@ class FISS:
 
     Parameters
     ----------
-    file : `str`
+    file: `str`
         File name of the FISS fts data.
-    x1 : `int`, optional
+    x1: `int`, optional
         A left limit index of the frame along the scan direction
-    x2 : `int`, optional
+    x2: `int`, optional
         A right limit index of the frame along the scan direction
         If None, read all data from x1 to the end of the scan direction.
-    y1 : `int`, optional
+    y1: `int`, optional
         A left limit index of the frame along the scan direction
-    y2 : `int`, optional
+    y2: `int`, optional
         A right limit index of the frame along the scan direction
         If None, read all data from x1 to the end of the scan direction.
-    noceff : `int`, optional
+    noceff: `int`, optional
         The number of coefficients to be used for
         the construction of frame in a pca file.
-    noiseSuprresion : `bool`, optional
-        If True Savitzky-Golay noise filter is applied in the wavelength axis.
-        Default is False.
-    simpleWvCalib : `bool`, optional
-        If True wavelength is simply calibrated by using the header parameters.
-        Default is True.
-    absScale : `bool`, optional
-        If False the central wavelength is set to be zero.
-        If True the central wavelength is set to be wavelength at lab frame.
-        It works if simpleWvCalibration is True.
-        Default is True
+    smoothingMethod: `str`, optional
+        If it is not given, do not apply the noise filter.
+        If 'savgol', apply the Savitzky-Golay noise filter in the wavelength axis.
+        If 'gauss', apply the Gaussian noise filter in the wavelength axis.
+        Default is None.
+    wvCalibMethod: `str`, optional
+        Method to calibrate wavelength.
+        'simple': calibration with the information of the header.
+        'center': calibration with the center of the main line.
+        'photo': calibration with the photospheric line and the main line.
+        Default is 'simple'.
 
     Other Parameters
     ----------------
-    **kwargs : `~scipy.signal.savgol_filter` properties
+    **kwargs : `~scipy.signal.savgol_filter` properties or `~scipy.ndimage.gaussian_filter1d` properties.
 
     See also
     --------
-    `~scipy.signal.savgol_filter`
+    `~scipy.signal.savgol_filter`.
+    `~scipy.ndimage.gaussian_filter1d`
 
     Examples
     --------
@@ -219,8 +216,7 @@ class FISS:
     >>> fiss = read.FISS(fisspy.data.sample.FISS_IMAGE)
     """
 
-    def __init__(self, file, x1=0, x2=None, y1=0, y2=None, ncoeff=False, noiseSuppression=False,
-                 simpleWaveCalib=True, absScale=True, **kwargs):
+    def __init__(self, file, x1=0, x2=None, y1=0, y2=None, ncoeff=False, smoothingMethod=None, wvCalibMethod='photo', **kwargs):
         if file.find('1.fts') != -1:
             self.ftype = 'proc'
         elif file.find('c.fts') != -1:
@@ -250,26 +246,30 @@ class FISS:
             self.band = str(self.header['gratwvln'])[:4]
 
         self.refProfile = self.data.mean((0,1))
-        self.wave = self._waveCalibration(simpleWaveCalib= simpleWaveCalib,
-                                        absScale= absScale, **kwargs)
+        self.wave = self.wvCalib(method=wvCalibMethod)
+        self.cwv = self.centralWavelength = cwv = self.header['crval1']
 
-        self.noiseSuppression = noiseSuppression
-        if noiseSuppression:
-            self._noiseSuppression()
+        self.smoothing = False
+        if smoothingMethod is not None:
+            self.smoothing = True
+        if self.smoothing:
+            self.smoothingProf(method=smoothingMethod, **kwargs)
+        
 
-        if self.band == '6562':
+        self.line = LineName(cwv)
+        if self.line == 'Ha':
             self.cam = 'A'
             self.set = '1'
             self.cmap = cm.ha
-        elif self.band == '8542':
+        elif self.line == 'Ca':
             self.cam = 'B'
             self.set = '1'
             self.cmap = cm.ca
-        elif self.band == '5889':
+        elif self.line == 'Na':
             self.cam = 'A'
             self.set = '2'
             self.cmap = cm.na
-        elif self.band == '5434':
+        elif self.line == 'Fe':
             self.cam = 'B'
             self.set = '2'
             self.cmap = cm.fe
@@ -279,8 +279,9 @@ class FISS:
         self.extentSpectro = [self.wave.min()-self.wvDelt/2,
                               self.wave.max()+self.wvDelt/2,
                               0, self.ny*self.yDelt]
+        self.lv = None
 
-    def reload(self, x1=0, x2=None, y1=0, y2=None, ncoeff=False, noiseSuppression=False):
+    def reload(self, x1=0, x2=None, y1=0, y2=None, ncoeff=False, smoothingMethod=None, **kwargs):
         """
         Reload the FISS data.
 
@@ -299,9 +300,20 @@ class FISS:
         noceff : `int`, optional
             he number of coefficients to be used for
             the construction of frame in a pca file.
-        noiseSuprresion : `bool`, optional
-            If True Savitzky-Golay noise filter is applied in the wavelength axis.
-            Default is False.
+        smoothingMethod: `str`, optional
+            If it is not given, do not apply the noise filter.
+            If 'savgol', apply the Savitzky-Golay noise filter in the wavelength axis.
+            If 'gauss', apply the Gaussian noise filter in the wavelength axis.
+            Default is None.
+
+        Other Parameters
+        ----------------
+        **kwargs : `~scipy.signal.savgol_filter` properties or `~scipy.ndimage.gaussian_filter1d` properties.
+
+        See also
+        --------
+        `~scipy.signal.savgol_filter`.
+        `~scipy.ndimage.gaussian_filter1d`
         """
         self.data = readFrame(self.filename, self.pfile, x1=x1, x2=x2, y1=y1, y2=y2, ncoeff=ncoeff)
         self.ny, self.nx, self.nwv = self.data.shape
@@ -314,8 +326,11 @@ class FISS:
         self.extentSpectro = [self.wave.min()-self.wvDelt/2,
                               self.wave.max()+self.wvDelt/2,
                               0, self.ny*self.yDelt]
-        if noiseSuppression:
-            self._noiseSuppression()
+        
+        if smoothingMethod is None:
+            self.smoothing = True
+        if self.smoothing:
+            self.smoothingProf(method=smoothingMethod, **kwargs)
 
     def getRaster(self, wv, hw=0.05):
         """
@@ -340,139 +355,69 @@ class FISS:
         return getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
 
 
-    def _waveCalibration(self, simpleWaveCalib= True, absScale= True,
-                         **kwargs):
+    def wvCalib(self, profile=None, method='photo'):
         """
         Wavelength calibration
 
-        If SimpleWvCalib is True, the wavelength is calibrated by using information in header.
-        If absScale is True, the central wavelength is set to be wavelength in the lab frame,
-        but if absScale is False, the central wavelength is set to be zero.
+        Parameters
+        ---------
+        profile: `~numpy.ndarray`
+            Spectrum
+        method: `str`
+            Method to calibrate wavelength.
+            'simple': calibration with the information of the header.
+            'center': calibration with the center of the main line.
+            'photo': calibration with the photospheric line and the main line.
+            Default is 'simple'.
+
+        Returns
+        -------
+        wv: `~numpy.ndarray`
+            Wavelength.
         """
-        method = kwargs.pop('method', True)
-        if simpleWaveCalib:
-            self.lamb0 = self.header['crval1']
-            if absScale:
-                self.centralWavelength = self.header['crval1']
-                return (np.arange(self.nwv) -
-                        self.header['crpix1']) * self.header['cdelt1'] + self.header['crval1']
-            else:
-                self.centralWavelength = 0
-                return (np.arange(self.nwv) -
-                        self.header['crpix1']) * self.header['cdelt1']
+        if profile is None:
+            pf = self.refProfile
         else:
-            if method:
-                if self.band == '6562':
-                    line=np.array([6561.097,6564.206])
-                    lamb0=6562.817
-                    dldw=0.019182
-                elif self.band == '8542':
-                    line=np.array([8540.817,8546.222])
-                    lamb0=8542.090
-                    dldw=-0.026252
-                elif self.band == '5889':
-                    line=np.array([5889.951,5892.898])
-                    lamb0=5889.9509
-                    dldw=0.016847
-                elif self.band == '5434':
-                    line=np.array([5434.524,5436.596])
-                    lamb0=5434.5235
-                    dldw=-0.016847
-            else:
-                if self.band == '6562':
-                    line=np.array([6562.817,6559.580])
-                    lamb0=6562.817
-                    dldw=0.019182
-                elif self.band == '8542':
-                    line=np.array([8542.089,8537.930])
-                    lamb0=8542.090
-                    dldw=-0.026252
+            pf = profile
+        return wvCalib(pf, self.header, method=method)
 
-        w = np.arange(self.nwv)
-        wl = np.zeros(2)
-        wc = self.refProfile[20:self.nwv-20].argmin() + 20
-        lamb = (w - wc) * dldw + lamb0
+    def smoothingProf(self, method='savgol', **kwargs):
+        """
+        Parameters
+        ----------
+        method: `str`, optional
+            If 'savgol', apply the Savitzky-Golay noise filter in the wavelength axis.
+            If 'gauss', apply the Gaussian noise filter in the wavelength axis.
+            Default is 'savgol'.
 
-        for i in range(2):
-            mask = np.abs(lamb - line[i]) <= 0.3
-            wtmp = w[mask]
-            ptmp = conv(self.refProfile[mask], [-1, 2, -1], 'same')
-            mask2 = ptmp[1:-1].argmin() + 1
-            try:
-                wtmp = wtmp[mask2-3:mask2+4]
-                ptmp = ptmp[mask2-3:mask2+4]
-            except:
-                raise ValueError('Fail to wavelength calibration\n'
-                'please change the method %s to %s' %(repr(method), repr(not method)))
-            c = np.polyfit(wtmp - np.median(wtmp), ptmp, 2)
-            wl[i] = np.median(wtmp) - c[1]/(2*c[0])
+        Other Parameters
+        ----------------
+        **kwargs : `~scipy.signal.savgol_filter` properties or `~scipy.ndimage.gaussian_filter1d` properties.
+        """
+        self.data = smoothingProf(self.data, method=method, **kwargs)
+        self.smoothing = True
 
-        dldw = (line[1] - line[0])/(wl[1] - wl[0])
-        wc = wl[0] - (line[0] - lamb0)/dldw
-        return (w - wc) * dldw
-
-    def _noiseSuppression(self, **kwargs):
-        window_length = kwargs.pop('window_length', 7)
-        polyorder = kwargs.pop('polyorder', 2)
-        deriv = kwargs.pop('deriv', 0)
-        delta = kwargs.pop('delta', 1.0)
-        mode = kwargs.pop('mode', 'interp')
-        cval = kwargs.pop('cval', 0.0)
-
-        self.data = savgol_filter(self.data, window_length, polyorder,
-                                   deriv= deriv, delta= delta, cval= cval,
-                                   mode= mode)
-        self.noiseSuppression = True
-
-
-    def lambdaMeter(self, hw= 0.03, sp= 5e3, wvRange= False,
-                    wvinput= True, shift2velocity= True):
+    def lambdameter(self, **kw):
         """
         Calculate the doppler shift by using lambda-meter (bisector) method.
 
         Parameters
         ----------
-        shift2velocity: `bool`
-            Convert doppler shift value with the velocity (unit: km s^-1)
-        wvinput : bool
-            There are two cases.
+        **kw:
+            See `~fisspy.analysis.doppler.lambdameter`
 
-        * Case wvinput==True
-
-                hw : float
-                    A half width of the horizontal line segment.
-
-            Returns
-            -------
-            wc : nd ndarray
-                n dimensional array of central wavelength values.
-            intc : nd ndarray
-                n dimensional array of intensies of the line segment.\\
-
-        * Case wvinput==False
-
-                sp : float
-                    An intensity of the horiznotal segment.
-
-            Returns
-            -------
-            wc : nd ndarray
-                n dimensional array of central wavelength values.
-            hwc : nd ndarray
-                n dimensional array of half widths of the line segment.
+        Returns
+        -------
+        wc : `~numpy.ndarray`
+            n dimensional array of central wavelength values.
+        intc : `~numpy.ndarray`
+            n dimensional array of intensies of the line segment.
 
         """
-        lineShift, intensity = lambdameter(self.wave, self.data,
-                                           ref_spectrum= self.refProfile,
-                                           wvRange= wvRange, hw= hw,
-                                           wvinput= wvinput)
-
-        if shift2velocity:
-            LOSvelocity = (lineShift-self.centralWavelength) * c.to('km/s').value/self.lamb0
-            return LOSvelocity, intensity
-        else:
-            return lineShift, intensity
-
+        self.hw = kw.get('hw', 0.05)
+        self.lwc, self.lic = lambdameter(self.wave, self.data, **kw)
+        self.lv = (self.lwc-self.centralWavelength)/self.centralWavelength * ac.c.to('km/s').value
+        
     def imshow(self, x=None, y=None, wv=None, scale='minMax',
                sigFactor=3, helpBox=True, **kwargs):
         """
@@ -510,11 +455,11 @@ class FISS:
         except:
             pass
 
-        if not x:
+        if x is None:
             x = self.nx//2*self.xDelt
-        if not y:
+        if y is None:
             y = self.ny//2*self.yDelt
-        if not wv:
+        if wv is None:
             wv = self.centralWavelength
         self.x = x
         self.y = y
@@ -522,7 +467,7 @@ class FISS:
         self.imInterp = kwargs.get('interpolation', 'bilinear')
         self.cmap = kwargs.pop('cmap', self.cmap)
         kwargs['interpolation'] = self.imInterp
-        self.iIm = IAI.singleBand(self, x, y, wv,
+        self.iIm = II.singleBand(self, x, y, wv,
                                   scale=scale, sigFactor=sigFactor,
                                   helpBox=helpBox, **kwargs)  # Basic resource to make interactive image is `~fisspy.image.tdmap.TDmap`
 
@@ -543,6 +488,125 @@ class FISS:
         self.iIm.x = x
         self.iIm.y = y
         self.iIm._chSpect()
+
+    def vshow(self, x=None, y=None, **kw):
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
+
+        if x is None:
+            x = self.nx//2*self.xDelt
+        if y is None:
+            y = self.ny//2*self.yDelt
+
+        self.xpix = round((x-self.xDelt/2)/self.xDelt)
+        self.x = self.xpix*self.xDelt+self.xDelt/2
+        self.ypix = round((y-self.yDelt/2)/self.yDelt)
+        self.y = self.ypix*self.yDelt+self.yDelt/2
+
+        self.lambdameter(**kw)
+        
+        # figure setting
+        self.fig = plt.figure(figsize=[18,7])
+        gs = gridspec.GridSpec(1, 5)
+        self.axI = self.fig.add_subplot(gs[0,0])
+        self.axV = self.fig.add_subplot(gs[0,1], sharex=self.axI, sharey=self.axI)
+        self.axSpec = self.fig.add_subplot(gs[0,2:])
+        self.axI.set_xlabel('X (arcsec)')
+        self.axI.set_ylabel('Y (arcsec)')
+        self.axSpec.set_xlabel(r'Wavelength ($\AA$)')
+        self.axSpec.set_ylabel('Intensity (Count)')
+        self.axI.set_title("Intensity")
+        self.axV.set_title("Velocity (km/s)")
+        self.axSpec.set_title(r"X = %.2f'', Y = %.2f'' (X$_{pix}$ = %i, Y$_{pix}$ = %i), $\Delta\lambda$ = %.2f"%(self.x, self.y, self.xpix, self.ypix, self.hw))
+        self.axI.set_xlim(self.extentRaster[0], self.extentRaster[1])
+        self.axI.set_ylim(self.extentRaster[2], self.extentRaster[3])
+        self.axSpec.set_xlim(self.wave.min(), self.wave.max())
+        self.axSpec.set_ylim(self.data[self.ypix, self.xpix].min()-100,
+                                self.data[self.ypix, self.xpix].max()+100)
+        self.axSpec.minorticks_on()
+        self.axSpec.tick_params(which='both', direction='in')
+
+        # Draw
+        self.imI = self.axI.imshow(self.lic, self.cmap, origin='lower', extent=self.extentRaster)
+        tmp = self.lic.copy().flatten()
+        tmp.sort()
+        m = tmp[200:-200].mean()
+        std = tmp[200:-200].std()
+        Imin = m-std*3
+        Imax = m+std*3
+        # Imin = tmp[200:-200].min()
+        # Imax = tmp[200:-200].max()
+        self.imI.set_clim(Imin, Imax)
+        self.imV = self.axV.imshow(self.lv, plt.cm.RdBu_r, origin='lower', extent=self.extentRaster, clim=[-10, 10])
+        self.pSpec = self.axSpec.plot(self.wave, self.data[self.ypix, self.xpix], color='k')[0]
+        self.pHL = self.axSpec.plot([self.lwc[self.ypix, self.xpix]-self.hw, self.lwc[self.ypix, self.xpix]+self.hw],
+                                    [self.lic[self.ypix, self.xpix], self.lic[self.ypix, self.xpix]], color='r')[0]
+        self.pVL = self.axSpec.plot([self.lwc[self.ypix, self.xpix], self.lwc[self.ypix, self.xpix]],
+                                    [1e4, 0], color='r')[0]
+        self.pointI = self.axI.scatter(self.x, self.y, 50, marker='x', color='r')
+        self.pointV = self.axV.scatter(self.x, self.y, 50, marker='x', color='r')
+
+        self.fig.tight_layout()
+        self.fig.canvas.mpl_connect('key_press_event', self._onKey_vs)
+        self.fig.show()
+
+    def _onKey_vs(self, event):
+        if event.key == 'left' or event.key == 'ctrl+left' or event.key == 'cmd+left':
+            if self.xpix > 0:
+                self.xpix -= 1
+            else:
+                self.xpix = self.nx-1
+            self.x = self.xpix*self.xDelt+self.xDelt/2
+            self._chPos()
+        elif event.key == 'right' or event.key == 'ctrl+right' or event.key == 'cmd+right':
+            if self.xpix < self.nx-1:
+                self.xpix += 1
+            else:
+                self.xpix = 0
+            self.x = self.xpix*self.xDelt+self.xDelt/2
+            self._chPos()
+        elif event.key == 'down' or event.key == 'ctrl+down' or event.key == 'cmd+down':
+            if self.ypix > 0:
+                self.ypix -= 1
+            else:
+                self.ypix = self.ny-1
+            self.y = self.ypix*self.yDelt+self.yDelt/2
+            self._chPos()
+        elif event.key == 'up' or event.key == 'ctrl+up' or event.key == 'cmd+up':
+            if self.ypix < self.ny-1:
+                self.ypix += 1
+            else:
+                self.ypix = 0
+            self.y = self.ypix*self.yDelt+self.yDelt/2
+            self._chPos()
+        elif event.key == ' ' and (event.inaxes == self.axI or event.inaxes == self.axV):
+            self.x = event.xdata
+            self.y = event.ydata
+            self.xpix = int(round((self.x-self.xDelt/2)/self.xDelt))
+            self.ypix = int(round((self.y-self.yDelt/2)/self.yDelt))
+            self._chPos()
+
+    def _chPos(self):
+        self.pSpec.set_ydata(self.data[self.ypix, self.xpix])
+        self.pHL.set_xdata([self.lwc[self.ypix, self.xpix]-self.hw, self.lwc[self.ypix, self.xpix]+self.hw])
+        self.pHL.set_ydata([self.lic[self.ypix, self.xpix], self.lic[self.ypix, self.xpix]])
+        self.pVL.set_xdata([self.lwc[self.ypix, self.xpix], self.lwc[self.ypix, self.xpix]])
+        self.pointI.set_offsets([self.x, self.y])
+        self.pointV.set_offsets([self.x, self.y])
+        self.axSpec.set_ylim(self.data[self.ypix, self.xpix].min()-100,
+                                self.data[self.ypix, self.xpix].max()+100)
+        self.fig.canvas.draw_idle()
+    
+    def chIclim(self, cmin, cmax):
+        self.imI.set_clim(cmin, cmax)
+        self.fig.canvas.draw_idle()
+    
+    def chVclim(self, cmin, cmax):
+        self.imV.set_clim(cmin, cmax)
+        self.fig.canvas.draw_idle()
 
 class FD:
     """
@@ -1113,18 +1177,18 @@ class FD:
         self.peakPeriodLWS.set_text(
                 r'P$_{peak, LWS}$=%.2f min'%peakPLWS)
 
-    def TD(self, ID=0, filterRange=None):
-        hdu = fits.PrimaryHDU(self.data[:,:,:,ID])
-        h= hdu.header
-        h['cdelt1'] = self.xDelt
-        h['cdelt2'] = self.yDelt
-        h['cdelt3'] = self.dt
-        h['crval1'] = self.xpos
-        h['crval2'] = self.ypos
-        h['sttime'] = self.Time[0].value
+    # def TD(self, ID=0, filterRange=None):
+    #     hdu = fits.PrimaryHDU(self.data[:,:,:,ID])
+    #     h= hdu.header
+    #     h['cdelt1'] = self.xDelt
+    #     h['cdelt2'] = self.yDelt
+    #     h['cdelt3'] = self.dt
+    #     h['crval1'] = self.xpos
+    #     h['crval2'] = self.ypos
+    #     h['sttime'] = self.Time[0].value
 
-        return TDmap(self.data[:,:,:,ID], h, self.time,
-                     filterRange=filterRange, cmap=self.cmap[ID])
+    #     return TDmap(self.data[:,:,:,ID], h, self.time,
+    #                  filterRange=filterRange, cmap=self.cmap[ID])
 
     def set_clim(self, cmin, cmax):
         self.imRaster.set_clim(cmin, cmax)
@@ -1200,6 +1264,32 @@ class calibData:
             self.image.set_data(self.data[self.num])
             self.num0 = self.num
         self.fig.canvas.draw_idle()
+
+class AlignCube:
+    """
+    Show align cube and make Time-Distance map.
+
+    Parameters
+    ----------
+    fname: `str`
+        File name of the align data cube.
+
+    Other Parameters
+    ----------------
+    **kwargs: `.makeTDmap` properties (optional)
+        Keyword arguments 
+    Returns
+    -------
+    """
+    def __init__(self, fname, **kwargs):
+        res = np.load(fname)
+        self.data = res['data']
+        self.time = res['time']
+        self.dt = res['dt']
+        self.dx = res['dx']
+        self.dy = res['dy']
+
+        self.td = makeTDmap(self.data, dx=self.dx, dy=self.dy, dt=self.dt, **kwargs)
 
 def _isoRefTime(refTime):
     year = refTime[:4]

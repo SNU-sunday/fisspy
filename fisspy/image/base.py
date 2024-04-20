@@ -387,7 +387,7 @@ def shift3d(img, sh):
     return img_interpol3d(img, t, y, x, tt, yt, xt, missing=0)
 
 def img_interpol3d(img, ta, ya, xa,
-                   tt, yt, xt, missing=-1):
+                   tt, yt, xt, missing=None):
     """
     Interpolate the image for a given coordinates.
 
@@ -428,7 +428,7 @@ def img_interpol3d(img, ta, ya, xa,
     a = np.array((tt.reshape(size), yt.reshape(size), xt.reshape(size)))
     b=interp(a.T)
     res=b.reshape(shape)
-    if missing!=-1:
+    if missing is not None:
         mask=np.invert((xt<=xa.max())*(xt>=xa.min())*(yt<=ya.max())*(yt>=ya.min()))
         res[mask]=missing
     return res

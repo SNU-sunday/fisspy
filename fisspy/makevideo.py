@@ -19,6 +19,7 @@ import numpy as np
 
 __author__ = "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
+__all__ = ['ffmpeg', 'img2video']
 
 def ffmpeg(imglist,fps,output='video.mp4'):
     """

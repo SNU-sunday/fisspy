@@ -11,6 +11,8 @@ from matplotlib.widgets import Slider
 __author__= "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
 
+__all__ = ["runDAVE", "readOFE"]
+
 def runDAVE(data0, output=False, overwrite=False, fwhm=10, adv=1, source=0,
             noise=1, winFunc='Gaussian', outSig=False):
     """
