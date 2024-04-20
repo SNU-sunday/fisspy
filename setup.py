@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='fisspy',
-    version='1.0.0',
+    version='1.0.1',
     description='fisspy: Python analysis tools for GST/FISS',
     url='http://fiss.snu.ac.kr',
     author='Juhyung Kang',
@@ -12,6 +12,6 @@ setup(
     packages=find_packages(exclude=['docs', 'logo']),
     install_requires=["numba", "numpy", "scipy>=1.5", "astropy>=5.0",
                       "sunpy>=2.0.0", "matplotlib>=3.0",
-                      "interpolation>=2.2", "statsmodels", "beautifulsoup4", "pandas", "ffmpeg"],
+                      "interpolation>=2.2", "statsmodels", "beautifulsoup4", "pandas", "ffmpeg", "pyqt"],
     zip_safe=False
     )

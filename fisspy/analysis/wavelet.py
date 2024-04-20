@@ -37,21 +37,21 @@ class Wavelet:
             * Default is 0.25
     s0 : `float` (optional)
         The smallest scale of the wavelet.  
-            * Default is :math:`2 \cdot dt`.
+            * Default is 2 * dt.
     j : `int` (optional)
         The number of scales minus one.
-        Scales range from :math:`s0` up to :math:`s_0\cdot 2^{j\cdot dj}`, to give
-        a total of :math:`j+1` scales.
-            * Default is :math:`j=\log_2{(\\frac{n dt}{s_0 dj})}`.
+        Scales range from s0 up to s_0 * 2^{j dj}, to give
+        a total of j+1 scales.
+            * Default is j=log_2(n dt/(s_0 dj)).
     mother : `str` (optional)
         The mother wavelet function.
         The choices are 'MORLET', 'PAUL', or 'DOG'
             * Default is **'MORLET'**
     param  : `int` (optional)
-        The mother wavelet parameter.\n
-        For **'MORLET'** param is k0, default is **6**.\n
-        For **'PAUL'** param is m, default is **4**.\n
-        For **'DOG'** param is m, default is **2**.\n
+        The mother wavelet parameter.
+        For **'MORLET'** param is k0, default is **6**.
+        For **'PAUL'** param is m, default is **4**.
+        For **'DOG'** param is m, default is **2**.
     pad : `bool` (optional)
         If set True, pad time series with enough zeros to get
         N up to the next higher power of 2.
@@ -68,7 +68,7 @@ class Wavelet:
     References
     ----------
     Torrence, C. and Compo, G. P., 1998, A Practical Guide to Wavelet Analysis, 
-    *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.\n
+    *Bull. Amer. Meteor. Soc.*, `79, 61-78 <http://paos.colorado.edu/research/wavelets/bams_79_01_0061.pdf>`_.
     http://paos.colorado.edu/research/wavelets/
     
     Example
@@ -390,9 +390,6 @@ class Wavelet:
         savename: `str`
             filename to save the wavelet data.
         
-        Example
-        -------
-        >>> res.saveWavelet(r'c:\test\wavelet.npz')
         """
         
         np.savez(savename, wavelet=self.wavelet,
