@@ -14,6 +14,9 @@ from fisspy import cm
 from scipy.signal import find_peaks
 from statsmodels.tsa.ar_model import AutoReg
 
+__author__ = "Juhyung Kang"
+__all__ = ["prepGUI"]
+
 def qSleep(sec):
     ms = int(sec*1e3)
     qtTimerLoop = QtCore.QEventLoop()

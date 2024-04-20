@@ -9,6 +9,7 @@ from astropy.time import Time
 from os.path import join, basename
 
 __author__ = "Juhyung Kang"
+__all__ = ['makeRasterSet']
 
 class makeRasterSet:
     def __init__(self, flistA, flistB, flatA, flatB, wvset=None, ii=0, show=True):

@@ -6,6 +6,26 @@ from astropy.time import Time
 from scipy.signal import find_peaks
 
 def cal_shift(fl, fref):
+    """
+    Calcuate the image shift
+
+    Parameters
+    ----------
+    fl: `list`
+        Series of the files.
+    fref: `int`
+        Reference frame.
+
+    Returns
+    -------
+    tt: `~numpy.ndarray`
+        Series of the time in JD in the unit of second
+    sh:
+        `~numpy.ndarray`
+        Series of the shift along the slit direciton.
+    date: `str`
+        Datetime at the reference time.
+    """
     fl.sort()
     nf = len(fl)
     opn = fits.open(fref)[0]

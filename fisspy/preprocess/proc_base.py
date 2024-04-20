@@ -15,6 +15,19 @@ from ..analysis.wavelet import Wavelet
 from scipy.fftpack import fft, ifft
 
 def fname2isot(f):
+    """
+    Translate the file name in to isot.
+
+    Parameters
+    ----------
+    f: `str`
+        filename.
+
+    Returns
+    -------
+    isot: `str`
+        datetime in the form of isot.
+    """
     rf = basename(f).replace('_BiasDark', '')
     sp = rf.split('_')
     YY = sp[1][:4]
@@ -28,6 +41,9 @@ def fname2isot(f):
     return f"{YY}-{MM}-{DD}T{hh}:{mm}:{ss}"
 
 def multiGaussian(x, *pars):
+    """
+    Get multi-Gaussian function
+    """
     ng = len(pars)//3
     y = np.zeros((len(x)))
     for i in range(ng):
@@ -38,6 +54,9 @@ def multiGaussian(x, *pars):
     return y
 
 def Gaussian(x, *par):
+    """
+    Get Gaussian function
+    """
     A = par[0]
     m = par[1]
     sig = par[2]
@@ -45,6 +64,25 @@ def Gaussian(x, *par):
     return y
 
 def getMask(data, power=4, fsig=1.2, **kwags):
+    """
+    Get spectral mask
+
+    Parameters
+    ----------
+    data: `~numpy.ndarray`
+        2D spectrogram
+    power: `float` (optional)
+        depth factor of the mask.
+        Default is 4.
+    fsig: `float` (optional)
+        width factor of the mask.
+        Default is 1.2
+
+    Returns
+    -------
+    mask: `~numpy.ndarray`
+        mask.
+    """
     wl = kwags.pop('window_length', 10)
     po = kwags.pop('polyorder', 2)
     dv = kwags.pop('deriv', 0)

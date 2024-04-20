@@ -7,7 +7,7 @@ import astropy.units as u
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from matplotlib import ticker
-from fisspy import cm
+from .. import cm
 from .readbase import getRaster, getHeader, readFrame
 from ..analysis import lambdameter
 from ..image import interactive_image as II

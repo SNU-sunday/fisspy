@@ -11,7 +11,7 @@ from scipy.fftpack import ifft2, fft2
 
 __author__ = "Juhyung Kang"
 __all__ = ['alignOffset', 'CoordinateTransform', 'get_interpVal',
-           'rotImage', 'shiftImage']
+           'rotImage', 'shiftImage', 'shiftImage3D']
 
 def alignOffset(image0, template0, cor= None):
     """
@@ -227,6 +227,55 @@ def get_interpVal(img, xa, ya, xt, yt, missing=None, cubic=False):
         res[mask] = missing
     return res
 
+def get_interpVal3D(img, ta, ya, xa, tt, yt, xt, missing=None, cubic=False):
+    """
+    Interpolate the image for a given coordinates.
+
+    Parameters
+    ----------
+    img : `~numpy.ndarray`
+        3 dimensional array of image.
+    ta : `~numpy.ndarray`
+        Frame vector.
+    xa : `~numpy.ndarray`
+        Row vector of x.
+    ya : `~numpy.ndarray`
+        Colomn vector of y.
+    tt : `~numpy.ndarray`
+        Coordinates of the positions in the observed frame.
+    yt : `~numpy.ndarray`
+        Coordinates of the positions in the observed frame.
+    xt : `~numpy.ndarray`
+        Coordinates of the positions in the observed frame.
+    missing : `float` (optional)
+        The value of extrapolated position.
+        Default is -1, and it means the False.
+        If False, then extrapolate the given position.
+
+    Returns
+    -------
+    res : ~numpy.ndarray
+        3 dimensional interpolated image.
+        The size of res is same as input img.
+    """
+    shape = xt.shape
+    size = xt.size
+    smin = [ta[0,0,0], ya[0,0,0], xa[0]]
+    smax = [ta[-1,0,0],ya[0,-1,0], xa[-1]]
+    order = [ta.size, ya.size, xa.size]
+    if cubic:
+        interp = CubicSpline(smin, smax, order, img)
+    else:
+        interp = LinearSpline(smin, smax, order, img)
+    
+    a = np.array((tt.reshape(size), yt.reshape(size), xt.reshape(size)))
+    b=interp(a.T)
+    res=b.reshape(shape)
+    if missing is not None:
+        mask=np.invert((xt<=xa.max())*(xt>=xa.min())*(yt<=ya.max())*(yt>=ya.min()))
+        res[mask]=missing
+    return res
+
 def rotImage(img, angle, xc=False, yc=False, dx=0, dy=0, xmargin=0, ymargin=0, missing=0, cubic=False):
     """
     Rotate the input image.
@@ -293,7 +342,7 @@ def shiftImage(image, sh, missing=0, cubic=False):
     ----------
     image :  `~numpy.ndarray`
         2 dimensional array.
-    sh : tuple, list or ndarray
+    sh : `tuple`, `list` or `ndarray`
         tuple, list or ndarray of shifting value set (y,x)
     missing: `float`
         The value of extrapolated position.
@@ -302,7 +351,7 @@ def shiftImage(image, sh, missing=0, cubic=False):
 
     Returns
     -------
-    simage : ~numpy.ndarray
+    simage : `~numpy.ndarray`
         shifted image.
     """
     ny, nx = image.shape
@@ -312,3 +361,32 @@ def shiftImage(image, sh, missing=0, cubic=False):
     yt=y-sh[0]+x*0
 
     return get_interpVal(image,x,y,xt,yt,missing=missing,cubic=cubic)
+
+
+def shiftImage3D(image, sh, missing=0, cubic=False):
+    """
+    Shift the given 3D image.
+
+    Parameters
+    ----------
+    image :  `~numpy.ndarray`
+        3 dimensional array.
+    sh : `tuple`, `list` or `ndarray`
+        tuple, list or ndarray of shifting value set (y,x)
+
+    Returns
+    -------
+    simage : `~numpy.ndarray`
+        shifted image.
+    """
+    nt, ny, nx =image.shape
+
+    t = np.arange(nt)[:,None,None]
+    y = np.arange(ny)[None,:,None]
+    x = np.arange(nx)
+    tt = t + y*0 + x*0
+    yt = y - sh[0][:, None, None] + t*0 + x*0
+    xt = x - sh[1][:, None, None] + t*0 + y*0
+
+    print(missing)
+    return get_interpVal3D(image, t, y, x, tt, yt, xt, missing=missing, cubic=cubic)

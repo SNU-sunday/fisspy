@@ -3,11 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from ..read.readbase import getRaster as _getRaster
-from fisspy.image.base import alignoffset, shift3d
+
 
 __author__ = "Juhyung Kang"
 __email__ = "jhkang@astro.snu.ac.kr"
-
+__all__ = ["singleBand", "dualBand"]
 
 class singleBand:
     """
@@ -383,7 +383,7 @@ class dualBand:
             plt.rcParams['keymap.forward'].remove('right')
         except:
             pass
-
+        from ..align import alignOffset, shiftImage3D
         kwargs['interpolation'] = kwargs.pop('interpolation', 'bilinear')
         self.fissA = fissA
         self.fissB = fissB
@@ -403,8 +403,8 @@ class dualBand:
         self._yMin = self.extentRaster[2]
         self._yMax = self.extentRaster[3]
 
-        sh = alignoffset(self.fissB.data[:,:,50], self.fissA.data[:,:,-50])
-        tmp = shift3d(fissB.data.transpose(2, 0, 1), -sh).transpose(1,2,0)
+        sh = alignOffset(self.fissB.data[:,:,50], self.fissA.data[:,:,-50])
+        tmp = shiftImage3D(fissB.data.transpose(2, 0, 1), -sh).transpose(1,2,0)
         self.fissB.data = tmp
         tmp[tmp<10]=1
         del tmp
@@ -531,12 +531,6 @@ class dualBand:
             self.imRasterB.set_clim(cminB, rasterB.max())
 
         #Reference
-        self.vlineRasterA = self.axRasterA.axvline(self.x,
-                                                   linestyle='dashed',
-                                                   color='lime')
-        self.vlineRasterB = self.axRasterB.axvline(self.x,
-                                                   linestyle='dashed',
-                                                   color='lime')
         self.vlineProfileA = self.axProfileA.axvline(self.wvA,
                                                      ls='dashed',
                                                      c='b')
@@ -685,8 +679,6 @@ class dualBand:
         self.plotProfileB.set_ydata(self.fissB.data[ypix, xpix])
         self.pointRasterA.set_offsets([self.x, self.y])
         self.pointRasterB.set_offsets([self.x, self.y])
-        self.vlineRasterA.set_xdata(self.x)
-        self.vlineRasterB.set_xdata(self.x)
 
         self.axProfileA.set_ylim(self.fissA.data[ypix, xpix].min()-100,
                                  self.fissA.data[ypix, xpix].max()+100)
