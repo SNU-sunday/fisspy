@@ -1,5 +1,5 @@
 {% set name = "fisspy" %}
-{% set version = "1.0.0" %}
+{% set version = "1.0.2" %}
 
 package:
   name: fisspy
