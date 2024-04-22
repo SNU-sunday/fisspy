@@ -378,7 +378,7 @@ class makeTDmap:
     def chTime(self, t):
         self.t = t
         self.im.set_data(self.data[self.t])
-        self.ax.set_title(f't = {self.t*self.dt} (sec)')
+        self.ax.set_title(f't = {self.t*self.dt:.2f} (sec)')
         if self.analysis is not None:
             self.analysis.t = self.t
             self.analysis.chTime()
