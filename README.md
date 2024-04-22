@@ -1,4 +1,4 @@
-# FISSPy
+# FISSpy
 
 [![Latest Version](https://img.shields.io/pypi/v/fisspy.svg)](https://pypi.python.org/pypi/fisspy/) [![Anaconda-Server Badge](https://anaconda.org/conda-forge/fisspy/badges/version.svg)](https://anaconda.org/conda-forge/fisspy) [![Anaconda-Server Badge](https://anaconda.org/conda-forge/fisspy/badges/downloads.svg)](https://anaconda.org/conda-forge/fisspy)
 
@@ -23,11 +23,29 @@ To install these packages, first set the conda-forge server:
 
     conda config --append channels conda-forge
     
-The easy way to install the FISSPy is:
+### <span style="color: red">Option 1)</span> Using Mamba
+We recommend you use the mamba to install the FISSpy:
+
+    mamba install fisspy
+
+If you don't have mamba you can download the mamba using the conda:
+
+    conda install -n base conda-libmamba-solver
+    conda install mamba --solver=libmamba
+
+After installing the mamba you can download the FISSpy using the previous command.
+
+### <span style="color: red">Option 2)</span> Using Conda
+Sometimes an old version of the conda has some errors and takes lots of time to download the FISSpy. If then we recommend you use the mamba instead See [Option 1](#option-1-using-mamba).
 
     conda install fisspy
+
+### <span style="color: red">Option 3)</span> Using PyPI
+If you failed to download the FISSpy using the above options, you can download the FISSpy using PyPI, but it is not the recommended method.
+
+    pip install fisspy
 
 
 Tutorials
 ---------
-You can see the tutorials for the FISSPy on [here](http://fiss.snu.ac.kr/fisspy/).
+You can see the tutorials for the FISSpy on [here](http://fiss.snu.ac.kr/fisspy/).
