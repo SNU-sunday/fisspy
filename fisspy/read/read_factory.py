@@ -16,7 +16,7 @@ from ..analysis import FourierFilter, Wavelet, makeTDmap
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang0301@gmail.com"
-__all__ = ["rawData", "FISS", "FD", "calibData"]
+__all__ = ["rawData", "FISS", "FD", "calibData", "AlignCube"]
 
 class rawData:
     """

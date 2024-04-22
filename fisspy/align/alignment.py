@@ -7,7 +7,7 @@ from os import getcwd
 
 __author__ = "Juhyung Kang"
 __email__ = "jhkang0301@gmail.com"
-__all__= ["calAlignPars", "alignCams", "writeAlignPars", "readAlignPars", "alignAll", "alignDataCube"]
+__all__= ["calAlignPars", "alignCams", "writeAlignPars", "readAlignPars", "alignAll", "alignDataCube", 'alignTwoDataCubes', 'saveAlignCube', 'makeExample']
 
 def calAlignPars(lfiles, refFrame=None):
     """
@@ -363,7 +363,7 @@ def alignDataCube(data, fapar, xmargin=None, ymargin=None, cubic=False):
                         xc=xc[i], yc=yc[i],
                         dx=apar['dx'][i],
                         dy=apar['dy'][i],
-                        xmargin=xmargin, ymargin=ymargin,
+                        xmargin=xm, ymargin=ym,
                         cubic=cubic)
         cdata[i] = rimg
 
