@@ -11,7 +11,7 @@ from .. import cm
 from .readbase import getRaster, getHeader, readFrame
 from ..analysis import lambdameter
 from ..image import interactive_image as II
-from ..correction import LineName, wvCalib, smoothingProf
+from ..correction import LineName, wvCalib, smoothingProf, CorSLA
 from ..analysis import FourierFilter, Wavelet, makeTDmap
 
 __author__= "Juhyung Kang"
@@ -332,29 +332,6 @@ class FISS:
         if self.smoothing:
             self.smoothingProf(method=smoothingMethod, **kwargs)
 
-    def getRaster(self, wv, hw=0.05):
-        """
-        Make a raster image for a given wavelength with in width 2*hw
-
-        Parameters
-        ----------
-        wv : float
-            Referenced wavelength.
-        hw : float
-            A half-width of wavelength to be integrated
-            Default is 0.05
-
-        Example
-        -------
-        >>> from fisspy.read import FISS
-        >>> fiss = FISS(file)
-        >>> raster = fiss.getRaster(0.5)
-        """
-
-        self.wv = wv
-        return getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
-
-
     def wvCalib(self, profile=None, method='photo'):
         """
         Wavelength calibration
@@ -381,6 +358,42 @@ class FISS:
             pf = profile
         return wvCalib(pf, self.header, method=method)
 
+    def CorSLA(self, refProf=None, pure=None, eps=0.027, zeta=0.055):
+        """
+        Correction of spectral line(s) profile for stray linght and far wing red-blue asymmetry.
+
+        Parameters
+        ----------
+        refProf: `numpy.ndarray`, shape (N,), (optional)
+            (Spatially averaged) Reference line profile.
+            If None, make refProfile by spatially averaging the Data.
+            Default is None.
+        pure: `~numpy.ndarry`, (optional)
+            True if not blended.
+            Please see `~fisspy.correction.get_inform.Pure`
+        eps: `float`, (optional)
+            Fraction of spatial stray light.
+            The default is 0.027
+        zeta: `float`, (optional)
+            Fration of spectral stray light.
+            The default is 0.055
+
+        See Also
+        --------
+        Chae et al. (2013), https://ui.adsabs.harvard.edu/abs/2013SoPh..288....1C/abstract
+        CorStrayLight: correction for stray light.
+        CorAsymmetry: correction for far wing red-blue asymmetry.
+        """
+        if refProf is None:
+            ndim = self.data.ndim
+            axes = tuple([i for i in range(ndim-1)])
+            rp = self.data.mean(axes)
+        else:
+            rp = refProf
+
+        self.data = CorSLA(self.wave, self.data, rp, self.line, pure=pure, eps=eps, zeta=zeta)
+
+
     def smoothingProf(self, method='savgol', **kwargs):
         """
         Parameters
@@ -396,6 +409,30 @@ class FISS:
         """
         self.data = smoothingProf(self.data, method=method, **kwargs)
         self.smoothing = True
+    
+    def getRaster(self, wv, hw=0.05):
+        """
+        Make a raster image for a given wavelength with in width 2*hw
+
+        Parameters
+        ----------
+        wv : float
+            Referenced wavelength.
+        hw : float
+            A half-width of wavelength to be integrated
+            Default is 0.05
+
+        Example
+        -------
+        >>> from fisspy.read import FISS
+        >>> fiss = FISS(file)
+        >>> raster = fiss.getRaster(0.5)
+        """
+
+        self.wv = wv
+        return getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
+
+
 
     def lambdameter(self, **kw):
         """

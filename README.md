@@ -24,14 +24,11 @@ To install these packages, first set the conda-forge server:
     conda config --append channels conda-forge
     
 ### <span style="color: red">Option 1)</span> Using Mamba
-We recommend you use the mamba to install the FISSpy:
+We highly recommend you use the mamba to install the FISSpy:
 
     mamba install fisspy
 
-If you don't have mamba you can download the mamba using the conda:
-
-    conda install -n base conda-libmamba-solver
-    conda install mamba --solver=libmamba
+If you don't have mamba please see [mamba installation](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html)
 
 After installing the mamba you can download the FISSpy using the previous command.
 
