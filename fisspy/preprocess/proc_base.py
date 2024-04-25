@@ -1385,14 +1385,16 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret=Fal
 
         Eval, Evec = np.linalg.eig(c_arr)
         if ncoeff is None:
-            ncoeff = (Eval >= tol).sum()
-            ncoeff = ncoeff if ncoeff < 50 else 50
-            ncoeff = ncoeff if ncoeff > 30 else 30
-            print(f"eigenvalue[{ncoeff}]: {Eval[50]:.3f}")
-        Evec = Evec[:,:ncoeff].T
+            NC = (Eval >= tol).sum()
+            NC = NC if NC < 50 else 50
+            NC = NC if NC > 30 else 30
+            print(f"eigenvalue[{NC}]: {Eval[50]:.3f}")
+        else:
+            NC = ncoeff
+        Evec = Evec[:,:NC].T
 
         hdu = fits.PrimaryHDU(Evec.astype('float32'))
-        hdu.header['ncoeff'] = ncoeff
+        hdu.header['NC'] = NC
         hdu.header['date'] = h['date']
         hdu.writeto(pfile, overwrite=True)
         
@@ -1403,18 +1405,18 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret=Fal
             ph = opn.header
             Evec = opn.data
 
-        ncoeff = Evec.shape[0]
+        NC = Evec.shape[0]
 
 
-    coeff = np.zeros((nx, ny, ncoeff+1))
+    coeff = np.zeros((nx, ny, NC+1))
     cfile = fproc.replace('.fts', '_c.fts')
     cfile = cfile.replace('proc', 'comp')
     wh = data < 1
     data[wh] = 1
     av = data.mean(2)
     data /= av[:,:,None]
-    coeff[:,:,ncoeff] = np.log10(av)
-    for i in range(ncoeff):
+    coeff[:,:,NC] = np.log10(av)
+    for i in range(NC):
         coeff[:,:,i] = (data[:,:,:]*Evec[i]).sum(2)
 
     bscale = np.abs(coeff).max()/2e4
@@ -1431,12 +1433,12 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret=Fal
 
     if ret and pfile is not None:
         c = coeff*bscale
-        spec = c[:,:,:ncoeff].dot(Evec)
+        spec = c[:,:,:NC].dot(Evec)
         spec *= 10**c[:,:,-1][:,:,None]
         if Eval is None:
             return Evec, spec, odata
         else:
-            return Evec, spec, odata, Eval[ncoeff]
+            return Evec, spec, odata, Eval[NC]
 
 def yf2sp(yf, tolRate=1):
     """

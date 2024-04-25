@@ -264,7 +264,7 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
         residual = np.zeros(na)
         dresid = np.zeros(na)
         if alpha is None:
-            alpha = 1
+            Alpha = 1
         sigmaratio = (0.1*data.mean())/hw
         while  (ref > 1e-4 or rep < 5)  and rep <  30 and more.sum() > 0:
             posi = posi0[more]
@@ -277,8 +277,8 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
     #        delta2d = (interp(wrs+eps)-2*interp(wrs)+interp(wrs-eps) \
     #                   -interp(wls+eps)+ 2*interp(wls)-interp(wls-eps))/eps**2
             residual[more] = delta * delta1d   \
-                    + (wc[more] - wc0[more])*alpha*sigmaratio**2
-            dresid[more] = delta1d**2 + alpha*sigmaratio**2
+                    + (wc[more] - wc0[more])*Alpha*sigmaratio**2
+            dresid[more] = delta1d**2 + Alpha*sigmaratio**2
             dwc[more] = -0.4*residual[more]/dresid[more]
                 
             
@@ -293,13 +293,13 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
         # print(f'rep={rep:3.0f}, more.sum={more.sum():3.0f}')
             
             if rep > 2:
-                alpha *= 0.1**(1./2.)
+                Alpha *= 0.1**(1./2.)
                 
-            alpha = np.maximum(alpha, 1.e-2)
+            Alpha = np.maximum(Alpha, 1.e-2)
 
     elif rfm == 'nrm': # Newton-Raphson Method
         if alpha is None:
-            alpha = 1
+            Alpha = 1
         wc = wv[s0].copy()
         while ref >1e-4 and rep < 30 and more.sum() > 0:
             posi = posi0[more]
@@ -319,7 +319,7 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
             dF = dFr-dFl
             f = F**2
             df = 2*F*dF
-            dwc[more] = -alpha*f/(df+np.sign(df)*1e-3)
+            dwc[more] = -Alpha*f/(df+np.sign(df)*1e-3)
             # dwc[more] = -f/df
             
             wc[more] += dwc[more]
@@ -331,7 +331,7 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
             
     elif rfm == 'hm': # Halley's method (modified NRM)
         if alpha is None:
-            alpha = 1
+            Alpha = 1
         wc = wv[s0].copy()
         while ref >1e-4 and rep < 30 and more.sum() > 0:
             posi = posi0[more]
@@ -352,7 +352,7 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
             df = 2*F*dF
             df2 = 2*(dF**2+F*dF2)
             denom = (df**2-0.5*f*df2)
-            dwc[more] = -alpha*f*df/(denom+np.sign(denom)*1e-3)
+            dwc[more] = -Alpha*f*df/(denom+np.sign(denom)*1e-3)
             
             wc[more] += dwc[more]
             ref0 = abs(dwc)

@@ -10,7 +10,7 @@ from matplotlib import ticker
 from .. import cm
 from .readbase import getRaster, getHeader, readFrame
 from ..analysis import lambdameter
-from ..image import interactive_image as II
+from ..image.interactive_image import singleBand
 from ..correction import LineName, wvCalib, smoothingProf, CorSLA
 from ..analysis import FourierFilter, Wavelet, makeTDmap
 
@@ -134,17 +134,17 @@ class rawData:
             pass
 
         if not x:
-            x = self.nx//2*self.xDelt
+            X = self.nx//2*self.xDelt
         if not y:
-            y = self.ny//2*self.yDelt
+            Y = self.ny//2*self.yDelt
         if not wv:
-            wv = self.centralWavelength
-        self.x = x
-        self.y = y
+            WV = self.centralWavelength
+        self.x = X
+        self.y = Y
         self.wv = wv
         self.imInterp = kwargs.get('interpolation', 'bilinear')
         kwargs['interpolation'] = self.imInterp
-        self.iIm = II.singleBand(self, x, y, wv,
+        self.iIm = singleBand(self, X, Y, WV,
                                   scale=scale, sigFactor=sigFactor,
                                   helpBox=helpBox, **kwargs)  # Basic resource to make interactive image is `~fisspy.image.tdmap.TDmap`
         plt.show()
@@ -493,18 +493,18 @@ class FISS:
             pass
 
         if x is None:
-            x = self.nx//2*self.xDelt
+            X = self.nx//2*self.xDelt
         if y is None:
-            y = self.ny//2*self.yDelt
+            Y = self.ny//2*self.yDelt
         if wv is None:
-            wv = self.centralWavelength
-        self.x = x
-        self.y = y
-        self.wv = wv
+            WV = self.centralWavelength
+        self.x = X
+        self.y = Y
+        self.wv = WV
         self.imInterp = kwargs.get('interpolation', 'bilinear')
         self.cmap = kwargs.pop('cmap', self.cmap)
         kwargs['interpolation'] = self.imInterp
-        self.iIm = II.singleBand(self, x, y, wv,
+        self.iIm = singleBand(self, X, Y, WV,
                                   scale=scale, sigFactor=sigFactor,
                                   helpBox=helpBox, **kwargs)  # Basic resource to make interactive image is `~fisspy.image.tdmap.TDmap`
 
@@ -534,13 +534,13 @@ class FISS:
             pass
 
         if x is None:
-            x = self.nx//2*self.xDelt
+            X = self.nx//2*self.xDelt
         if y is None:
-            y = self.ny//2*self.yDelt
+            Y = self.ny//2*self.yDelt
 
-        self.xpix = round((x-self.xDelt/2)/self.xDelt)
+        self.xpix = round((X-self.xDelt/2)/self.xDelt)
         self.x = self.xpix*self.xDelt+self.xDelt/2
-        self.ypix = round((y-self.yDelt/2)/self.yDelt)
+        self.ypix = round((Y-self.yDelt/2)/self.yDelt)
         self.y = self.ypix*self.yDelt+self.yDelt/2
 
         self.lambdameter(**kw)

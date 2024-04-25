@@ -311,12 +311,12 @@ def alignDataCube(data, fapar, xmargin=None, ymargin=None, cubic=False):
     fapar: `dict`
         File name of the alignpar.
     xmargin: `int`
-        margin for x-axis.
+        Margin for x-axis.
         The size of the x-axis increases to nx + 2*xmargin.
         If None, automatically calculate the margin.
         Default is None.
     ymargin: `int`
-        margin for y-axis
+        Margin for y-axis
         The size of the x-axis increases to ny + 2*ymargin.
         If None, automatically calculate the margin.
         Default is None.
@@ -369,11 +369,10 @@ def alignDataCube(data, fapar, xmargin=None, ymargin=None, cubic=False):
 
     return cdata
 
-def alignTwoDataCubes(dataA, dataB, faparA, faparB, cubic=False):
+def alignTwoDataCubes(dataA, dataB, faparA, faparB, xmargin=None, ymargin=None, cubic=False):
     """
     Align two 3D data cubes.
     Note that the data will be flip in the x axis to correct the mirror reversal.
-    Margin will be automatically calculated.
 
     Parameters
     ----------
@@ -385,6 +384,16 @@ def alignTwoDataCubes(dataA, dataB, faparA, faparB, cubic=False):
         File name of the alignpar for cam A.
     faparB: `str`
         File name of the alignpar for cam B.
+    xmargin: `int`, (optional)
+        Margin for x-axis.
+        The size of the x-axis increases to nx + 2*xmargin.
+        If None, automatically calculate the margin.
+        Default is None.
+    ymargin: `int`, (optional)
+        Margin for y-axis
+        The size of the x-axis increases to ny + 2*ymargin.
+        If None, automatically calculate the margin.
+        Default is None.
     cubic: `bool`, (optional)
         Use cubic interpolation to determine the value in the aligned position.
         If False, use linear interpolation.
@@ -401,8 +410,14 @@ def alignTwoDataCubes(dataA, dataB, faparA, faparB, cubic=False):
     aparB = readAlignPars(faparB)
     ang0 = np.arctan2(ny//2,nx//2)
     ang = aparA['angle']+ang0
-    xm = int(l*np.cos(ang).max() - nx//2 + int(abs(aparB['dx'][100])) + 0.5)
-    ym = int(l*np.sin(ang).max() - ny//2 + int(abs(aparB['dy'][100])) + 0.5)
+    if xmargin is None:
+        xm = int(l*np.cos(ang).max() - nx//2 + int(abs(aparB['dx'][100])) + 0.5)
+    else:
+        xm = xmargin
+    if ymargin is None:
+        ym = int(l*np.sin(ang).max() - ny//2 + int(abs(aparB['dy'][100])) + 0.5)
+    else:
+        ym = ymargin
 
     cdataA = alignDataCube(dataA, faparA, xmargin=xm, ymargin=ym, cubic=cubic)
     cdataB = alignDataCube(dataB, faparB, xmargin=xm, ymargin=ym, cubic=cubic)

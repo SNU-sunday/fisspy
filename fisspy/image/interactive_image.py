@@ -17,13 +17,13 @@ class singleBand:
     ----------
     fiss: `fisspy.read.FISS`
         FISS class.
-    x : `float`
+    X : `float`
         X position that you draw a spectral profile.
         Default is image center.
-    y : `float`
+    Y : `float`
         Y position that you draw a spectral profile.
         Default is image center.
-    wv : `float`
+    WV : `float`
         Wavelength positin that you draw a raster images.
         Default is central wavelength.
     scale : `string`
@@ -42,7 +42,7 @@ class singleBand:
     **kwargs : `~matplotlib.pyplot` properties
     """
 
-    def __init__(self, fiss, x=None, y=None, wv=None, scale='minMax',
+    def __init__(self, fiss, X=None, Y=None, WV=None, scale='minMax',
                  sigFactor=3, helpBox=True, **kwargs):
 
         try:
@@ -51,11 +51,11 @@ class singleBand:
         except:
             pass
 
-        if not x:
+        if not X:
             x = fiss.nx//2*fiss.xDelt
-        if not y:
+        if not Y:
             y = fiss.ny//2*fiss.yDelt
-        if not wv:
+        if not WV:
             wv = fiss.centralWavelength
         self.extentRaster = fiss.extentRaster
         self.extentSpectro = fiss.extentSpectro
@@ -193,7 +193,7 @@ class singleBand:
         self.fig.tight_layout()
         self.fig.canvas.mpl_connect('key_press_event', self._on_key)
 
-        plt.show()
+        self.fig.show()
 
     def _on_key(self, event):
 
@@ -375,7 +375,7 @@ class dualBand:
     ----------------
     **kwargs : `~matplotlib.pyplot` properties
     """
-    def __init__(self, fissA, fissB, x=None, y=None, wvA=None, wvB=None,
+    def __init__(self, fissA, fissB, X=None, Y=None, WVA=None, WVB=None,
                  scale='minMax', sigFactor=3, helpBox=True, **kwargs):
 
         try:
@@ -409,13 +409,13 @@ class dualBand:
         tmp[tmp<10]=1
         del tmp
 
-        if not x:
+        if not X:
             x = self.nx//2*self.xDelt
-        if not y:
+        if not Y:
             y = self.ny//2*self.yDelt
-        if not wvA:
+        if not WVA:
             wvA = self.fissA.centralWavelength
-        if not wvB:
+        if not WVB:
             wvB = self.fissB.centralWavelength
         xpix = round((x-self.xDelt/2)/self.xDelt)
         ypix = round((y-self.yDelt/2)/self.yDelt)
@@ -545,9 +545,8 @@ class dualBand:
                                                    color='r')
         self.fig.tight_layout()
         self.fig.canvas.mpl_connect('key_press_event', self._on_key)
+        self.fig.show()
 
-
-        plt.show()
     def _on_key(self, event):
 
         if event.key == 'ctrl+right' or event.key == 'cmd+right':

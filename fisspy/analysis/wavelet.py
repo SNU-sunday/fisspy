@@ -94,13 +94,13 @@ class Wavelet:
         self.axis = axis
         
         if not s0:
-            s0 = 2*dt
+            S0 = 2*dt
         if not j:
-            j = int(np.log2(self.n0*dt/s0)/dj)
+            j = int(np.log2(self.n0*dt/S0)/dj)
         else:
             j=int(j)
         
-        self.s0 = s0
+        self.s0 = S0
         self.j = j
         self.dt = dt
         self.dj = dj
@@ -630,9 +630,9 @@ class Wavelet:
         periodMax = periodMax if periodMax<64 else 64
         
         if time is None:
-            time = self.dt*np.arange(n)
+            ttime = self.dt*np.arange(n)
         if levels is None:
-            levels = [0.05, 0.12,0.229,
+            Levels = [0.05, 0.12,0.229,
                       0.45]
             
         # Plot Time Series
@@ -643,9 +643,9 @@ class Wavelet:
         self.axData.set_ylabel('Value')
         self.axData.minorticks_on()
         self.axData.tick_params(which='both', direction='in')
-        self.pData = self.axData.plot(time, self.data,
+        self.pData = self.axData.plot(ttime, self.data,
                                       color='k', lw=1.5)[0]
-        self.axData.set_xlim(time[0], time[-1])
+        self.axData.set_xlim(ttime[0], ttime[-1])
         
         # Contour Plot Wavelet Power Spectrum
         if title[1] is None:
@@ -662,19 +662,19 @@ class Wavelet:
         self.axWavelet.set_ylim(periodMax, 0.5)
         
         wpower = self.power/self.power.max()
-        self.contour = self.axWavelet.contourf(time, self.period,
-                                               wpower, len(levels),
+        self.contour = self.axWavelet.contourf(ttime, self.period,
+                                               wpower, len(Levels),
                                                colors=['w'])
         self.contourIm = self.axWavelet.contourf(self.contour,
-                                                 levels=levels,
+                                                 levels=Levels,
                                                  cmap=plt.cm.Spectral_r, extend='max')
         signif = self.waveSignif(self.data, sigtest=0, lag1=lag1, siglvl=0.90,
                                  gws=self.gws)
         sig90 = signif[:,None]
         sig90 = self.power/sig90
         
-        self.axWavelet.contour(time, self.period, sig90, [-99,1] ,colors='r')
-        self.axWavelet.fill_between(time, self.coi,
+        self.axWavelet.contour(ttime, self.period, sig90, [-99,1] ,colors='r')
+        self.axWavelet.fill_between(ttime, self.coi,
                                     self.period.max(), color='grey',
                                     alpha=0.4, hatch='x')
         
@@ -717,7 +717,7 @@ class Wavelet:
         period_mask = (self.period >= 2)*(self.period < 8)
         power_norm = self.power/self.scale[:,None]
         power_avg = self.dj*self.dt/self.cdelta*power_norm[period_mask,:].sum(0)
-        self.pScaleAvg = self.axScaleAvg.plot(time,
+        self.pScaleAvg = self.axScaleAvg.plot(ttime,
                                               power_avg,
                                               color='k',
                                               lw=1.5)
@@ -815,8 +815,8 @@ class WaveCoherency:
         >>> time_out = res.time
         >>> scale_out = res.scale
         """
-        if not dt: dt = time1[1]-time1[0]
-        if not dj: dj = np.log2(scale1[1]/scale1[0])
+        if not dt: DT = time1[1]-time1[0]
+        if not dj: DJ = np.log2(scale1[1]/scale1[0])
         if time1 is time2:
             t1s = 0
             t1e = len(time1)
@@ -856,12 +856,12 @@ class WaveCoherency:
         self.global_phase = np.arctan(self.global_cross.imag/self.global_cross.real)*180./np.pi
         
         if not nosmooth:
-            nt = (4*self.scale/dt)//2*4+1
+            nt = (4*self.scale/DT)//2*4+1
             nt2 = nt[:,None]
             ntmax = nt.max()
             g = np.arange(ntmax) * np.ones((nj,1))
             wh = g >= nt2
-            time_wavelet = (g-nt2//2)*dt/self.scale[:,None]
+            time_wavelet = (g-nt2//2)*DT/self.scale[:,None]
             wave_func = np.exp(-time_wavelet**2/2)
             wave_func[wh] = 0
             wave_func = (wave_func/wave_func.sum(1)[:,None]).real
@@ -873,7 +873,7 @@ class WaveCoherency:
             self.power1 /= scales
             self.power2 /= scales
             
-            nw = int(0.6/dj/2 + 0.5)*2-1
+            nw = int(0.6/DJ/2 + 0.5)*2-1
             weight = np.ones(nw)/nw
             self.cross_wavelet = _fastConv2(self.cross_wavelet, weight)
             self.power1 = _fastConv2(self.power1,weight)

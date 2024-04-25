@@ -107,9 +107,9 @@ def alignOffset(image0, template0, cor= None):
         kx = np.logical_and(xx >= 0, xx <= nx - 1)
         ky = np.logical_and(yy >= 0, yy <= ny - 1)
         roi = np.logical_and(kx, ky[:,None])
-        cor = (img*template)[roi].sum()/np.sqrt((img[roi]**2).sum() *
+        COR = (img*template)[roi].sum()/np.sqrt((img[roi]**2).sum() *
                       (template[roi]**2).sum())
-        return np.array([y, x]), cor
+        return np.array([y, x]), COR
     else:
         return np.array([y, x])
 
@@ -328,10 +328,10 @@ def rotImage(img, angle, xc=False, yc=False, dx=0, dy=0, xmargin=0, ymargin=0, m
 
 
     if not xc:
-        xc = nx/2
+        XC = nx/2
     if not yc:
-        yc = ny/2
-    xt, yt = CoordinateTransform(xa, ya, xc, yc, angle, dx=dx, dy=dy)
+        YC = ny/2
+    xt, yt = CoordinateTransform(xa, ya, XC, YC, angle, dx=dx, dy=dy)
     return get_interpVal(img, x, y, xt, yt, missing=missing, cubic=cubic)
 
 def shiftImage(image, sh, missing=0, cubic=False):

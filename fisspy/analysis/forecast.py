@@ -36,14 +36,14 @@ def ARcast(data, time, dt=False):
     """
     if not dt:
         tmp = np.roll(time, -1) - time
-        dt = np.median(tmp[:-1])
+        DT = np.median(tmp[:-1])
     
     shape = data.shape
     if shape[0]!=len(time):
         raise ValueError('The size of data is different from the size of time.')
         
     t = (time-time[0])
-    tf = np.arange(t[0], t[-1], dt, dtype=float)
+    tf = np.arange(t[0], t[-1], DT, dtype=float)
     
     interp = interp1d(t, data, kind='cubic', axis=0)
     datai = interp(tf)
@@ -61,14 +61,14 @@ def ARcast(data, time, dt=False):
     # shapet=datat.shape
     
     td = t - np.roll(t,1)
-    addi = np.where(td >= dt*1.5)[0]
+    addi = np.where(td >= DT*1.5)[0]
 
     nad = len(addi)
     if nad == 0:
         print("There is no empty element. Just interpolate to evenly sample the data.")
         return datai
 
-    npredict = (td[addi]/dt + 0.5).astype(int)-1
+    npredict = (td[addi]/DT + 0.5).astype(int)-1
     
     for i in range(nad):
         ts = np.abs(tf - t[addi[i]-1]).argmin()+1

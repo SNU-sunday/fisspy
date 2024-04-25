@@ -1,42 +1,48 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from ..read.readbase import getHeader, readFrame
-from fisspy import cm
-from astropy.io import fits
-from ..preprocess import proc_base
+from .. import cm
+from ..preprocess.proc_base import fname2isot
+from ..read import FISS
 from astropy.time import Time
-from os.path import join, basename
+from os.path import join, dirname, basename, isdir, isfile
+from os import mkdir, getcwd, chdir
+from shutil import move
+from glob import glob
+from zipfile import ZipFile
 
 __author__ = "Juhyung Kang"
 __all__ = ['makeRasterSet']
 
 class makeRasterSet:
-    def __init__(self, flistA, flistB, flatA, flatB, wvset=None, ii=0, show=True):
-        """
-        Make Raster image set
+    """
+    Make Raster image set
 
-        Parameters
-        ----------
-        flistA: `list`
-            list of the cam A file (one among raw, proc, comp data)
-        flistB: `list`
-            list of the cam B file (one among raw, proc, comp data)
-        flatA: `~numpy.ndarray`
-            raw flat image for cam A
-        flatB: `~numpy.ndarray`
-            raw flat image for cam B
-        wvset: `~numpy.ndarray` (optional)
-            1D-array for relative wavelength set to draw raster image.
-            default is [-4, -0.7, -0.5, -0.2, 0, 0.2, 0.5, 0.7]
-        ii: `int` (optional)
-            time index to show initially
-            default is 0
-        show: `bool` (optional)
-            show plot
-            default is True
-            Please set this value to False to save the image or animation.
-        """
+    Parameters
+    ----------
+    flistA: `list`
+        list of the cam A file (one among proc, comp data)
+    flistB: `list`
+        list of the cam B file (one among proc, comp data)
+    wvset: `~numpy.ndarray` (optional)
+        1D-array for relative wavelength set to draw raster image.
+        default is [-4, -0.7, -0.5, -0.2, 0, 0.2, 0.5, 0.7]
+    ii: `int` (optional)
+        time index to show initially
+        default is 0
+    show: `bool` (optional)
+        show plot
+        default is True
+        Please set this value to False to save the image or animation.
+    
+    Other parameters
+    ----------------
+    **kwargs:
+        `~fisspy.read.FISS` keyword arguments.
+    """
+    def __init__(self, flistA, flistB, wvset=None, ii=0, show=True, **kwargs):
+
+        
         self.show = show
         if show:
             plt.ion()
@@ -48,60 +54,33 @@ class makeRasterSet:
         self.flistB = flistB
         self.ani = None
         self.nf = len(self.flistA)
+        self.kwg = kwargs
+        self.fname_movie = None
         bgcolor = "#212529"
         bg_second = "#484c4f"
         fontcolor = "#adb5bd"
         titlecolor = "#ffda6a"
+        self.time = np.zeros(self.nf, dtype=float)
+        self.anx = np.zeros(self.nf, dtype=int)
 
-        if flistA[ii].find('1.fts')>=0:
-            self.level = 1
-            h = getHeader(flistA[ii])
-            self.dwvA = h['cdelt1']
-            self.dwvB = getHeader(flistB[ii])['cdelt1']
-            try:
-                band = int(h['wavelen'])
-            except:
-                band = int(h['gratwvln'])
-            
-        elif flistA[ii].find('_c.fts')>=0:
-            self.level = 2
-            h = getHeader(flistA[ii])
-            self.dwvA = h['cdelt1']
-            self.dwvB = getHeader(flistB[ii])['cdelt1']
-            try:
-                band = int(h['wavelen'])
-            except:
-                band = int(h['gratwvln'])
-        else:
-            self.level = 0
-            self.dwvA = 0.019
-            self.dwvB = -0.026
-            h = fits.getheader(flistA[ii])
-            try:
-                band = int(h['wavelen'])
-            except:
-                band = int(h['gratwvln'])
-
-
-        if band == 6562:
-            cwvA = 6562.8
-            cwvB = 8542.1
-        elif band == 5434:
-            cwvA = 5434.0
-            cwvB = 5883.0
+        A, B, time = self.loadData(ii)
+        cwvA = A.centralWavelength
+        cwvB = B.centralWavelength
 
         if wvset is None:
-            wvset = np.array([-4, -0.7, -0.5, -0.2, 0, 0.2, 0.5, 0.7])
+            wvSet = np.array([-4, -0.7, -0.5, -0.2, 0, 0.2, 0.5, 0.7])
+        else:
+            wvSet = wvset
 
-        self.stJD = Time(proc_base.fname2isot(self.flistA[0])).jd
-        self.edJD = Time(proc_base.fname2isot(self.flistA[-1])).jd
+        self.stT = Time(fname2isot(self.flistA[0]))
+        self.stJD = self.stT.jd
+        self.edT = Time(fname2isot(self.flistA[-1]))
+        self.edJD = self.edT.jd
         self.dJD = self.edJD-self.stJD
         
-        self.nwv = nwv = len(wvset)
-        rprofA = flatA[5:-5,5:-5].mean(0)
-        wcA = rprofA.argmin()+5
-        rprofB = flatB[5:-5,5:-5].mean(0)
-        wcB = rprofB.argmin()+5
+        self.nwv = nwv = len(wvSet)
+        
+
         self.figy = 8
         self.fig, self.ax = plt.subplots(4,nwv, figsize=[12,self.figy],dpi=100)
         self.fig.set_facecolor(bgcolor)
@@ -119,16 +98,18 @@ class makeRasterSet:
         self.tax.set_position([0,2.21/2.31,1,0.1/2.31])
         self.tax.set_facecolor(bgcolor)
         self.tax.set_axis_off()
-        A, B, time = self.loadData(ii)
-        self.ny, self.nx, self.nw = A.shape
+        
+        self.nx = A.nx
+        self.ny = A.ny
+        self.nw = A.nwv
         self.title = self.tax.text(0.5,0.5, time, transform=self.tax.transAxes, ha='center', va='center', weight='bold', size=15, c=titlecolor)
-        self.status.set_extent([0, (Time(time).jd-self.stJD)/self.dJD, 0, 1])
+        self.status.set_extent([0, (time.jd-self.stJD)/self.dJD, 0, 1])
         self.imRasterA = [None]*self.nwv
         self.imRasterB = [None]*self.nwv
         self.fig.set_figwidth(self.figy/2.3*self.nx/self.ny*self.nwv)
 
-        self.wvpixA = wcA+(wvset/self.dwvA).astype(int)
-        self.wvpixB = wcB+(wvset/self.dwvB).astype(int)
+        self.wvA = cwvA+wvSet
+        self.wvB = cwvB+wvSet
 
         for i in range(nwv):
             self.ax[0, i].set_position([i/nwv,0,1/nwv,0.1/2.31])
@@ -139,34 +120,60 @@ class makeRasterSet:
                 self.ax[0, i].text(0.5, 0.5, f'{cwvB:.1f} $\\AA$', transform=self.ax[0, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
                 self.ax[2, i].text(0.5, 0.5, f'{cwvA:.1f} $\\AA$', transform=self.ax[2, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
             else:
-                self.ax[0, i].text(0.5, 0.5, f'{wvset[i]:.1f} $\\AA$', transform=self.ax[0, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
-                self.ax[2, i].text(0.5, 0.5, f'{wvset[i]:.1f} $\\AA$', transform=self.ax[2, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
+                self.ax[0, i].text(0.5, 0.5, f'{wvSet[i]:.1f} $\\AA$', transform=self.ax[0, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
+                self.ax[2, i].text(0.5, 0.5, f'{wvSet[i]:.1f} $\\AA$', transform=self.ax[2, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
 
-            self.imRasterA[i] = self.ax[3, i].imshow(A[:, :, self.wvpixA[i]], cm.ha, origin='lower')
-            self.imRasterB[i] = self.ax[1, i].imshow(B[:, :, self.wvpixB[i]], cm.ca, origin='lower')
+            self.imRasterA[i] = self.ax[3, i].imshow(A.getRaster(self.wvA[i]), cm.ha, origin='lower')
+            self.imRasterB[i] = self.ax[1, i].imshow(B.getRaster(self.wvB[i]), cm.ca, origin='lower')
             for j in range(4):
                 self.ax[j, i].set_axis_off()
                 self.ax[j, i].set_facecolor(bgcolor)
+        if show:
+            self.fig.show()
 
     def loadData(self, i):
-        time = proc_base.fname2isot(self.flistA[i])
-        if self.level == 0:
-            A = fits.getdata(self.flistA[i]).transpose((1,0,2))
-            B = fits.getdata(self.flistB[i]).transpose((1,0,2))
-        else:
-            h = getHeader(self.flistA[i])
-            pfile = h.pop('pfile', False)
-            A = readFrame(self.flistA[i], pfile)
-            h = getHeader(self.flistB[i])
-            pfile = h.pop('pfile', False)
-            B = readFrame(self.flistB[i], pfile)
+        """
+        Load Data
+        
+        Parameters
+        ----------
+        i: `int`
+            Frame Number
+            
+        Returns
+        -------
+        A: `~fisspy.read.FISS`
+            FISS output for cam A
+        B: `~fisspy.read.FISS`
+            FISS output for cam B
+        time: astropy.time
+            Time in isot.
+        """
+        A = FISS(self.flistA[i], **self.kwg)
+        B = FISS(self.flistB[i], **self.kwg)
+        time = Time(A.date)
+
         return A, B, time
 
     def chData(self, i):
+        """
+        Change Data shown in figure
+        
+        Parameters
+        ----------
+        i: `int`
+            Frame Number
+
+        Returns
+        -------
+        None
+        """
         A, B, time = self.loadData(i)
-        nx = A.shape[1]
-        self.status.set_extent([0, (Time(time).jd-self.stJD)/self.dJD, 0, 1])
-        self.title.set_text(time)
+        nx = A.nx
+        self.time[i] = time.jd
+        self.anx[i] = nx
+        self.status.set_extent([0, (time.jd-self.stJD)/self.dJD, 0, 1])
+        self.title.set_text(time.isot)
         if self.nx != nx:
             self.nx = nx
             self.fig.set_figwidth(self.figy/2.3*self.nx/self.ny*self.nwv)
@@ -176,23 +183,181 @@ class makeRasterSet:
 
 
         for i in range(self.nwv):
-            self.imRasterA[i].set_data(A[:, :, self.wvpixA[i]])
-            self.imRasterB[i].set_data(B[:, :, self.wvpixB[i]])
+            self.imRasterA[i].set_data(A.getRaster(self.wvA[i]))
+            self.imRasterB[i].set_data(B.getRaster(self.wvB[i]))
 
         self.fig.canvas.draw_idle()
 
-    def saveAll(self, dirn, stype='png',dpi=100):
+    def saveAllImages(self, dirn, dpi=100):
+        """
+        Save all images
+        
+        Parameters
+        ----------
+        dirn: `str`
+            Save directory
+        dpi: `int`, (optional)
+            Dots per inch.
+            Default is 100.
+
+        Returns
+        -------
+        None
+        """
         for i in range (self.nf):
-            self.chData(i)
-            fname = join(dirn,self.title.get_text().replace(':','_').replace('-','_')+f'.{stype}')
-            self.fig.savefig(fname, dpi=dpi)
+            fname = join(dirn, self.title.get_text().replace(':','_').replace('-','_')+'.png')
+            self.saveImage(fname, i=i, dpi=dpi)
+        
+        self.saveAnimation(dirn)
 
-    def animation(self):
-        self.ani = FuncAnimation(self.fig, self.chData, frames=np.arange(self.nf), interval=100)
+    def saveImage(self, fname, i=None, dpi=100):
+        """
+        Save image for given frame i.
+
+        Parameters
+        ----------
+        fname: `str`
+            Save filename 
+        i: `int`, (optional)
+            Frame number
+            If None, save current frame.
+            Default is None.
+        dpi: `int`, (optional)
+            Dots per inch.
+            Default is 100.
+
+        Returns
+        -------
+        None
+        """
+        if i is not None:
+            self.chData(i)
+        self.fig.savefig(fname, dpi=dpi)
+        
+
+    def animation(self, interval=100):
+        """
+        Make animation and show
+
+        Parameters
+        ----------
+        interval: `int`, (optional)
+            Frame interval in unit of ms.
+            Default is 100.
+
+        Returns
+        -------
+        None
+        """
+        self.ani = FuncAnimation(self.fig, self.chData, frames=np.arange(self.nf), interval=interval)
         self.fig.canvas.draw_idle()
 
-    def saveAnimation(self, fname):
+    def saveAnimation(self, dirn):
+        """
+        Save animation
+        
+        Parameters
+        ----------
+        dirn: `str`
+            Save Directory
+        
+        Returns
+        -------
+        None
+        """
         if self.ani is None:
             self.animation()
-        time = proc_base.fname2isot(self.flistA[0])
-        self.ani.save(fname)
+        mname = join(dirn, f'{self.stT.isot}.mp4')
+        self.ani.save(mname)
+        self.fname_movie = mname
+
+    def makeCatalogFiles(self, dirn):
+        """
+        Make JSON file for the data catalog
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        if self.fname_movie is None:
+            self.saveAnimation(dirn)
+        
+        bdir = dirn
+        date = self.stT.isot[:10].replace('-','')
+        mdir = join(bdir, 'movie')
+        idir = join(bdir, 'img')
+        ddir = join(bdir, 'data')
+        if not isdir(mdir):
+            mkdir(mdir)
+        if not isdir(idir):
+            mkdir(idir)
+        if not isdir(ddir):
+            mkdir(ddir)
+        move(self.fname_movie, join(mdir, basename(self.fname_movie)))
+
+        # make image
+        A, B, time = self.loadData(self.nf//2)
+        h = A.header
+        ifname = self.title.get_text().replace(':','_').replace('-','_')+'.png'
+        self.saveImage(join(idir, ifname), i=self.nf//2)
+
+        # make zip file
+        zipname0 = h['target'].replace(' ', '')
+        zipname = join(ddir, zipname0+'_01.zip')
+        zipname = ifname.replace('.png', '.zip')
+        if isfile(zipname):
+            lf = len(glob(join(ddir, zipname0+'*.zip')))
+            zipname = zipname.replace("01.zip", f"{lf+1:02}.zip")
+        chdir(ddir)
+        zp = ZipFile(zipname, 'w')
+        for i in range(len(self.flistA)):
+            zp.write(self.flistA[i])
+            zp.write(self.flistB[i])
+        zp.close()
+        chdir(getcwd())
+
+        # input
+        observer = h['observer']
+        st = self.stT.isot[11:]
+        ed = self.edT.isot[11:]
+        obstime = f"{st} ~ {ed}"
+        try:
+            target = h['target']
+        except:
+            target = 'None'
+        try:
+            position = f"""["{h['tel_xpos']}", "{h['tel_ypos']}"]"""
+        except:
+            position = f"""["", ""]"""
+        tt = np.roll(self.time,-1) - self.time
+        dt = np.median(tt[:-1])*24*3600
+        nx = int(np.median(self.anx))
+        ny = self.ny
+        ax = nx*0.16
+        ay = ny*0.16
+
+        # write json
+        fjson = join(bdir, f"01_{date}.json")
+        if isfile(fjson):
+            k = glob(join(bdir,f'*_{date}.json'))
+            nk = len(k)
+            fjson = join(bdir, f"{nk+1:02}_{date}.json")
+
+        opn = open(fjson, 'w')
+        opn.write('{\n')
+        opn.write(f"""  "observer": "{observer}",\n""")
+        opn.write(f"""  "observer": "{obstime}",\n""")
+        opn.write(f"""  "target": "{target}",\n""")
+        opn.write(f"""  "position": {position},\n""")
+        opn.write(f"""  "cadence": "{dt:.2f}",\n""")
+        opn.write(f"""  "obsarea": ["{ax:.0f}", "{ay:.0f}"],\n""")
+        opn.write(f"""  "imgA": "{ifname}",\n""")
+        opn.write(f"""  "imgB": "",\n""")
+        opn.write(f"""  "movie": ["{basename(self.fname_movie)}"],\n""")
+        opn.write(f"""  "data": ["{basename(zipname)}"]\n""")
+        opn.write('}')
+        opn.close()

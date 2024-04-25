@@ -126,13 +126,15 @@ def _readPCA(file, pfile, x1=0, x2=None, y1=0, y2=None, ncoeff=False):
         data = data[:, y1:y2]
     ncoeff1 = data.shape[2] - 1
     if not ncoeff:
-        ncoeff = ncoeff1
-    elif ncoeff > ncoeff1:
-        ncoeff = ncoeff1
+        nc = ncoeff1
+    else:
+        nc = ncoeff
+    if nc > ncoeff1:
+        nc = ncoeff1
 
-    spec = np.dot(data[:,:,:ncoeff], pdata[:ncoeff,:])
+    spec = np.dot(data[...,:nc], pdata[:nc,:])
     # spec *= 10.**data[:,:,ncoeff][:,:,None]
-    spec *= 10.**data[:,:,-1][:,:,None]
+    spec *= 10.**data[...,-1][...,None]
     return spec
 
 def getHeader(file):
@@ -223,7 +225,9 @@ def getRaster(data, wave, wvPoint, wvDelt, hw=0.05):
 
     """
     if hw < abs(wvDelt)/2.:
-        hw = abs(wvDelt)/2.
+        HW = abs(wvDelt)/2.
+    else:
+        HW = hw
 
-    s = np.abs(wave - wvPoint) <= hw
+    s = np.abs(wave - wvPoint) <= HW
     return data[:,:,s].mean(2)

@@ -67,8 +67,8 @@ class makeTDmap:
         self.dt = dt
         self.clim = clim
         if cmap is None:
-            cmap = plt.cm.gray
-        self.cmap = cmap
+            Cmap = plt.cm.gray
+        self.cmap = Cmap
         self.analysis = None
         self.a_fig = None
         self.a_ax = None
@@ -92,22 +92,22 @@ class makeTDmap:
         # figure window label
         afl = plt.get_figlabels()
         if label is None:
-            label = 'Unknown'
-        if label in afl:
+            Label = 'Unknown'
+        if Label in afl:
             ii = 0
             tmp2 = []
             for aa in afl:
                 if aa.find('-TD') == -1:
                     continue
-                tmp = aa.split(f'{label}_case')
+                tmp = aa.split(f'{Label}_case')
                 if len(tmp) > 1:
                     ii += 1
                     tmp2 += [int(tmp[-1])]
             if ii == 0:
-                label = label+'_case2'
+                Label = Label+'_case2'
             else:
-                label = label+f'_caseq{max(tmp2)+1}'
-        self.label = label
+                Label = Label+f'_caseq{max(tmp2)+1}'
+        self.label = Label
 
         # make interpolation function
         smin = [0, 0, 0]
@@ -125,9 +125,9 @@ class makeTDmap:
         self.extent = [l, r, b, t]
         
         if figsize is None:
-            figsize = [8,8*wratio+0.2]
+            fs = [8,8*wratio+0.2]
 
-        self.fig, self.ax = plt.subplots(figsize=figsize, dpi=dpi, num=self.label)
+        self.fig, self.ax = plt.subplots(figsize=fs, dpi=dpi, num=self.label)
         self.im = self.ax.imshow(self.data[self.t], self.cmap, extent=self.extent, origin='lower')
         if self.clim is not None:
             self.im.set_clim(self.clim)
@@ -448,11 +448,11 @@ class analysisTDmap:
         # figure window label
         afl = plt.get_figlabels()
         if label is None:
-            label = 'Unknown-TD'
+            Label = 'Unknown-TD'
         else:
-            label = label+'-TD'
-        if label in afl:
-            l0 = label.split('-TD')[0]
+            Label = Label+'-TD'
+        if Label in afl:
+            l0 = Label.split('-TD')[0]
             ii = 0
             tmp2 = []
             for aa in afl:
@@ -461,11 +461,11 @@ class analysisTDmap:
                     ii += 1
                     tmp2 += [int(tmp[-1])]
             if ii == 0:
-                label = l0+'_case2-TD'
+                Label = l0+'_case2-TD'
             else:
                 print(1)
-                label = l0+f'_case{max(tmp2)+1}-TD'
-        self.label = label
+                Label = l0+f'_case{max(tmp2)+1}-TD'
+        self.label = Label
         l = -0.5*dt
         r = (self.nt - 0.5)*dt
         b = -dl*0.5
@@ -499,7 +499,7 @@ class analysisTDmap:
             fx = xs2/kx+ 2.5*xM
             xm = xmargin = xM/fx
         ym = ymargin = yM/fy
-        self.fig, self.ax = plt.subplots(figsize=[fx,fy], dpi=dpi, label=label)
+        self.fig, self.ax = plt.subplots(figsize=[fx,fy], dpi=dpi, label=self.label)
 
         self.ax.set_position([xmargin, ymargin, (1-2.5*xmargin)/9*8, (1-2.5*ymargin)/3*2])
         self.axT = self.fig.add_subplot(111, sharex=self.ax)
