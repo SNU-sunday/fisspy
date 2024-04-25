@@ -6,7 +6,7 @@ from ..preprocess.proc_base import fname2isot
 from ..read import FISS
 from astropy.time import Time
 from os.path import join, dirname, basename, isdir, isfile
-from os import mkdir, getcwd, chdir
+from os import mkdir
 from shutil import move
 from glob import glob
 from zipfile import ZipFile
@@ -308,17 +308,14 @@ class makeRasterSet:
         # make zip file
         zipname0 = h['target'].replace(' ', '')
         zipname = join(ddir, zipname0+'_01.zip')
-        zipname = ifname.replace('.png', '.zip')
         if isfile(zipname):
             lf = len(glob(join(ddir, zipname0+'*.zip')))
             zipname = zipname.replace("01.zip", f"{lf+1:02}.zip")
-        chdir(ddir)
         zp = ZipFile(zipname, 'w')
         for i in range(len(self.flistA)):
             zp.write(self.flistA[i])
             zp.write(self.flistB[i])
         zp.close()
-        chdir(getcwd())
 
         # input
         observer = h['observer']
