@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='fisspy',
-    version='1.0.8',
+    version='1.0.9',
     description='fisspy: Python analysis tools for GST/FISS',
     url='http://fiss.snu.ac.kr',
     author='Juhyung Kang',

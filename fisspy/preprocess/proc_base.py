@@ -4,7 +4,7 @@ from interpolation.splines import LinearSpline, CubicSpline
 from fisspy.align import shiftImage, alignOffset, rotImage
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
-from os.path import join, isdir, dirname, basename, abspath
+from os.path import join, isdir, isfile, dirname, basename, abspath
 from os import getcwd, makedirs
 from glob import glob
 from astropy.time import Time
@@ -13,6 +13,7 @@ from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 from ..analysis.wavelet import Wavelet
 from scipy.fftpack import fft, ifft
+from urllib.request import urlretrieve
 
 def fname2isot(f):
     """
@@ -29,6 +30,9 @@ def fname2isot(f):
         datetime in the form of isot.
     """
     rf = basename(f).replace('_BiasDark', '')
+    rf = basename(rf).replace('_FLAT', '')
+    rf = basename(rf).replace('_xFringe', '')
+    rf = basename(rf).replace('_yFringe', '')
     sp = rf.split('_')
     YY = sp[1][:4]
     MM = sp[1][4:6]
@@ -1099,7 +1103,11 @@ class calFlat:
 
 def read_atlas():
     dirn = dirname(abspath(__file__))
-    atlas = np.load(join(dirn, 'solar_atlas.npz'))
+    f = join(dirn, 'solar_atlas.npz')
+    if not isfile(f):
+        url = 'http://fiss.snu.ac.kr/static/atlas/solar_atlas.npz'
+        urlretrieve(url, f)
+    atlas = np.load(f)
     wave = atlas['wave']
     intensity = atlas['intensity']
     return wave, intensity

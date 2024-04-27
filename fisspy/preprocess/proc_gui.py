@@ -106,7 +106,9 @@ class prepGUI:
         self.initS1 = True
         self.initS2 = True
         self.initS3_1 = True
+        self.initS3_2 = True
         self.initS3_3 = True
+        self.initS3_4 = True
         self.initS4 = True
         self.initS5 = True
 
@@ -226,8 +228,11 @@ class prepGUI:
     def step(self, num):
         h = self.fig.get_figheight()
         self.ax_hide()
-        if self.stepNum != 3:
+        if self.stepNum !=3:
             for wg in self.StepWidgets[self.stepNum]:
+                wg.setVisible(False)
+        for ssw in self.subStepWidgets:
+            for wg in ssw:
                 wg.setVisible(False)
 
         for wg in self.StepWidgets[num]:
@@ -1466,7 +1471,9 @@ class prepGUI:
         self.initS1 = True
         self.initS2 = True
         self.initS3_1 = True
+        self.initS3_2 = True
         self.initS3_3 = True
+        self.initS3_4 = True
         self.initS4 = True
         self.initS5 = True
         self.fidx = self.CB_s0_fflist.currentIndex()
@@ -1588,6 +1595,31 @@ class prepGUI:
                 self.B_s3_1_run.setEnabled(True)
                 self.B_Next.setEnabled(True)
                 self.B_Prev.setEnabled(True)
+        elif self.stepNum == 3 and self.subStepNum == 1:
+            if self.initS3_2:
+                self.log += "> Running automatically<br>> Please wait.<br>"
+                self._writeLog()
+                self.B_Next.setEnabled(False)
+                self.B_Prev.setEnabled(False)
+                self.B_s3_wvCal.setEnabled(False)
+                self.B_s3_wvShow.setEnabled(False)
+                self.B_s3_2_FRapply.setEnabled(False)
+                self.B_s3_2_simple.setEnabled(False)
+                self.B_s3_2_FringeShow.setEnabled(False)
+                self.B_s3_2_resShow.setEnabled(False)
+                self.B_s3_3_Blink.setEnabled(False)
+                self.s3_2_wvCal()
+                self.s3_2_simple()
+                self.B_Next.setEnabled(True)
+                self.B_Prev.setEnabled(True)
+                self.B_s3_wvCal.setEnabled(True)
+                self.B_s3_wvShow.setEnabled(True)
+                self.B_s3_2_FRapply.setEnabled(True)
+                self.B_s3_2_simple.setEnabled(True)
+                self.B_s3_2_FringeShow.setEnabled(True)
+                self.B_s3_2_resShow.setEnabled(True)
+                self.B_s3_3_Blink.setEnabled(True)
+                self.initS3_2 = False
         elif self.stepNum == 3 and self.subStepNum == 2:
             if self.initS3_3:
                 self.log += "> Running automatically<br>> Please wait.<br>"
@@ -1600,6 +1632,35 @@ class prepGUI:
                 self.B_s3_3_run.setEnabled(True)
                 self.B_Next.setEnabled(True)
                 self.B_Prev.setEnabled(True)
+        elif self.stepNum == 3 and self.subStepNum == 3:
+            if self.initS3_4:
+                self.log += "> Running automatically<br>> Please wait.<br>"
+                self._writeLog()
+                self.B_Next.setEnabled(False)
+                self.B_Prev.setEnabled(False)
+                self.B_s3_4_wvCal.setEnabled(False)
+                self.B_s3_4_wvShow.setEnabled(False)
+                self.B_s3_4_FRapply.setEnabled(False)
+                self.B_s3_4_simple.setEnabled(False)
+                self.B_s3_4_gauss.setEnabled(False)
+                self.B_s3_4_reset.setEnabled(False)
+                self.B_s3_4_FringeShow.setEnabled(False)
+                self.B_s3_4_resShow.setEnabled(False)
+                self.B_s3_4_blink.setEnabled(False)
+                self.s3_4_wvCal()
+                self.s3_4_simple()
+                self.B_Next.setEnabled(True)
+                self.B_Prev.setEnabled(True)
+                self.B_s3_4_wvCal.setEnabled(True)
+                self.B_s3_4_wvShow.setEnabled(True)
+                self.B_s3_4_FRapply.setEnabled(True)
+                self.B_s3_4_simple.setEnabled(True)
+                self.B_s3_4_gauss.setEnabled(True)
+                self.B_s3_4_reset.setEnabled(True)
+                self.B_s3_4_FringeShow.setEnabled(True)
+                self.B_s3_4_resShow.setEnabled(True)
+                self.B_s3_4_blink.setEnabled(True)
+                self.initS3_4 = False
         elif self.stepNum == 4:
             if self.initS4:
                 self.log += "> Running automatically<br>> Please wait.<br>"
@@ -3158,14 +3219,14 @@ class prepGUI:
                             hdu.header['GRATWVLN'] = (ch['GRATWVLN'], 'Angstrom')
                         except:
                             pass
-                        hdu.header['GRATSTEP'] = (ch['GRATSTEP'], 'Grating step count')
-                        hdu.header['GRATANGL'] = (ch['GRATANGL'], 'Grating angle')
-                        hdu.header['CCDTEMP'] = (ch['CCDTEMP'], 'Cooling Temperature of CCD')
-                        hdu.header['STEPSIZE'] = (ch['STEPSIZE'], 'Step size to move scanner (um)')
-                        hdu.header['STEPTIME'] = (ch['STEPTIME'], 'Step duration time (ms)')
-                        hdu.header['ELAPTIME'] = (ch['ELAPTIME'], 'Elapse time during scanning (s)')
-                        hdu.header['PAMPGAIN'] = (ch['PAMPGAIN'], 'Value Range: 0-2')
-                        hdu.header['EMGAIN'] = (ch['EMGAIN'], 'Value Range: 0-255')
+                        hdu.header['GRATSTEP'] = (h['GRATSTEP'], 'Grating step count')
+                        hdu.header['GRATANGL'] = (h['GRATANGL'], 'Grating angle')
+                        hdu.header['CCDTEMP'] = (h['CCDTEMP'], 'Cooling Temperature of CCD')
+                        hdu.header['STEPSIZE'] = (h['STEPSIZE'], 'Step size to move scanner (um)')
+                        hdu.header['STEPTIME'] = (h['STEPTIME'], 'Step duration time (ms)')
+                        hdu.header['ELAPTIME'] = (h['ELAPTIME'], 'Elapse time during scanning (s)')
+                        hdu.header['PAMPGAIN'] = (h['PAMPGAIN'], 'Value Range: 0-2')
+                        hdu.header['EMGAIN'] = (h['EMGAIN'], 'Value Range: 0-255')
                         hdu.header.add_comment('Tilt Corrected')
                         hdu.header.add_comment('1st Curvature Corrected')
                         hdu.header.add_comment('2nd Curvature Corrected')
