@@ -40,7 +40,7 @@ class makeRasterSet:
     **kwargs:
         `~fisspy.read.FISS` keyword arguments.
     """
-    def __init__(self, flistA, flistB, wvset=None, ii=0, show=True, **kwargs):
+    def __init__(self, flistA, flistB, wvset=None, ii=None, show=True, **kwargs):
 
         
         self.show = show
@@ -63,7 +63,10 @@ class makeRasterSet:
         self.time = np.zeros(self.nf, dtype=float)
         self.anx = np.zeros(self.nf, dtype=int)
 
-        A, B, time = self.loadData(ii)
+        if ii is None:
+            idx = self.nf//2
+
+        A, B, time = self.loadData(idx)
         self.rh = A.header
         cwvA = A.centralWavelength
         cwvB = B.centralWavelength
@@ -124,8 +127,26 @@ class makeRasterSet:
                 self.ax[0, i].text(0.5, 0.5, f'{wvSet[i]:.1f} $\\AA$', transform=self.ax[0, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
                 self.ax[2, i].text(0.5, 0.5, f'{wvSet[i]:.1f} $\\AA$', transform=self.ax[2, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
 
-            self.imRasterA[i] = self.ax[3, i].imshow(A.getRaster(self.wvA[i]), cm.ha, origin='lower')
-            self.imRasterB[i] = self.ax[1, i].imshow(B.getRaster(self.wvB[i]), cm.ca, origin='lower')
+            aa = A.getRaster(self.wvA[i])
+            M = aa.max()
+            if M > 1e2:
+                m = aa[aa>1e2].min()
+            else:
+                m = aa.min()
+            aa = np.log10(aa)
+            m = np.log10(m)
+            M = np.log10(M)
+            self.imRasterA[i] = self.ax[3, i].imshow(aa, cm.ha, origin='lower', clim=[m, M])
+            bb = B.getRaster(self.wvB[i])
+            M = bb.max()
+            if M > 1e2:
+                m = bb[bb>1e2].min()
+            else:
+                m = bb.min()
+            bb = np.log10(bb)
+            m = np.log10(m)
+            M = np.log10(M)
+            self.imRasterB[i] = self.ax[1, i].imshow(bb, cm.ca, origin='lower', clim=[m, M])
             for j in range(4):
                 self.ax[j, i].set_axis_off()
                 self.ax[j, i].set_facecolor(bgcolor)
@@ -184,8 +205,8 @@ class makeRasterSet:
 
 
         for i in range(self.nwv):
-            self.imRasterA[i].set_data(A.getRaster(self.wvA[i]))
-            self.imRasterB[i].set_data(B.getRaster(self.wvB[i]))
+            self.imRasterA[i].set_data(np.log10(A.getRaster(self.wvA[i])))
+            self.imRasterB[i].set_data(np.log10(B.getRaster(self.wvB[i])))
 
         self.fig.canvas.draw_idle()
 
@@ -254,7 +275,7 @@ class makeRasterSet:
         self.fig.canvas.draw_idle()
             
 
-    def saveAnimation(self, dirn):
+    def saveAnimation(self, dirn, interval=100):
         """
         Save animation
         
@@ -262,13 +283,16 @@ class makeRasterSet:
         ----------
         dirn: `str`
             Save Directory
-        
+        interval: `int`, (optional)
+            Frame interval in unit of ms.
+            Default is 100.
+
         Returns
         -------
         None
         """
         if self.ani is None:
-            self.animation()
+            self.animation(interval=interval)
         tmp = self.rh['target'].replace(' ', '')
         mname = join(dirn, tmp+'_01.mp4')
         if isfile(mname):
@@ -279,20 +303,27 @@ class makeRasterSet:
         if not self.show:
             plt.close(self.fig)
 
-    def makeCatalogFiles(self, dirn):
+    def makeCatalogFiles(self, dirn, interval=100, incdata=True):
         """
         Make JSON file for the data catalog
 
         Parameters
         ----------
-        None
+        dirn: `str`
+            Save directory.
+        interval: `int`, (optional)
+            Frame interval in unit of ms.
+            Default is 100.
+        incdata: `bool`
+            If true include data in the JSON file.
+            Default is True.
 
         Returns
         -------
         None
         """
         if self.fname_movie is None:
-            self.saveAnimation(dirn)
+            self.saveAnimation(dirn, interval=interval)
         
         bdir = dirn
         date = self.stT.isot[:10].replace('-','')
@@ -368,6 +399,9 @@ class makeRasterSet:
         opn.write(f"""  "imgA": "{ifname}",\n""")
         opn.write(f"""  "imgB": "",\n""")
         opn.write(f"""  "movie": ["{amname}"],\n""")
-        opn.write(f"""  "data": ["{basename(zipname)}"]\n""")
+        if incdata:
+            opn.write(f"""  "data": ["{basename(zipname)}"]\n""")
+        else:
+            opn.write(f"""  "data": [""]\n""")
         opn.write('}')
         opn.close()

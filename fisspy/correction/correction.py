@@ -1,13 +1,13 @@
 from __future__ import absolute_import, division
 import numpy as np
 from ..align import alignOffset
-from .get_inform import LineName, centerWV, Pure
+from .get_inform import lineName, centerWV, Pure
 from scipy.signal import savgol_filter
 from scipy.ndimage import gaussian_filter1d
 
 __author__ = "Juhyung Kang"
 __email__ = "jhkang0301@gmail.com"
-__all__ = ["get_InstShift", "get_Linecenter", "wvCalib", "smoothingProf", "CorSLA", "CorStrayLight", "CorAsymmetry"]
+__all__ = ["get_InstShift", "get_Linecenter", "wvCalib", "smoothingProf", "corSLA", "corStrayLight", "corAsymmetry"]
 
 def get_InstShift(data, refSpec, dw):
     """
@@ -124,7 +124,7 @@ def wvCalib_w_center(profile, h):
     dwv = h['cdelt1']
     nwv = h['naxis1']
     nd = 5
-    name = LineName(cwv)
+    name = lineName(cwv)
 
     line = centerWV(name)
     
@@ -155,7 +155,7 @@ def wvCalib_w_photo(profile, h):
     cwv = h['crval1']
     nwv = h['naxis1']
     nds = [2,5]
-    name = LineName(cwv)
+    name = lineName(cwv)
     
     if name == 'Ha':
         lines = [6559.567, 6562.817]
@@ -251,7 +251,7 @@ def smoothingProf(data, method='savgol', **kwargs):
     else:
         raise ValueError("Input one of 'savgol' or 'gauss'")
 
-def CorSLA(wv, data, refProf, line, pure=None, eps=0.027, zeta=0.055):
+def corSLA(wv, data, refProf, line, pure=None, eps=0.027, zeta=0.055):
     """
     Correction of spectral line(s) profile for stray linght and far wing red-blue asymmetry.
 
@@ -292,12 +292,12 @@ def CorSLA(wv, data, refProf, line, pure=None, eps=0.027, zeta=0.055):
         pp = Pure(wv, line)
     else:
         pp = pure
-    I = CorStrayLight(wv, data, refProf, line , pp, eps, zeta)
-    I = CorAsymmetry(wv, I, line, pp)
+    I = corStrayLight(wv, data, refProf, line , pp, eps, zeta)
+    I = corAsymmetry(wv, I, line, pp)
 
     return I
 
-def CorStrayLight(wv, data, refProf, line, pure=None, eps=0.027, zeta=0.055):
+def corStrayLight(wv, data, refProf, line, pure=None, eps=0.027, zeta=0.055):
     """
     Correction of spectral line(s) profile for stray linght.
 
@@ -355,7 +355,7 @@ def CorStrayLight(wv, data, refProf, line, pure=None, eps=0.027, zeta=0.055):
 
     return I
 
-def CorAsymmetry(wv, data, line, pure=None):
+def corAsymmetry(wv, data, line, pure=None):
     """
     Correction of spectral line(s) profile for far wing red-blue asymmetry.
 
@@ -394,7 +394,7 @@ def CorAsymmetry(wv, data, line, pure=None):
     wh_IC_red = pp * (abs(wv-cwv) > 3.9)*(abs(wv-cwv) < 4.5)
     coeff = np.polyfit(wv[wh_IC_red], I[wh_IC_red], 1)
     p = np.polyval(coeff, wv[:,None])
-    p /= np.maximum(p.mean(axis=1), 3e-2)[:,None]
+    p /= np.maximum(p.mean(axis=0), 3e-2)[None,:]
     cI = (I/p).T.reshape(sh)
 
     return cI

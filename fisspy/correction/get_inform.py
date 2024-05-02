@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division
 
-__all__ = ["LineName", "centerWV", "Pure"]
+__all__ = ["lineName", "centerWV", "Pure"]
 
-def LineName(cwv):
+def lineName(cwv):
     """
     Get name of the spectrum
 

@@ -2089,11 +2089,11 @@ class prepGUI:
                 for l in range(s1.shape[1]):
                     # foreward
                     if not fskip:
-                        fm = AutoReg(s1[i,l,:x1[kk[j]]],lags=flag).fit()
+                        fm = AutoReg(s1[i,l,:x1[kk[j]]],lags=5).fit()
                         fp = fm.forecast(npredict)
                     # backward
                     if not bskip:
-                        bm = AutoReg(s1[i,l,bst:][::-1],lags=blag).fit()
+                        bm = AutoReg(s1[i,l,bst:][::-1],lags=5).fit()
                         bp = bm.forecast(npredict)
                     pred = fF*fp + bF*bp[::-1]
                     if j != nsp-1:

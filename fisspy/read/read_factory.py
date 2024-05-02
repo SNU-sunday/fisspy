@@ -11,12 +11,12 @@ from .. import cm
 from .readbase import getRaster, getHeader, readFrame
 from ..analysis import lambdameter
 from ..image.interactive_image import singleBand
-from ..correction import LineName, wvCalib, smoothingProf, CorSLA
+from ..correction import lineName, wvCalib, smoothingProf, corSLA
 from ..analysis import FourierFilter, Wavelet, makeTDmap
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang0301@gmail.com"
-__all__ = ["rawData", "FISS", "FD", "calibData", "AlignCube"]
+__all__ = ["FISS", "FD", "AlignCube"]
 
 class rawData:
     """
@@ -135,10 +135,16 @@ class rawData:
 
         if not x:
             X = self.nx//2*self.xDelt
+        else:
+            X = x
         if not y:
             Y = self.ny//2*self.yDelt
+        else:
+            Y = y
         if not wv:
             WV = self.centralWavelength
+        else:
+            WV = wv
         self.x = X
         self.y = Y
         self.wv = wv
@@ -208,12 +214,6 @@ class FISS:
     --------
     `~scipy.signal.savgol_filter`.
     `~scipy.ndimage.gaussian_filter1d`
-
-    Examples
-    --------
-    >>> from fisspy import read
-    >>> import fisspy.data.sample
-    >>> fiss = read.FISS(fisspy.data.sample.FISS_IMAGE)
     """
 
     def __init__(self, file, x1=0, x2=None, y1=0, y2=None, ncoeff=False, smoothingMethod=None, wvCalibMethod='simple', **kwargs):
@@ -239,9 +239,16 @@ class FISS:
         self.ndim = self.header['naxis']
         self.ny, self.nx, self.nwv = self.data.shape
         self.wvDelt = self.header['cdelt1']
+        self.dx = self.xDelt
+        self.dy = self.yDelt
+        self.dwv = self.wvDelt
         self.date = self.header['date']
         try:
-            self.band = self.header['wavelen'][:4]
+            wvln = self.header['wavelen']
+            if type(wvln) == str:
+                self.band = wvln[:4]
+            else:
+                wvln = str(wvln)
         except:
             self.band = str(self.header['gratwvln'])[:4]
 
@@ -256,7 +263,7 @@ class FISS:
             self.smoothingProf(method=smoothingMethod, **kwargs)
         
 
-        self.line = LineName(cwv)
+        self.line = lineName(cwv)
         if self.line == 'Ha':
             self.cam = 'A'
             self.set = '1'
@@ -274,11 +281,11 @@ class FISS:
             self.set = '2'
             self.cmap = cm.fe
 
-        self.extentRaster = [0, self.nx*self.xDelt,
-                             0, self.ny*self.yDelt]
+        self.extentRaster = [-self.xDelt/2, (self.nx-0.5)*self.xDelt,
+                             -self.yDelt/2, (self.ny-0.5)*self.yDelt]
         self.extentSpectro = [self.wave.min()-self.wvDelt/2,
                               self.wave.max()+self.wvDelt/2,
-                              0, self.ny*self.yDelt]
+                              -self.yDelt/2, (self.ny-0.5)*self.yDelt]
         self.lv = None
 
     def reload(self, x1=0, x2=None, y1=0, y2=None, ncoeff=False, smoothingMethod=None, **kwargs):
@@ -362,7 +369,7 @@ class FISS:
             raise ValueError(f"Please change the wvCalibMethod among 'simple', 'center', and 'photo'. Current: {method}")
         return wv
 
-    def CorSLA(self, refProf=None, pure=None, eps=0.027, zeta=0.055):
+    def corSLA(self, refProf=None, pure=None, eps=0.027, zeta=0.055):
         """
         Correction of spectral line(s) profile for stray linght and far wing red-blue asymmetry.
 
@@ -395,7 +402,7 @@ class FISS:
         else:
             rp = refProf
 
-        self.data = CorSLA(self.wave, self.data, rp, self.line, pure=pure, eps=eps, zeta=zeta)
+        self.data = corSLA(self.wave, self.data, rp, self.line, pure=pure, eps=eps, zeta=zeta)
 
 
     def smoothingProf(self, method='savgol', **kwargs):
@@ -459,8 +466,7 @@ class FISS:
         self.lwc, self.lic = lambdameter(self.wave, self.data, **kw)
         self.lv = (self.lwc-self.centralWavelength)/self.centralWavelength * ac.c.to('km/s').value
         
-    def imshow(self, x=None, y=None, wv=None, scale='minMax',
-               sigFactor=3, helpBox=True, **kwargs):
+    def imshow(self, x=None, y=None, wv=None, scale='log', sigFactor=2, helpBox=True, **kwargs):
         """
         Draw interactive FISS raster, spectrogram and profile for single band.
 
@@ -498,10 +504,16 @@ class FISS:
 
         if x is None:
             X = self.nx//2*self.xDelt
+        else:
+            X = x
         if y is None:
             Y = self.ny//2*self.yDelt
+        else:
+            Y = y
         if wv is None:
             WV = self.centralWavelength
+        else:
+            WV = wv
         self.x = X
         self.y = Y
         self.wv = WV
@@ -539,13 +551,19 @@ class FISS:
 
         if x is None:
             X = self.nx//2*self.xDelt
+        else:
+            X = x
         if y is None:
             Y = self.ny//2*self.yDelt
+        else:
+            Y = y
 
-        self.xpix = round((X-self.xDelt/2)/self.xDelt)
-        self.x = self.xpix*self.xDelt+self.xDelt/2
-        self.ypix = round((Y-self.yDelt/2)/self.yDelt)
-        self.y = self.ypix*self.yDelt+self.yDelt/2
+        self.xpix = int(X/self.dx+0.5)
+        self.x = self.xpix*self.dx
+        self.ypix = int(Y/self.dy+0.5)
+        self.y = self.ypix*self.dy
+        self.xp0 = self.xpix
+        self.yp0 = self.ypix
 
         self.lambdameter(**kw)
         
@@ -565,8 +583,10 @@ class FISS:
         self.axI.set_xlim(self.extentRaster[0], self.extentRaster[1])
         self.axI.set_ylim(self.extentRaster[2], self.extentRaster[3])
         self.axSpec.set_xlim(self.wave.min(), self.wave.max())
-        self.axSpec.set_ylim(self.data[self.ypix, self.xpix].min()-100,
-                                self.data[self.ypix, self.xpix].max()+100)
+        ym = self.data[self.ypix, self.xpix].min()
+        yM = self.data[self.ypix, self.xpix].max()
+        margin = (yM-ym)*0.05
+        self.axSpec.set_ylim(ym-margin, yM+margin)
         self.axSpec.minorticks_on()
         self.axSpec.tick_params(which='both', direction='in')
 
@@ -595,40 +615,61 @@ class FISS:
         self.fig.show()
 
     def _onKey_vs(self, event):
-        if event.key == 'left' or event.key == 'ctrl+left' or event.key == 'cmd+left':
+        if event.key == 'left':
+            self.xp0 = self.xpix
+            self.yp0 = self.ypix
             if self.xpix > 0:
                 self.xpix -= 1
             else:
                 self.xpix = self.nx-1
-            self.x = self.xpix*self.xDelt+self.xDelt/2
+            self.x = self.xpix*self.dx
             self._chPos()
-        elif event.key == 'right' or event.key == 'ctrl+right' or event.key == 'cmd+right':
+        elif event.key == 'right':
+            self.xp0 = self.xpix
+            self.yp0 = self.ypix
             if self.xpix < self.nx-1:
                 self.xpix += 1
             else:
                 self.xpix = 0
-            self.x = self.xpix*self.xDelt+self.xDelt/2
+            self.x = self.xpix*self.dx
             self._chPos()
-        elif event.key == 'down' or event.key == 'ctrl+down' or event.key == 'cmd+down':
+        elif event.key == 'down':
+            self.xp0 = self.xpix
             if self.ypix > 0:
                 self.ypix -= 1
             else:
                 self.ypix = self.ny-1
-            self.y = self.ypix*self.yDelt+self.yDelt/2
+            self.y = self.ypix*self.dy
             self._chPos()
-        elif event.key == 'up' or event.key == 'ctrl+up' or event.key == 'cmd+up':
+        elif event.key == 'up':
+            self.yp0 = self.ypix
             if self.ypix < self.ny-1:
                 self.ypix += 1
             else:
                 self.ypix = 0
-            self.y = self.ypix*self.yDelt+self.yDelt/2
+            self.y = self.ypix*self.dy
             self._chPos()
         elif event.key == ' ' and (event.inaxes == self.axI or event.inaxes == self.axV):
+            self.xp0 = self.xpix
+            self.yp0 = self.ypix
             self.x = event.xdata
             self.y = event.ydata
-            self.xpix = int(round((self.x-self.xDelt/2)/self.xDelt))
-            self.ypix = int(round((self.y-self.yDelt/2)/self.yDelt))
+            self.xpix = int(self.x/self.dx+0.5)
+            self.ypix = int(self.y/self.dy+0.5)
+            self.x = self.xpix*self.dx
+            self.y = self.ypix*self.dy
             self._chPos()
+        elif event.key == 'ctrl+b' or event.key == 'cmd+b':
+            x = self.xpix
+            y = self.ypix
+            self.xp = self.xp0
+            self.yp = self.yp0
+            self.x = self.xpix*self.dx
+            self.y = self.ypix*self.dy
+            self._chPos()
+            self.xp0 = x
+            self.yp0 = y
+
 
     def _chPos(self):
         self.pSpec.set_ydata(self.data[self.ypix, self.xpix])
@@ -639,6 +680,7 @@ class FISS:
         self.pointV.set_offsets([self.x, self.y])
         self.axSpec.set_ylim(self.data[self.ypix, self.xpix].min()-100,
                                 self.data[self.ypix, self.xpix].max()+100)
+        self.axSpec.set_title(r"X = %.2f'', Y = %.2f'' (X$_{pix}$ = %i, Y$_{pix}$ = %i), $\Delta\lambda$ = %.2f"%(self.x, self.y, self.xpix, self.ypix, self.hw))
         self.fig.canvas.draw_idle()
     
     def chIclim(self, cmin, cmax):
@@ -1308,21 +1350,18 @@ class calibData:
 
 class AlignCube:
     """
-    Show align cube and make Time-Distance map.
+    Read align cube.
 
     Parameters
     ----------
     fname: `str`
         File name of the align data cube.
-
-    Other Parameters
-    ----------------
-    **kwargs: `.makeTDmap` properties (optional)
-        Keyword arguments 
+        
     Returns
     -------
+    None
     """
-    def __init__(self, fname, **kwargs):
+    def __init__(self, fname):
         res = np.load(fname)
         self.data = res['data']
         self.time = res['time']
@@ -1330,6 +1369,19 @@ class AlignCube:
         self.dx = res['dx']
         self.dy = res['dy']
 
+    def imshow(self, **kwargs):
+        """
+        Show align cube and make Time-Distance map.
+
+        Other Parameters
+        ----------------
+        **kwargs: `.makeTDmap` properties (optional)
+            Keyword arguments
+            
+        Returns
+        -------
+        None
+        """
         self.td = makeTDmap(self.data, dx=self.dx, dy=self.dy, dt=self.dt, **kwargs)
 
 def _isoRefTime(refTime):
