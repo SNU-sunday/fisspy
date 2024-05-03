@@ -399,7 +399,7 @@ class dualBand:
     **kwargs : `~matplotlib.pyplot` properties
     """
     def __init__(self, fissA, fissB, x=None, y=None, wvA=None, wvB=None,
-                 scale='minMax', sigFactor=3, helpBox=True, **kwargs):
+                 scale='log', sigFactor=3, helpBox=True, **kwargs):
 
         try:
             plt.rcParams['keymap.back'].remove('left')
@@ -418,11 +418,13 @@ class dualBand:
         self.dwvA = self.fissA.wvDelt
         self.dwvB = self.fissB.wvDelt
         if self.fissA.ny >= self.fissB.ny:
-            self.fissA.data = self.fissA.data[:self.fissB.ny]
+            self.dataA = self.fissA.data[:self.fissB.ny].copy()
+            self.dataB = self.fissB.data.copy()
             self.ny = self.fissB.ny
             self.extentRaster = self.fissB.extentRaster
         elif fissA.ny < fissB.ny:
-            self.fissB.data = self.fissB.data[:self.fissA.ny]
+            self.dataB = self.fissB.data[:self.fissA.ny].copy()
+            self.dataA = self.fissA.data.copy()
             self.ny = self.fissA.ny
             self.extentRaster = self.fissA.extentRaster
         self._xMin = self.extentRaster[0]
@@ -430,9 +432,9 @@ class dualBand:
         self._yMin = self.extentRaster[2]
         self._yMax = self.extentRaster[3]
 
-        sh = alignOffset(self.fissB.data[:,:,50], self.fissA.data[:,:,-50])
+        sh = alignOffset(self.dataB[:,:,50], self.dataA[:,:,-50])
         tmp = shiftImage3D(fissB.data.transpose(2, 0, 1), -sh).transpose(1,2,0)
-        self.fissB.data = tmp
+        self.dataB = tmp
         tmp[tmp<10]=1
 
         if not x:
@@ -519,12 +521,12 @@ class dualBand:
         self.axRasterB.set_ylim(self.extentRaster[2], self.extentRaster[3])
         self.axProfileA.set_xlim(self.fissA.wave.min(), self.fissA.wave.max())
         self.axProfileB.set_xlim(self.fissB.wave.min(), self.fissB.wave.max())
-        ym = self.fissA.data[self.yp, self.xp].min()
-        yM = self.fissA.data[self.yp, self.xp].max()
+        ym = self.dataA[self.yp, self.xp].min()
+        yM = self.dataA[self.yp, self.xp].max()
         margin = (yM-ym)*0.05
         self.axProfileA.set_ylim(ym-margin, yM+margin)
-        ym = self.fissB.data[self.yp, self.xp].min()
-        yM = self.fissB.data[self.yp, self.xp].max()
+        ym = self.dataB[self.yp, self.xp].min()
+        yM = self.dataB[self.yp, self.xp].max()
         margin = (yM-ym)*0.05
         self.axProfileB.set_ylim(ym-margin, yM+margin)
         self.axProfileA.minorticks_on()
@@ -533,8 +535,8 @@ class dualBand:
         self.axProfileB.tick_params(which='both', direction='in')
 
         #Draw
-        rasterA = _getRaster(self.fissA.data, self.fissA.wave, self.wvA, self.dwvA, hw=self.hw)
-        rasterB = _getRaster(self.fissB.data, self.fissB.wave, self.wvB, self.dwvB, hw=self.hw)
+        rasterA = _getRaster(self.dataA, self.fissA.wave, self.wvA, self.dwvA, hw=self.hw)
+        rasterB = _getRaster(self.dataB, self.fissB.wave, self.wvB, self.dwvB, hw=self.hw)
 
         MA = rasterA.max()
         if MA > 1e2:
@@ -557,8 +559,8 @@ class dualBand:
         
         self.imRasterA = self.axRasterA.imshow(rasterA, self.fissA.cmap, origin='lower', extent=self.extentRaster, **kwargs)
         self.imRasterB = self.axRasterB.imshow(rasterB, self.fissB.cmap, origin='lower', extent=self.extentRaster, **kwargs)
-        self.plotProfileA = self.axProfileA.plot(self.fissA.wave, self.fissA.data[yp, xp], color='k')[0]
-        self.plotProfileB = self.axProfileB.plot(self.fissB.wave, self.fissB.data[yp, xp], color='k')[0]
+        self.plotProfileA = self.axProfileA.plot(self.fissA.wave, self.dataA[yp, xp], color='k')[0]
+        self.plotProfileB = self.axProfileB.plot(self.fissB.wave, self.dataB[yp, xp], color='k')[0]
 
         if self.scale == 'std':
             self.imRasterA.set_clim(np.median(rasterA)-rasterA.std()*self.sigFactor, np.median(rasterA)+rasterA.std()*self.sigFactor)
@@ -734,23 +736,23 @@ class dualBand:
             self.wvpB0 = wvB
 
     def _chSpect(self):
-        self.plotProfileA.set_ydata(self.fissA.data[self.yp, self.xp])
-        self.plotProfileB.set_ydata(self.fissB.data[self.yp, self.xp])
+        self.plotProfileA.set_ydata(self.dataA[self.yp, self.xp])
+        self.plotProfileB.set_ydata(self.dataB[self.yp, self.xp])
         self.pointRasterA.set_offsets([self.x, self.y])
         self.pointRasterB.set_offsets([self.x, self.y])
 
-        ym = self.fissA.data[self.yp, self.xp].min()
-        yM = self.fissA.data[self.yp, self.xp].max()
+        ym = self.dataA[self.yp, self.xp].min()
+        yM = self.dataA[self.yp, self.xp].max()
         margin = (yM-ym)*0.05
         self.axProfileA.set_ylim(ym-margin, yM+margin)
-        ym = self.fissB.data[self.yp, self.xp].min()
-        yM = self.fissB.data[self.yp, self.xp].max()
+        ym = self.dataB[self.yp, self.xp].min()
+        yM = self.dataB[self.yp, self.xp].max()
         margin = (yM-ym)*0.05
         self.axProfileB.set_ylim(ym-margin, yM+margin)
         self.fig.canvas.draw_idle()
 
     def _chRasterA(self):
-        rasterA = _getRaster(self.fissA.data, self.fissA.wave, self.wvA, self.fissA.wvDelt, hw=self.hw)
+        rasterA = _getRaster(self.dataA, self.fissA.wave, self.wvA, self.fissA.wvDelt, hw=self.hw)
         M = rasterA.max()
         if M > 1e2:
             m = rasterA[rasterA > 1e2].min()
@@ -770,7 +772,7 @@ class dualBand:
         self.fig.canvas.draw_idle()
 
     def _chRasterB(self):
-        rasterB = _getRaster(self.fissB.data, self.fissB.wave, self.wvB, self.fissB.wvDelt, hw=self.hw)
+        rasterB = _getRaster(self.dataB, self.fissB.wave, self.wvB, self.fissB.wvDelt, hw=self.hw)
         M = rasterB.max()
         if M > 1e2:
             m = rasterB[rasterB > 1e2].min()
