@@ -1,0 +1,98 @@
+{% extends 'template.html' %}
+{% set active_page = "Guide" %}
+
+{% block content %}
+<style>
+  .alinkDisabled {
+  color: currentColor;
+  cursor: not-allowed;
+  opacity: 0.5;
+  text-decoration: none;
+  pointer-events: none;
+}
+</style>
+<div class="d-flex">
+  <div class="flex-shrink-0 p-3 sidebar-scroll" style="margin-right: 20px; margin-bottom: -120px;">
+      <a href="/fisspy/" class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom">
+        <span class="fs-4 text-warning-emphasis" style="font-weight: bold;">FISSpy</span>
+      </a>
+      <ul class="list-unstyled ps-0">
+        <li class="mb-1">
+          <a href="/fisspy/" class="btn btn-toggle0 {{'active' if active_panel == 'home' else ''}} d-inline-flex align-items-center rounded border-0 collapsed">
+            Home
+          </a>
+        </li>
+        <li class="mb-1">
+          <a href="/fisspy/install/" class="btn btn-toggle0 {{'active' if active_panel == 'install' else ''}} d-inline-flex align-items-center rounded border-0 collapsed">
+            Installation
+          </a>
+        </li>
+        <li class="mb-1">
+          <button class="btn btn-toggle {{'active' if active_panel == 'read' else ''}} d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#read-collapse" aria-expanded="{{'true' if active_panel == 'read' else 'false'}}">
+            Read Data&nbsp;
+          </button>
+          <div class="collapse {{'show' if active_panel == 'read' else ''}}" id="read-collapse">
+            <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+              <li><a href="/fisspy/read_raw/" class="my-style-sb {{'active' if active_sp == 'Rraw' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Read raw data<br><span class="tia">(fisspy.read.raw)</span></a></li>
+              <li><a href="/fisspy/read_fiss/" class="my-style-sb {{'active' if active_sp == 'Rfiss' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Read proc/comp data<br><span class="tia">(fisspy.read.FISS)</span></a></li>
+              <li><a href="/fisspy/read_align/" class="my-style-sb {{'active' if active_sp == 'Ralign' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Read align cube<br><span class="tia">(fisspy.read.AlignCube)</span></a></li>
+              <li><a href="/fisspy/show_2cams/" class="my-style-sb {{'active' if active_sp == 'S2cams' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Show two cams<br><span class="tia">(fisspy.image.dualBand)</span></a></li>
+              <li><a href="/fisspy/show_raster/" class="my-style-sb {{'active' if active_sp == 'S' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Show raster movie<br><span class="tia">(fisspy.image.makeRasterSet)</span></a></li>
+            </ul>
+          </div>
+        </li>
+        <li class="mb-1">
+          <button class="btn btn-toggle {{'active' if active_panel == 'correction' else ''}} d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#correction-collapse" aria-expanded="{{'true' if active_panel == 'correction' else 'false'}}">
+            Data Correction&nbsp;
+          </button>
+          <div class="collapse {{'show' if active_panel == 'correction' else ''}}" id="correction-collapse">
+            <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+              <li><a href="/fisspy/cor_smooth/" class="my-style-sb {{'active' if active_sp == 'Csmooth' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Smoothing profile<br><span class="tia">(fisspy.correciton.smoothingProf)</span></a></li>
+              <li><a href="/fisspy/cor_stray/" class="my-style-sb {{'active' if active_sp == 'Cstray' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Stray light and line asymmetry<br><span class="tia">(fisspy.correction.corSLA)<br>(fisspy.correction.corStrayLight)<br>(fisspy.correction.corAsymmetry)</sapn></a></li>
+            </ul>
+          </div>
+        </li>
+        <li class="mb-1">
+          <button class="btn btn-toggle {{'active' if active_panel == 'analysis' else ''}} d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#analysis-collapse" aria-expanded="{{'true' if active_panel == 'analysis' else 'false'}}">
+            Anlysis Tools&nbsp;
+          </button>
+          <div class="collapse {{'show' if active_panel == 'analysis' else ''}}" id="analysis-collapse">
+            <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+              <li><a href="/fisspy/analysis_doppler/" class="my-style-sb {{'active' if active_sp == 'adoppler' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Doppler velocity<br><span class="tia">(fisspy.analysis.lambdameter)</span></a></li>
+              <li><a href="/fisspy/analysis_mtdmap/" class="my-style-sb {{'active' if active_sp == 'Amtd' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Make/Analysis Time-Distance map<br><span class="tia">(fisspy.read.makeTDmap)<br>(fisspy.read.analysisTDmap)</span></a></li>
+              <li><a href="/fisspy/analysis_arcast/" class="my-style-sb {{'active' if active_sp == 'Aarcast' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Interpolate time-series<br><span class="tia">(fisspy.read.ARcast)</span></a></li>
+              <li><a href="/fisspy/analysis_wavelet/" class="my-style-sb {{'active' if active_sp == 'Awavelet' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Wavelet<br><span class="tia">(fisspy.read.Wavelet)<br>(fisspy.read.WaveCoherency)</span></a></li>
+              <li><a href="/fisspy/analysis_ofe/" class="my-style-sb {{'active' if active_sp == 'Aofe' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Optical flow<br><span class="tia">(fisspy.read.runDAVE)<br>(fisspy.read.readOFE)</span></a></li>
+            </ul>
+          </div>
+        </li>
+        <li class="mb-1">
+          <button class="btn btn-toggle {{'active' if active_panel == 'align' else ''}} d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#align-collapse" aria-expanded="{{'true' if active_panel == 'align' else 'false'}}">
+            Alignment&nbsp;
+          </button>
+          <div class="collapse {{'show' if active_panel == 'align' else ''}}" id="align-collapse">
+            <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+              <li><a href="/fisspy/align_ts/" class="my-style-sb {{'active' if active_sp == 'ALts' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Align data<br><span class="tia">(...)</span></a></li>
+              <li><a href="/fisspy/align_base/" class="my-style-sb {{'active' if active_sp == 'ALtools' else 'link-body-emphasis'}} d-block rounded alinkDisabled">Align tools<br><span class="tia">(fisspy.align.alignOffset)<br>(fisspy.align.shiftImage)</sapn></a></li>
+            </ul>
+          </div>
+        </li>
+        <li class="mb-1">
+          <a href="/fisspy/preproc/" class="btn btn-toggle0 {{'active' if active_panel == 'preproc' else ''}} d-inline-flex align-items-center rounded border-0 alinkDisabled">
+            Preprocess
+          </a>
+        </li>
+      </ul>
+    </div>
+  <div class="container" style="overflow-y: auto;" id="my-style">
+  {% block manual %}
+  {% endblock %}
+  <p align="right" style="margin-top: 150px; font-size: large;"><a href="/fisspy/">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-house-fill" viewBox="0 0 16 16">
+      <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L8 2.207l6.646 6.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293z"/>
+      <path d="m8 3.293 6 6V13.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5V9.293z"/>
+    </svg>
+    Back to home</a></p>
+  </div>
+</div>
+{% endblock %}

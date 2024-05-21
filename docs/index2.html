@@ -1,0 +1,55 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = "home" %}
+
+{% block manual %}
+    <h1 class="page-header" style="margin-top: 20px; font-weight: bold;">FISSpy Documentation</h1>
+    <hr>
+    <p><a href="https://pypi.python.org/pypi/fisspy/"><img src="https://img.shields.io/pypi/v/fisspy.svg" alt="Latest Version"></a> <a href="https://anaconda.org/conda-forge/fisspy"><img src="https://anaconda.org/conda-forge/fisspy/badges/version.svg" alt="Anaconda-Server Badge"></a> <a href="https://anaconda.org/conda-forge/fisspy"><img src="https://anaconda.org/conda-forge/fisspy/badges/downloads.svg" alt="Anaconda-Server Badge"></a></p>
+    <br><br>
+    <p class="text-primary-emphasis" style="font-size: 30px; font-weight: bold;">Welcome to FISSpy&apos;s documentation!</p>
+    <p>FISSpy is the Python Package for analyzing the GST/FISS data. This package is released on a <a href="https://anaconda.org/conda-forge/fisspy">conda-forge channel</a> of the Anaconda package repository and <a href="https://pypi.org/project/fisspy/">PyPi</a> server. You can see the source code of the FISSpy on the <a href="https://github.com/SNU-sunday/fisspy">GitHub</a>. Among these servers, we recommend the conda-forge channel. Please see the details of the installation <a href="..\fisspy\install">here</a>.
+    <br><br>
+    The FISSpy package is the interactive analysis tool for the cube of FISS data. The code reference and how to handle the interactive figure are described below:</p>
+    <ul>
+        <li><strong style="font-size: 20px;">FISSpy Manual</strong>
+            <ul>
+                <li><a href="..\fisspy\install">Installation</a></li>
+                <li>Read FISS Data
+                    <ul>
+                        <li>Read raw data</li>
+                        <li>Read proc/comp data</li>
+                        <li>Read align cube</li>
+                        <li>Show two cams</li>
+                        <li>Show raster movie</li>
+                    </ul>
+                </li>
+                <li>Data Correction
+                    <ul>
+                        <li>Smoothing profile</li>
+                        <li>Stray light and line asymmetry</li>
+                    </ul>
+                </li>
+                <li>Analysis Tools
+                    <ul>
+                        <li>Doppler velocity</li>
+                        <li>Make/Analysis Time-Distance map</li>
+                        <li>Interpolate time-series</li>
+                        <li>Wavelet</li>
+                        <li>Optical flow</li>
+                    </ul>
+                </li>
+                <li>Alignment
+                    <ul>
+                        <li>Align data</li>
+                        <li>Align tools</li>
+                    </ul>
+                </li>
+                <li>Preprocess</li>
+                <!-- <li><a href="..\fisspy\read">FISSPy read</a></li>
+                <li><a href="..\fisspy\image">FISSPy image</a></li>
+                <li><a href="..\fisspy\data">FISSPy data</a></li>
+                <li><a href="..\fisspy\analysis">FISSPy analysis</a></li> -->
+            </ul>
+        </li>
+    </ul>
+{% endblock %}

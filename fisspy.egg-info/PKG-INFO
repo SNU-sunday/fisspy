@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: fisspy
+Version: 1.1.2
+Summary: fisspy: Python analysis tools for GST/FISS
+Home-page: http://fiss.snu.ac.kr
+Author: Juhyung Kang
+Author-email: jhkang@astro.snu.ac.kr
+License: BSD-2
+Requires-Python: >=3.6
+License-File: LICENSE.txt
+Requires-Dist: numba
+Requires-Dist: numpy
+Requires-Dist: scipy>=1.5
+Requires-Dist: astropy>=5.0
+Requires-Dist: sunpy>=2.0.0
+Requires-Dist: matplotlib>=3.0
+Requires-Dist: interpolation>=2.2.6
+Requires-Dist: statsmodels
+Requires-Dist: beautifulsoup4
+Requires-Dist: pandas
+Requires-Dist: ffmpeg
+Requires-Dist: pyqt>=5.0

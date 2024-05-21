@@ -1,0 +1,93 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = "install" %}
+
+{% block manual %}
+
+<h1 class="page-header" id="installation">Installation</h1>
+
+<p><a href="https://pypi.python.org/pypi/fisspy/"><img src="https://img.shields.io/pypi/v/fisspy.svg" alt="Latest Version"></a> <a href="https://anaconda.org/conda-forge/fisspy"><img src="https://anaconda.org/conda-forge/fisspy/badges/version.svg" alt="Anaconda-Server Badge"></a> <a href="https://anaconda.org/conda-forge/fisspy"><img src="https://anaconda.org/conda-forge/fisspy/badges/downloads.svg" alt="Anaconda-Server Badge"></a></p>
+
+
+<h2 class="page-header" id="install_python">Install Python Using miniforge.</h2>
+If you haven't already installed Python with miniforge(Mamba), we recommend (re-)installing Python with <a href=https://github.com/conda-forge/miniforge>miniforge</a>. The miniforge will install conda and automatically configure the default channel to be conda-forge, and it is more stable and faster than the original conda.<br><br>
+First, download the installer for your OS from <a href=https://github.com/conda-forge/miniforge>here</a>.
+Then install the launch file like below:
+<br><br>
+
+<nav>
+  <div class="nav nav-tabs" id="nav-tab" role="tablist">
+      <button class="nav-link active" id="nav-linix-tab" data-bs-toggle="tab" data-bs-target="#nav-linix" type="button" role="tab" aria-controls="nav-linix" aria-selected="true">Linux</button>
+      <button class="nav-link" id="nav-mac-tab" data-bs-toggle="tab" data-bs-target="#nav-mac" type="button" role="tab" aria-controls="nav-mac" aria-selected="true">Mac</button>
+	  <button class="nav-link" id="nav-windows-tab" data-bs-toggle="tab" data-bs-target="#nav-windows" type="button" role="tab" aria-controls="nav-windows" aria-selected="false">Windows</button>
+  </div>
+</nav>
+<div class="tab-content" id="nav-tabContent">
+<br>
+  <div class="tab-pane fade show active" id="nav-linix" role="tabpanel" aria-labelledby="nav-linix-tab" tabindex="0">
+    Run the downloaded script with bash.
+    <pre data-role="codeBlock" data-info class="language-"><code>$ bash Miniforge3-Linux-x86_64.sh</code></pre>
+    Please install the miniforge in the default path.
+    Download <a href="/static/mamba/initmamba">this</a> and copy it to the home directroy.
+    <pre data-role="codeBlock" data-info class="language-"><code>$ cp ~/Downloads/initmamba ~/.initmamba</code></pre>
+    Open the ~/.bashrc and add the alias to source the .initmamba like below:
+    <pre data-role="codeBlock" data-info class="language-"><code>alias runmamba="source $HOME/.initmamba"</code></pre>
+    If you have conda initialization in the .bashrc copy the initialization to ~/.initconda and comment out those lines. Then add the alias runconda like above.
+    Save the .bashrc and open a new terminal.
+    Run the miniforge using the new command.
+    <pre data-role="codeBlock" data-info class="language-"><code>$ runmamba</code></pre>
+    Then, you can use the conda and mamba commands.
+  </div>
+  <div class="tab-pane fade" id="nav-mac" role="tabpanel" aria-labelledby="nav-mac-tab" tabindex="0">
+    Run the downloaded script with zsh.
+    <pre data-role="codeBlock" data-info class="language-"><code>$ zsh Miniforge3-MacOSX-arm_64.sh</code></pre>
+    Please install the miniforge in the default path.
+    Download <a href="/static/mamba/initmamba">this</a> and copy it to the home directroy.
+    <pre data-role="codeBlock" data-info class="language-"><code>$ cp ~/Downloads/initmamba ~/.initmamba</code></pre>
+    Open the ~/.zshrc and add the alias to source the .initmamba like below:
+    <pre data-role="codeBlock" data-info class="language-"><code>alias runmamba="source $HOME/.initmamba"</code></pre>
+    If you have conda initialization in the .bashrc copy the initialization to ~/.initconda and comment out those lines. Then add the alias runconda like above.
+    Save the .zshrc and open a new terminal.
+    Run the miniforge using the above new command.
+    <pre data-role="codeBlock" data-info class="language-"><code>$ runmamba</code></pre>
+    Then, you can use the conda and mamba commands.
+  </div>
+  <div class="tab-pane fade" id="nav-windows" role="tabpanel" aria-labelledby="nav-windows-tab" tabindex="0">
+    Run the miniforge executable file downloaded from the link above.<br>
+    After installation, you should have a new "<font class=text-warning>miniforge Prompt</font>" in your start menu. 
+  </div>
+</div>
+
+
+<h2 class="page-header" id="installing-fisspy-using-anaconda">Setting the environment</h2>
+
+<p>To avoid the conflict, we recommend using a new virtual environment to install FISSpy. First, launch a terminal (under a UNIX-like system) or the miniforge Prompt (under Windows). Then create and activate a new virtual environment:</p>
+<pre data-role="codeBlock" data-info class="language-"><code>$ mamba create -n yourenvname
+$ conda config --add channels conda-forge
+$ conda config --set channel_priority strict
+$ mamba activate yourenvname
+</code></pre>
+<p>Here 'mamba' can be relaced to the conda. You can freely change 'yourenvname' to a different environment name.</p>
+<br>
+
+<h3 class="page-header" id="opt1"><span class="text-warning-emphasis">Option 1)</span> Using Mamba</h3>
+<p>Now we cal install fisspy:</p>
+<pre data-role="codeBlock" data-info class="language-"><code>$ mamba install fisspy
+</code></pre>
+<p>This will install FISSpy and all dependencies.
+You can also install other packages, such as Spyder, running mamba install &lt;package_name&gt;.</p>
+
+<h3 class="page-header" id="opt2"><span class="text-warning-emphasis">Option 3)</span> Using PyPI</h3>
+<p>If you fail to download the FISSpy using the above options, you can download the package using the PyPI server, but we do not recommend this method because of the code dependency.</p>
+<pre data-role="codeBlock" data-info class="language-"><code>&gt; pip install fisspy</code></pre>
+
+<h3 class="page-header" id="updating-fisspy">Updating FISSpy</h3>
+<p>To update the package, you first check the available version of the FISSpy by running:</p>
+<pre data-role="codeBlock" data-info class="language-"><code>&gt; mamba search fisspy
+</code></pre>
+<p>Then, update or install a specific version of the FISSpy</p>
+<pre data-role="codeBlock" data-info class="language-"><code>&gt; mamba update fisspy
+</code></pre>
+or
+<pre data-role="codeBlock" data-info class="language-"><code>&gt; mamba install fisspy=x.x.x
+</code></pre>
+{% endblock %}
