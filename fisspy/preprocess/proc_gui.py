@@ -2286,7 +2286,7 @@ class prepGUI:
             t = x[data[xwh[i]-7:xwh[i]+7] >= hmax]
             w[i] = (t.max() - t.min())/2
 
-        self.xF_hw = int(w.mean()*2)
+        self.xF_hw = int(w.mean()*4)
         self.xF_c = int(xwh.mean())
         self.xf_min = self.xF_c - self.xF_hw
         self.xf_max = self.xF_c + self.xF_hw
