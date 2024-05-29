@@ -161,7 +161,7 @@ def cal_fringeGauss(wvlet, xc, hw):
     GF = Gaussian(x, *p)
     
     wv = wvlet.wavelet*GF[None,:,None]
-    mwv = np.abs(wv).mean((0,2))
+    mwv = (np.abs(wv)**2).mean((0,2))
     return mwv, wvlet.iwavelet(wv, wvlet.scale)
     # freq = np.arctan2(wvlet.wavelet.imag, wvlet.wavelet.real)
     # coeff = np.zeros((3, shape[0], shape[2]))

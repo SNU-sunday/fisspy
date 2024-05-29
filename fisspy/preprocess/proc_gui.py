@@ -1950,13 +1950,13 @@ class prepGUI:
         self.ax_sub[1][1].set_visible(False)
         nfreq = self.wvlet_y[self.frameNum].wavelet.shape[1]
         self.ax_sub[1][0].cla()
-        data = np.abs(self.wvlet_y[self.frameNum].wavelet).mean((0,2))
+        data = np.abs(self.wvlet_y[self.frameNum].power).mean((0,2))
         ymax = data[:nfreq-10].max()*1.1
         self.ax_sub[1][0].plot(data)
         self.ax_sub[1][0].set_ylim(0,ymax)
         self.ax_sub[1][0].set_xlim(-0.5, nfreq-1)
         self.ax_sub[1][0].set_xlabel('freq_y (pix)')
-        self.ax_sub[1][0].set_ylabel('Amplitude')
+        self.ax_sub[1][0].set_ylabel('Power (DN$^2$)')
         self.ax_sub[1][0].set_title('Averaged Wavelet Spectrum (y-dir)')
         self.pFRmin_y = self.ax_sub[1][0].plot([self.yf_min, self.yf_min], [0, ymax], color='r', ls='dashed')[0]
         self.pFRmax_y = self.ax_sub[1][0].plot([self.yf_max, self.yf_max], [0, ymax], color='r', ls='dashed')[0]
@@ -2286,7 +2286,7 @@ class prepGUI:
             t = x[data[xwh[i]-7:xwh[i]+7] >= hmax]
             w[i] = (t.max() - t.min())/2
 
-        self.xF_hw = int(w.mean()*4)
+        self.xF_hw = int(w.mean()*2)
         self.xF_c = int(xwh.mean())
         self.xf_min = self.xF_c - self.xF_hw
         self.xf_max = self.xF_c + self.xF_hw
@@ -2308,7 +2308,7 @@ class prepGUI:
         self.ax_sub[3][0].cla()
         self.pwvGx = None
         
-        data = np.abs(self.wvlet_x[self.frameNum].wavelet).mean((0,2))
+        data = np.abs(self.wvlet_x[self.frameNum].power).mean((0,2))
         # xwh = data[:nfreq-20].argmax()
         self.xf_min = self.xF_c - self.xF_hw
         self.xf_max = self.xF_c + self.xF_hw
@@ -2319,7 +2319,7 @@ class prepGUI:
         self.ax_sub[3][0].set_ylim(0,ymax)
         self.ax_sub[3][0].set_xlim(-0.5, nfreq-1)
         self.ax_sub[3][0].set_xlabel('Freq_x (pix)')
-        self.ax_sub[3][0].set_ylabel('Amplitude')
+        self.ax_sub[3][0].set_ylabel('Power (DN$^2$)')
         self.ax_sub[3][0].set_title('Averaged Wavelet Spectrum (x-dir)')
         self.pFRmin_x = self.ax_sub[3][0].plot([self.xf_min, self.xf_min], [0, ymax], color='r', ls='dashed')[0]
         self.pFRmax_x = self.ax_sub[3][0].plot([self.xf_max, self.xf_max], [0, ymax], color='r', ls='dashed')[0]
@@ -2501,7 +2501,7 @@ class prepGUI:
         elif self.xwvShow:
             self.ax_sub[3][0].set_visible(True)
             self.ax_sub[3][1].set_visible(False)
-            data = np.abs(self.wvlet_x[self.frameNum].wavelet).mean((0,2))
+            data = np.abs(self.wvlet_x[self.frameNum].power).mean((0,2))
             self.pwvx.set_ydata(data)
             if self.xGauss:
                 if self.pwvGx is None:
