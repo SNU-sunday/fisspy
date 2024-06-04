@@ -171,7 +171,6 @@ class Wavelet:
         res = ifft(fx*self.nowf)
         return res
         
-    
     def iwavelet(self, wavelet, scale):
         #%% should be revised (period range option)
         """
@@ -380,7 +379,6 @@ class Wavelet:
         else:
             raise ValueError('Mother must be one of MORLET, PAUL, DOG')
         
-        
     def saveWavelet(self, savename):
         """
         Save the wavelet spectrum as .npz file.
@@ -398,8 +396,7 @@ class Wavelet:
                  s0=self.s0, j=self.j, mother=self.mother,
                  param=self.param)
         
-    def waveSignif(self, y, sigtest=0, lag1=0., siglvl=0.95, dof=-1,
-                    gws=False, confidence=False):
+    def waveSignif(self, y, sigtest=0, lag1=0., siglvl=0.95, dof=-1, gws=False, confidence=False):
         """
         Compute the significance levels for a wavelet transform.
         
@@ -723,12 +720,6 @@ class Wavelet:
                                               lw=1.5)
         
         self.fig.tight_layout()
-
-
-
-
-
-
 
 class WaveCoherency:
     def __init__(self, wave1, time1, scale1, wave2, time2, scale2,

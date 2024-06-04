@@ -443,8 +443,6 @@ class FISS:
         self.wv = wv
         return getRaster(self.data, self.wave, wv, self.wvDelt, hw=hw)
 
-
-
     def lambdameter(self, **kw):
         """
         Calculate the doppler shift by using lambda-meter (bisector) method.
@@ -669,7 +667,6 @@ class FISS:
             self._chPos()
             self.xp0 = x
             self.yp0 = y
-
 
     def _chPos(self):
         self.pSpec.set_ydata(self.data[self.ypix, self.xpix])

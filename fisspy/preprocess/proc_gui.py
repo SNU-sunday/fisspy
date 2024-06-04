@@ -1517,7 +1517,6 @@ class prepGUI:
         self.dock.setWidget(self.panel)
         self.root.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.dock)
 
-        
     def chFlat(self):
         self.initS1 = True
         self.initS2 = True
@@ -1585,7 +1584,6 @@ class prepGUI:
             self.stepNum == self.nStep-1
         self.AutoRun()
         
-
     def Prev(self):
         if self.stepNum <= 0:
             self.stepNum = 0
@@ -1736,8 +1734,6 @@ class prepGUI:
                 self.B_s5_Run.setEnabled(True)
                 self.B_Next.setEnabled(True)
                 self.B_Prev.setEnabled(True)
-
-
 
     def s0_step7(self):
         self.step(7)
@@ -2208,8 +2204,6 @@ class prepGUI:
         self.B_s3_3_Blink.setEnabled(True)
         self.fig.canvas.draw_idle()
 
-
-
     def s3_3_Blink(self):
         self.mskShow = not self.mskShow
 
@@ -2467,7 +2461,6 @@ class prepGUI:
 
         self.fig.canvas.draw_idle()
 
-
     def s3_4_pf(self):
         if self.frameNum <= 0:
             self.frameNum = 0
@@ -2717,7 +2710,6 @@ class prepGUI:
         self.ax[5][0].set_ylabel('Intensity (DN)')
         self.ax[5][0].set_ylim(ff.min()*0.98, ff.max()*1.02)
         self.fig.canvas.draw_idle()
-
 
     def s5_pf(self):
         if self.frameNum <= 0:

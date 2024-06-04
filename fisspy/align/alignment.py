@@ -59,10 +59,10 @@ def calAlignPars(lfiles, refFrame=None):
     im0 = imr
 
     print('Running Alignment')
-    print('    0%', end='\r', flush=True)
+    print('    0 %', end='\r', flush=True)
     
     for k in range(nf):
-        print(f'    {(k+1)*100/nf}%', end='\r', flush=True)
+        print(f'    {(k+1)*100/nf:.2f} %', end='\r', flush=True)
         if k < rf:
             # backward alignment
             i0 = rf - k
@@ -492,10 +492,10 @@ def makeExample(lfA, lfB, faparA, faparB):
     dataB = np.zeros((nt, nyB, nxB), dtype=float)
 
     print('Running make cube')
-    print('    0%', end='\r', flush=True)
+    print('    0 %', end='\r', flush=True)
 
     for i, f in enumerate(lfA):
-        print(f'    {(i+1)*100/nt}%', end='\r', flush=True)
+        print(f'    {(i+1)*100/nt:.2f} %', end='\r', flush=True)
         fiss = FISS(f)
         fissB = FISS(lfB[i])
         dataA[i] = fiss.data[...,50:55].mean(2)

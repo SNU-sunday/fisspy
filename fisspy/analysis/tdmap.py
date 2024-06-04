@@ -68,6 +68,8 @@ class makeTDmap:
         self.clim = clim
         if cmap is None:
             Cmap = plt.cm.gray
+        else:
+            Cmap = cmap
         self.cmap = Cmap
         self.analysis = None
         self.a_fig = None
@@ -396,13 +398,15 @@ class makeTDmap:
         extension should be npz
         """
         if fname is None:
-            fname = join(getcwd(), f"{self.label}.npz")
-        if fname.split('.')[-1] != 'npz':
+            FN = join(getcwd(), f"{self.label}.npz")
+        else:
+            FN = fname
+        if FN.split('.')[-1] != 'npz':
             raise ValueError("File extension should be npz.")
         if self.analysis is None:
-            np.savez(fname, TD=self.TD, Slit=[self.xslit, self.yslit], dl=self.dl, dx=self.dx, dy=self.dy, dt=self.dt)
+            np.savez(FN, TD=self.TD, Slit=[self.xslit, self.yslit], dl=self.dl, dx=self.dx, dy=self.dy, dt=self.dt)
         else:
-            np.savez(fname, TD=self.TD, Slit=[self.xslit, self.yslit], dl=self.dl, dx=self.dx, dy=self.dy, dt=self.dt, vposition=self.spGrad, velocity=self.sv, boolFit=self.sfit, period=self.Tperiod, pposition=self.Tline_pos, wavelength=self.Ddistance, wposition=self.Dline_pos)
+            np.savez(FN, TD=self.TD, Slit=[self.xslit, self.yslit], dl=self.dl, dx=self.dx, dy=self.dy, dt=self.dt, vposition=self.spGrad, velocity=self.sv, boolFit=self.sfit, period=self.Tperiod, pposition=self.Tline_pos, wavelength=self.Ddistance, wposition=self.Dline_pos)
 
 class analysisTDmap:
     def __init__(self, TD, dl, dt, cmap=None, figsize=[19, 8], dpi=100, parent=None, clim=None, t=0, label=None, aspect=1/10):
@@ -457,7 +461,7 @@ class analysisTDmap:
         if label is None:
             Label = 'Unknown-TD'
         else:
-            Label = Label+'-TD'
+            Label = label+'-TD'
         if Label in afl:
             l0 = Label.split('-TD')[0]
             ii = 0
@@ -838,8 +842,6 @@ class analysisTDmap:
                 gl.set_visible(v)
             self.fig.canvas.draw_idle()
 
-                
-
     def _next(self):
         if self.t < self.nt-1:
             self.t += 1
@@ -892,7 +894,9 @@ class analysisTDmap:
         """
         """
         if fname is None:
-            fname = join(getcwd(), f"{self.label}.npz")
-        if fname.split('.')[-1] != 'npz':
+            FN = join(getcwd(), f"{self.label}.npz")
+        else:
+            FN = fname
+        if FN.split('.')[-1] != 'npz':
             raise ValueError("File extension should be npz.")
-        np.savez(fname, TD=self.TD, dl=self.dl, dt=self.dt, vposition=self.spGrad, velocity=self.sv, boolFit=self.sfit, period=self.Tperiod, pposition=self.Tline_pos, wavelength=self.Ddistance, wposition=self.Dline_pos)
+        np.savez(FN, TD=self.TD, dl=self.dl, dt=self.dt, vposition=self.spGrad, velocity=self.sv, boolFit=self.sfit, period=self.Tperiod, pposition=self.Tline_pos, wavelength=self.Ddistance, wposition=self.Dline_pos)

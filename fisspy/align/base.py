@@ -329,8 +329,12 @@ def rotImage(img, angle, xc=False, yc=False, dx=0, dy=0, xmargin=0, ymargin=0, m
 
     if not xc:
         XC = nx/2
+    else:
+        XC = xc
     if not yc:
         YC = ny/2
+    else:
+        YC = yc
     xt, yt = CoordinateTransform(xa, ya, XC, YC, angle, dx=dx, dy=dy)
     return get_interpVal(img, x, y, xt, yt, missing=missing, cubic=cubic)
 
