@@ -1,0 +1,55 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'read' %}
+{% set active_sp = "Roverview" %}
+
+{% block manual %}
+    <h1 class="page-header" style="margin-top: 20px; font-weight: bold;"">Read FISS data </h1>
+    <hr>
+    <p>This sub-package is used to read the all FISS data and plot the raster and spectral profile.
+    Using this module, you can draw quick look analysis with interactive image.</p>
+
+    <h2><span style="color: coral;">FISSpy.read</span> package</h2>
+    <h3>Classes</h3>
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+              <th class="thbg">Class</th><th class="thbg">Description</th>
+            </tr>
+        </thead>
+        <tbody class="table-group-divider">
+            <tr>
+                <td><a href=".\raw">raw</a></td> <td>Read a raw object frame.</td>
+            </tr>
+            <tr>
+                <td><a href=".\calibData">calibData</a></td> <td>Read a biasdark frame or flat frame.</td>
+            </tr>
+            <tr>
+                <td><a href=".\FISS">FISS</a></td> <td>Read a processed (*1.fts) or compressed (*_c.fts) file.</td>
+            </tr>
+            <tr>
+                <td><a href=".\AlignCube">AlignCube</a></td> <td>Read an alignCube file.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2><span style="color: coral;">FISSpy.image</span> package</h2>
+    <h3>Classes</h3>
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+              <th class="thbg">Class</th><th class="thbg">Description</th>
+            </tr>
+        </thead>
+        <tbody class="table-group-divider">
+            <tr>
+                <td><a href="..\image\dualband">dualBand</a></td> <td>Show raster images and spectral profiles of two cameras.</td>
+            </tr>
+            <tr>
+                <td><a href="..\image\makerasterset">makeRasterSet</a></td> <td>Create and save the raster images and movie files.</td>
+            </tr>
+        </tbody>
+    </table>
+
+
+    
+{% endblock %}
