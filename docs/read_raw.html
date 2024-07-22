@@ -4,7 +4,7 @@
 
 {% block manual %}
 <h2 class="page-header" style="margin-top: 20px; font-weight: bold;"">raw </h2>
-<p><span class="text-primary-emphasis" style="font-style: italic;">class</span> fisspy.read.read_factory.raw(<span style="font-style: italic;">filename</span>)</p>
+<p><span class="text-primary-emphasis" style="font-style: italic; font-weight: bold;">class</span> fisspy.read.read_factory.<span style="color:chocolate;">raw</span>(<span style="font-style: italic;">filename</span>)</p>
 
 <p class="text-success-emphasis" style="font-weight: bold;">Parameters</p>
 <ul>
@@ -15,10 +15,63 @@
 <p>Read raw object</p>
 
 
-<h3 style="font-weight: bold;">Attribute documentation</h3>
+<h3 style="font-weight: bold;">Attributes Summary</h3>
 <hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Attributes</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td style="color:chocolate;">data</td>  <td>Data array.</td>
+        </tr>
+        <tr>
+          <td style="color:chocolate;">header</td>  <td>FITS Header.</td>
+        </tr>
+        <tr>
+          <td style="color:chocolate;">wave</td>  <td>Wavelength array in relative units which is roughly calculated.</td>
+        </tr>
+        <tr>
+          <td style="color:chocolate;">date</td>  <td>Observation date.</td>
+        </tr>
+        <tr>
+          <td style="color:chocolate;">nwv</td>  <td>Number of pixel in wavelength direction.</td>
+        </tr>
+        <tr>
+          <td style="color:chocolate;">ny</td>  <td>Number of pixel in slit direction.</td>
+        </tr>
+        <tr>
+          <td style="color:chocolate;">nx</td>  <td>Number of pixel in scan direction.</td>
+        </tr>
+        <tr>
+          <td style="color:chocolate;">ftype</td>  <td>File type of the input data frame. It is 'raw' in this case.</td>
+        </tr>
+        <tr>
+          <td style="color:chocolate;">filename</td>  <td>input file name.</td>
+        </tr>
+        <tr>
+          <td style="color:chocolate;">cam</td>  <td>Camera inform. Either 'A' or 'B'.</td>
+        </tr>
+        <tr>
+          <td style="color:chocolate;">band</td>  <td>Wavelength band.</td>
+        </tr>
+      </tbody>
+</table>
 
-<h3 style="font-weight: bold;">Methods documentation</h3>
+<h3 style="font-weight: bold;">Methods Summary</h3>
 <hr>
-
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Methods</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td><span style="color:chocolate;">getRaster</span>(wv, hw=0.05)</td>  <td>Get a raster image for a given wavelength.</td>
+        </tr>
+      </tbody>
+</table>
 {% endblock %}
