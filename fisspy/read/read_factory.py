@@ -333,8 +333,9 @@ class FISS:
         self.extentSpectro = [self.wave.min()-self.wvDelt/2,
                               self.wave.max()+self.wvDelt/2,
                               0, self.ny*self.yDelt]
-        
-        if smoothingMethod is None:
+
+        self.smoothing = False
+        if smoothingMethod is not None:
             self.smoothing = True
         if self.smoothing:
             self.smoothingProf(method=smoothingMethod, **kwargs)
