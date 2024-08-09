@@ -1,0 +1,121 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'align' %}
+{% set active_sp = "ALdata" %}
+
+{% block manual %}
+<h2 class="page-header subpack-title">Align data</h2>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">Make align data cube</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<p style="font-size: x-large; font-weight: bold;"><span class="code-function">function</span> fisspy.align.alignment.<span class="text-warning">alignAll</span>(<span class="code-arg">lfA, lfB, refFrame=None, refCam='A', sname=None, save=True</span>)</p>
+
+<strong>Description: Align data with time and co-align the data of two cams.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>lfA (<span class="code-type">list</span>) - A series of the camA data files.</li>
+    <li>lfB (<span class="code-type">list</span>) - A series of the camB data files.</li>
+    <li>refFrame (<span class="code-type">int</span>, optional) - Reference frame number. If None, the middle frame (time) is considered as a reference. Default is None.</li>
+    <li>refCam (<span class="code-type">str</span>, optional) - Reference camera for the alignment. Either 'A' or 'B'. Default is 'A'.</li>
+    <li>save (<span class="code-type">bool</span>, optional) - Save align paramereters in the working directory. Default is True.
+</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+    <li>alignParsA (<span class="code-type">dict</span>) - alignPars for cam A. See <a href="./calAlignPars">fisspy.align.alignment.calAlignPars</a>.</li>
+    <li>alignParsB (<span class="code-type">dict</span>) - alignPars for cam B. See <a href="./calAlignPars">fisspy.align.alignment.calAlignPars</a>.</li>
+</ul>
+
+
+
+<p style="font-size: x-large; font-weight: bold;"><span class="code-function">function</span> fisspy.align.alignment.<span class="text-warning">alignTwoDataCubes</span>(<span class="code-arg">dataA, dataB, faparA, faparB, xmargin=None, ymargin=None, cubic=False</span>)</p>
+
+<strong>Description: Align two 3D data cubes. Note that the data will be flipped in the x-axis to correct the mirror reversal.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>dataA (<span class="code-type">numpy.ndarray</span>) - 3-dimensional data array for the cam A with the shape of (nt, ny, nx).</li>
+    <li>dataB (<span class="code-type">numpy.ndarray</span>) - 3-dimensional data array for the cam B with the shape of (nt, ny, nx).</li>
+    <li>faparA (<span class="code-type">str</span>) - File name of the alignpar for cam A.</li>
+    <li>faparB (<span class="code-type">str</span>) - File name of the alignpar for cam B.</li>
+    <li>xmargin (<span class="code-type">int</span>, optional) - Margin for x-axis. The size of the x-axis increases to nx + 2*xmargin. If None, automatically calculate the margin. Default is None.</li>
+    <li>ymargin (<span class="code-type">int</span>, optional) - Margin for y-axis The size of the y-axis increases to ny + 2*ymargin. If None, automatically calculate the margin. Default is None.</li>
+    <li>cubic (<span class="code-type">bool</span>, optional) - Use cubic interpolation to determine the value in the aligned position. If False, use linear interpolation. Default is None.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+    <li>cdata (<span class="code-type">numpy.ndarray</span>) - Aligned data.</li>
+</ul>
+
+
+
+<p style="font-size: x-large; font-weight: bold;"><span class="code-function">function</span> fisspy.align.alignment.<span class="text-warning">saveAlignCube</span>(<span class="code-arg">adata, time, sname, dt=None, dx=0.16*725, dy=0.16*725</span>)</p>
+
+<strong>Description: Save aligned data cube.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>adata (<span class="code-type">numpy.ndarray</span>) - 3D array of the aligned data (nt,ny,nx).</li>
+    <li>time (<span class="code-type">numpy.ndarray</span>) - 1D time array in unit of second.</li>
+    <li>sname (<span class="code-type">str</span>) - Filename to save. Extension should be '.npz.'</li>
+    <li>dt (<span class="code-type">float</span>, optional) - Pixel scale along the t-axis in unit of second.</li>
+    <li>dx (<span class="code-type">float</span>, optional) - Pixel scale along the x-axis in unit of km.</li>
+    <li>dy (<span class="code-type">float</span>, optional) - Pixel scale along the y-axis in unit of km.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+    <li>None</li>
+</ul>
+
+
+
+<p style="font-size: x-large; font-weight: bold;"><span class="code-function">function</span> fisspy.align.alignment.<span class="text-warning">writeAlignPars</span>(<span class="code-arg">apar, refCam=None, sname=None</span>)</p>
+
+<strong>Description: Write a file for the align parameters.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>apar (<span class="code-type">dict</span>) - Parameter to align the data files. See <a href="./calAlignPars">fisspy.align.alignment.calAlignPars</a>.</li>
+    <li>refCam (<span class="code-type">str</span>, optional) - Reference camera for the alignment.</li>
+    <li>sname (<span class="code-type">str</span>, optional) - Save file name. The extension should be .npz. Default is alignpar_{apar['cam']} in the current working directory. </li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+    <li>None</li>
+</ul>
+
+
+
+<p style="font-size: x-large; font-weight: bold;"><span class="code-function">function</span> fisspy.align.alignment.<span class="text-warning">readAlignPars</span>(<span class="code-arg">apfile</span>)</p>
+
+<strong>Description: Read file for the align parameters.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>apfile (<span class="code-type">str</span>) - Filename for the align parameters.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+    <li>apar (<span class="code-type">numpy.lib.npyio.NpzFile</span>) - Align parameters. keys: ['cam', 'refFrame', 'refTime', 'time', 'xc', 'yc', 'dx', 'dy', 'angle', 'refCam']</li>
+</ul>
+
+TODO: calAlignPars, alignCams, alignDataCube.
+
+{% endblock %}

@@ -128,6 +128,8 @@ class makeTDmap:
         
         if figsize is None:
             fs = [8,8*wratio+0.2]
+        else:
+            fs = figsize
 
         self.fig, self.ax = plt.subplots(figsize=fs, dpi=dpi, num=self.label)
         self.im = self.ax.imshow(self.data[self.t], self.cmap, extent=self.extent, origin='lower')

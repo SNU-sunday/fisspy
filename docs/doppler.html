@@ -1,0 +1,49 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'analysis' %}
+{% set active_sp = "Adoppler" %}
+
+{% block manual %}
+<h2 class="page-header subpack-title">Doppler velocity</h2>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-function">function</span> fisspy.analysis.doppler.<span class="text-warning">lambdameter</span>(<span class="code-arg">wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm', alpha=None, reguess=True, pf=False, corInstShift=False, refSpec=None</span>)</p>
+
+<strong>Description: Determine the lambdameter chord center for a given half width or intensity.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>wv (<span class="code-type">numpy.ndarray</span>) - A Calibrated wavelength.</li>
+    <li>data (<span class="code-type">numpy.ndarray</span>) - n (n=2 or n=3) dimensional spectral profile data. The last dimension should be the spectral component, and the size is equal to that of wv.</li>
+    <li>hw (<span class="code-type">float</span>, optional) - A half width of the horizontal line segment.</li>
+    <li>wvRange (<span class="code-type">list</span>, optional) - Wavelength range to apply the lambdameter.</li>
+    <li>iwc (<span class="code-type">float</span>, optional) - Initial guess of the center of the lambdameter. Default is the minimum of the given at each line profile.</li>
+    <li>cubic (<span class="code-type">bool</span>, optional) - If True, using cubic interpolation to determine the function of the profile. If False, using linear interpolation. Default is False.</li>
+    <li>rfm (<span class="code-type">str</span>, optional) - Root-finding method. Options-'ori': bisector method, 'cm': Chae's method, 'nrm': Newton-Raphson method, 'hm': Halley's method.</li>
+    <li>alpha (<span class="code-type">bool</span>, optional) - Stepsize of the root-finding. We recommand you does not touch this value except for using chae's method.</li>
+    <li>reguess (<span class="code-type">bool</span>, optional) - Reguess the initial guess and repeat the calculation for the failed position to derive the line center by changing the intial guess automatically.</li>
+    <li>pr (<span class="code-type">bool</span>, optional) - Print the result. Defualt is False.</li>
+    <li>corInstShift (<span class="code-type">bool</span>, optional) - If True, correct the instrument shift. Default is False. Note, this process can also be done outside this function.</li>
+    <li>refSpec (<span class="code-type">float</span>, optional) - Reference spectrum for the correction of the instrument shift. If corInstShift is True, this should be given.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+  <li>wc (<span class="code-type">numpy.ndarray</span>) - n-dimensional array of central wavelength values.</li>
+  <li>intc (<span class="code-type">numpy.ndarray</span>) - n-dimensional array of intensities of the line segment.</li>
+</ul>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">lambdameter</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+
+
+{% endblock %}

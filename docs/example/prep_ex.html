@@ -1,0 +1,234 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'preproc' %}
+
+{% block manual %}
+<link href="/static/css/jpnote.min.css?ver=2" rel="stylesheet">
+
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="Preprocess">Preprocess<a class="anchor-link" href="#Preprocess">¶</a></h1><p>This manual shows an example of the preprocessing pipeline using the interactive calibration module of 'prepGUI'. To run the preprocessing module, you should first check the data and their path.</p>
+<p>The 'raw' and 'cal' directories should be in the base directory. In the 'raw' directory, object frames should be stored in each target directory such as 'ARxxxxxx'. In addition to the object frames, biasdark frames should also exist because these biasdark frames have information about the setting of each run of observation. To correctly calibrate these object frames, you should check whether at least one biasdark frame and flat frame exist in the 'cal' directory. If the preprocessing code is operated properly, the outcome 'proc' and 'comp' directories will be made in the base directory. Each fringe frame and master flat frame will be stored in the './proc/cal' directory, and the calibrated object frame will be saved in the target directory. Below is an example directory tree.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<pre><code>basedir
+└───raw
+│   └───ARxxxxxx
+│       │   FISS_YYYYMMDD_hhmmss.zzz_A.fts
+│       │   FISS_YYYYMMDD_hhmmss.zzz_A_BiasDark.fts
+│       │   ...
+└───cal
+│   │   FISS_YYYYMMDD_hhmmss.zzz_A_Flat.fts
+│   │   FISS_YYYYMMDD_hhmmss.zzz_A_BiasDark.fts
+│   │   ...
+└───proc
+│   └───ARxxxxxx
+│       │   FISS_YYYYMMDD_hhmmss.zzz_A1.fts
+│       │   ...
+│   └───cal
+│       │   FISS_FLAT_YYYYMMDD_hhmmss.zzz_A.fts
+│       │   FISS_FLAT_YYYYMMDD_hhmmss.zzz_A.fts
+│       │   FISS_xFringe_YYYYMMDD_hhmmss.zzz_A.fts
+│       │   FISS_yFringe_YYYYMMDD_hhmmss.zzz_A.fts
+│       │   ...
+└───comp
+    └───ARxxxxxx
+        │   FISS_YYYYMMDD_hhmmss.zzz_A1_c.fts
+        │   ...
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>If you prepare the data, you also check the authority of the directory and data. The raw data should be readable, and the base directory should be able to read and write.</p>
+<p>After setting the data, let's run the preprocess GUI using <a href="/fisspy/preprocess">fisspy.process.prepGUI</a>. It automatically sets the matplotlib backend to the Qt5 backend. Please do not run this backend in the jupyter-notebook, but run it in the ipython.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">fisspy</span>
+<span class="n">bdir</span> <span class="o">=</span> <span class="s1">'/Users/jhkang/Data/FISS/2308/04'</span>
+<span class="n">pr</span> <span class="o">=</span> <span class="n">fisspy</span><span class="o">.</span><span class="n">preprocess</span><span class="o">.</span><span class="n">prepGUI</span><span class="p">(</span><span class="n">bdir</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-0:-Select-the-flat-frame">Step 0: Select the flat frame<a class="anchor-link" href="#Step-0:-Select-the-flat-frame">¶</a></h3><p><img alt="Step0" src="/static/img/preproc/f0.png"/></p>
+<p>When you run the 'prepGUI' at first, it shows the GUI figure that you can select the flat frame. After setting the flat frame then push the next button to go to the next step.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-1:-Tilt-correction">Step 1: Tilt correction<a class="anchor-link" href="#Step-1:-Tilt-correction">¶</a></h3><p><img alt="Step1" src="/static/img/preproc/f1.png"/></p>
+<p>After selecting the flat frame, the first we have to do is the tip/tilt correction of the image. If you put the ffocA and ffocB parameters when you call the 'prepGUI' module, it automatically corrects the tip/tilt using the pinhole focus frame. If not it corrects the tip/tilt using the slit pattern generated by the dust on the slit. Here you can manually change the tip/tilt angle putting the value.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-2:-1st-Curvature-Correction">Step 2: 1st Curvature Correction<a class="anchor-link" href="#Step-2:-1st-Curvature-Correction">¶</a></h3><p><img alt="Step2" src="/static/img/preproc/f2.png"/></p>
+<p>The next step is to correct the distortion or curvature of the frame. You can notice that the spectral line is curved on the raw data. Using the cross-correlation technique, we measure the shift value by pixel-to-pixel, and finally, we correct this curvature by 3rd-order polynomial fitting.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-3:-Atlas-Subtraction">Step 3: Atlas Subtraction<a class="anchor-link" href="#Step-3:-Atlas-Subtraction">¶</a></h3><p><img alt="Step3" src="/static/img/preproc/f3.png"/></p>
+<p>To enhance the fringe pattern on the image frame, we divide the atlas spectrum. As a result, we can easily identify the fringe patterns.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-4:-Horiziontal-fringe-subtraction">Step 4: Horiziontal fringe subtraction<a class="anchor-link" href="#Step-4:-Horiziontal-fringe-subtraction">¶</a></h3><p><img alt="Step 4" src="/static/img/preproc/f4.png"/>
+<img alt="Step 4" src="/static/img/preproc/f4_2.png"/>
+<img alt="Step 4" src="/static/img/preproc/f4_3.png"/></p>
+<p>Now we subtract the horizontal fringe first by using the wavelet spectrum. The program automatically runs the wavelet along the y-axis. We empirically set the filtering range that contributes to the fringe pattern from 0 to 105, but we recommend you that change this value if this range covers the actual data that comes from the flat pattern with the peak in the power spectrum. Here, you can see the fringe pattern, and the fringe subtracted pattern by pushing the show button on each panel.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-5-(It-will-be-run-only-for-the-cam-B!):-Mask-spectra">Step 5 (It will be run only for the cam B!): Mask spectra<a class="anchor-link" href="#Step-5-(It-will-be-run-only-for-the-cam-B!):-Mask-spectra">¶</a></h3><p><img alt="Step 5" src="/static/img/preproc/f5.png"/></p>
+<p>To subtract the vertical fringe only, we should mask the actual spectrum. Here we use the autoregressive interpolation method to fill the masked spectra. It takes some time up to 3 to 5 minutes.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-6:-Vertical-fringe-subtraction">Step 6: Vertical fringe subtraction<a class="anchor-link" href="#Step-6:-Vertical-fringe-subtraction">¶</a></h3><p><img alt="Step 6" src="/static/img/preproc/f6.png"/>
+<img alt="Step 6_2" src="/static/img/preproc/f6_2.png"/>
+<img alt="Step 6_3" src="/static/img/preproc/f6_3.png"/></p>
+<p>Now we subtract the vertical fringe, select the frequency peak, and apply the Gaussian filter to extract this frequency peak that contributes to the vertical fringe. Similar to step 4, you can check the fringe pattern and fringe subtracted image by pressing the show button on each panel.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-7:-2nd-curvature-correction">Step 7: 2nd curvature correction<a class="anchor-link" href="#Step-7:-2nd-curvature-correction">¶</a></h3><p><img alt="Step 7" src="/static/img/preproc/f7.png"/></p>
+<p>After subtracting all fringes, we correct the curvature again.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-8:-Make-master-flat">Step 8: Make master flat<a class="anchor-link" href="#Step-8:-Make-master-flat">¶</a></h3><p><img alt="Step 8" src="/static/img/preproc/f8.png"/>
+<img alt="Step 8_2" src="/static/img/preproc/f8_2.png"/>
+<img alt="Step 8_3" src="/static/img/preproc/f8_3.png"/></p>
+<p>Now we are ready to run the make a master flat. This procedure is based on Chae et al. (<a href="https://ui.adsabs.harvard.edu/abs/2013SoPh..288....1C/abstract">2013</a>). You can see the master flat, the flat corrected image, and the corrected line profile, here.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-9:-Save-data.">Step 9: Save data.<a class="anchor-link" href="#Step-9:-Save-data.">¶</a></h3><p><img alt="Step 9" src="/static/img/preproc/f9.png"/></p>
+<p>We made the whole calibration. By pushing the save button, you can save these data. There are two options: one is to select the other flat frame to make other calibration data, and the other is to go to the next step. If you already run the calibration for all flat frames, then go to the next step button will be highlighted.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>Step 10: Preprocessing</p>
+<p><img alt="Step 10" src="/static/img/preproc/f10.png"/></p>
+<p>Then let's run the preprocessing pipeline to the object frames. You can run this for the whole data set or separately. Here, If you want to reduce the running time, I recommend you that run this for each data set (I mean for each target or each camera) to reduce the running time by parallelly running this code in the separate terminals.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Step-11:-PCA-Compression">Step 11: PCA Compression<a class="anchor-link" href="#Step-11:-PCA-Compression">¶</a></h3><p><img alt="Step 11" src="/static/img/preproc/f11.png"/></p>
+<p>This is the final step of the preprocessing. Now you can compress and denoise the data by using the PCA compression. Just push the run button in the 'Run PCA compression' panel.</p>
+</div>
+</div>
+</div>
+</div>
+
+{% endblock %}
