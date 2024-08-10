@@ -1,0 +1,171 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'align' %}
+{% set active_sp = "ALdata" %}
+
+{% block manual %}
+<link href="/static/css/jpnote.min.css?ver=2" rel="stylesheet">
+
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="Align-Data-Cube">Align Data Cube<a class="anchor-link" href="#Align-Data-Cube">¶</a></h1>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>The raw data of the FISS are rotated with time because the FISS does not have the derotator. In addition, an object can be shifted by the effect of the seeing, and the image itself is reversed by the mirror. To correct these effects, we should align the data. Using the cross-correlation technique between two images and the interpolation, we can successfully align the FISS data. Here, we show how to co-align the data obatined by two cameras. First, we calculate the align parameters, such as a rotating angle, and shift in x, and y directions using the <a href="../#calAlignPars">calAlignPars</a>, then we co-align the image of camera A with that of camera B using the <a href="../#alignCams">alignCams</a>. These two procedures are combined with the <a href="../#alignAll">alignAll</a> function, so you can simply align the data like this:</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">fisspy</span>
+<span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">join</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="n">bdir</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">'D:\Data\140603'</span>
+<span class="n">lfa</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">bdir</span><span class="p">,</span><span class="s1">'*A1_c.fts'</span><span class="p">))</span><span class="c1"># list of the file obtained by the camera A</span>
+<span class="n">lfb</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">bdir</span><span class="p">,</span><span class="s1">'*B1_c.fts'</span><span class="p">))</span><span class="c1"># list of the file obtained by the camera B</span>
+<span class="n">lfa</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span> <span class="c1"># sorting in time sequence</span>
+<span class="n">lfb</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span> <span class="c1"># sorting in time sequence</span>
+<span class="n">apA</span><span class="p">,</span> <span class="n">apB</span> <span class="o">=</span> <span class="n">fisspy</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">alignAll</span><span class="p">(</span><span class="n">lfa</span><span class="p">,</span> <span class="n">lfb</span><span class="p">,</span> <span class="n">sname</span><span class="o">=</span><span class="n">join</span><span class="p">(</span><span class="n">bdir</span><span class="p">,</span><span class="s1">'alignpar_A.npz'</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Align cam A.
+Running Alignment
+Done        
+Align cam B.
+Running Alignment
+Done        
+Align two cameras
+Write alignpar: D:\Data\140603\alignpar_A.npz .
+Write alignpar: D:\Data\140603\alignpar_B.npz .
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>It will save the two align parameter files for each camera. Note that if there is any abnormal data, such as unlocked data or largely shifted data, it cannot successfully align the whole data. Therefore, you should check whether the data has such abnormal data in the series.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>Next step is making the data cube using these align parameters. For this we use <a href="../#alignDataCube">alignDataCube</a> for only one data set or <a href="../#alignTwoDataCubes">alignTwoDataCubes</a> for two cameras. Here, we show the latter case.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">nf</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lfa</span><span class="p">)</span>
+<span class="n">refA</span> <span class="o">=</span> <span class="n">fisspy</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">FISS</span><span class="p">(</span><span class="n">lfa</span><span class="p">[</span><span class="n">nf</span><span class="o">//</span><span class="mi">2</span><span class="p">])</span>
+<span class="n">refB</span> <span class="o">=</span> <span class="n">fisspy</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">FISS</span><span class="p">(</span><span class="n">lfb</span><span class="p">[</span><span class="n">nf</span><span class="o">//</span><span class="mi">2</span><span class="p">])</span>
+<span class="n">nxA</span> <span class="o">=</span> <span class="n">refA</span><span class="o">.</span><span class="n">nx</span>
+<span class="n">nyA</span> <span class="o">=</span> <span class="n">refA</span><span class="o">.</span><span class="n">ny</span>
+<span class="n">nxB</span> <span class="o">=</span> <span class="n">refB</span><span class="o">.</span><span class="n">nx</span>
+<span class="n">nyB</span> <span class="o">=</span> <span class="n">refB</span><span class="o">.</span><span class="n">ny</span>
+
+<span class="n">alignA</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nf</span><span class="p">,</span><span class="n">nyA</span><span class="p">,</span><span class="n">nxA</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">alignB</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nf</span><span class="p">,</span><span class="n">nyB</span><span class="p">,</span><span class="n">nxB</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">'Running make cube'</span><span class="p">)</span> 
+<span class="nb">print</span><span class="p">(</span><span class="s1">'    0 %'</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">'</span><span class="se">\r</span><span class="s1">'</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="c1">#to check the running status</span>
+
+<span class="c1"># make unaligned time series data.</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lfa</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'    </span><span class="si">{</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="o">/</span><span class="n">nf</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> %'</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">'</span><span class="se">\r</span><span class="s1">'</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">fiss</span> <span class="o">=</span> <span class="n">fisspy</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">FISS</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">wvCalibMethod</span><span class="o">=</span><span class="s1">'photo'</span><span class="p">)</span>
+    <span class="n">fissB</span> <span class="o">=</span> <span class="n">fisspy</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">FISS</span><span class="p">(</span><span class="n">lfb</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">wvCalibMethod</span><span class="o">=</span><span class="s1">'photo'</span><span class="p">)</span>
+    <span class="n">fiss</span><span class="o">.</span><span class="n">lambdameter</span><span class="p">(</span><span class="n">hw</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+    <span class="n">fissB</span><span class="o">.</span><span class="n">lambdameter</span><span class="p">(</span><span class="n">hw</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+    <span class="n">alignA</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">fiss</span><span class="o">.</span><span class="n">lv</span>
+    <span class="n">alignB</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">fissB</span><span class="o">.</span><span class="n">lv</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">'Done             '</span><span class="p">)</span>
+
+<span class="n">fapA</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">bdir</span><span class="p">,</span> <span class="s2">"alignpar_A.npz"</span><span class="p">)</span>
+<span class="n">fapB</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">bdir</span><span class="p">,</span> <span class="s2">"alignpar_B.npz"</span><span class="p">)</span>
+
+<span class="n">avA</span><span class="p">,</span> <span class="n">avB</span> <span class="o">=</span> <span class="n">fisspy</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">alignTwoDataCubes</span><span class="p">(</span><span class="n">alignA</span><span class="p">,</span> <span class="n">alignB</span><span class="p">,</span> <span class="n">fapA</span><span class="p">,</span> <span class="n">fapB</span><span class="p">)</span>  <span class="c1"># make aligned data cube</span>
+
+<span class="n">apA</span> <span class="o">=</span> <span class="n">fisspy</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">readAlignPars</span><span class="p">(</span><span class="n">fapA</span><span class="p">)</span>
+<span class="n">fisspy</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">saveAlignCube</span><span class="p">(</span><span class="n">avA</span><span class="p">,</span> <span class="n">apA</span><span class="p">[</span><span class="s1">'time'</span><span class="p">],</span> <span class="n">sname</span><span class="o">=</span><span class="n">join</span><span class="p">(</span><span class="n">bdir</span><span class="p">,</span> <span class="s1">'140603_alosv_A.npz'</span><span class="p">))</span> <span class="c1"># save the aligned data cube to read the data using the alignCube code.</span>
+<span class="n">apB</span> <span class="o">=</span> <span class="n">fisspy</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">readAlignPars</span><span class="p">(</span><span class="n">fapB</span><span class="p">)</span>
+<span class="n">fisspy</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">saveAlignCube</span><span class="p">(</span><span class="n">avB</span><span class="p">,</span> <span class="n">apB</span><span class="p">[</span><span class="s1">'time'</span><span class="p">],</span> <span class="n">sname</span><span class="o">=</span><span class="n">join</span><span class="p">(</span><span class="n">bdir</span><span class="p">,</span> <span class="s1">'140603_alosv_B.npz'</span><span class="p">))</span> <span class="c1"># save the aligned data cube to read the data using the alignCube code.</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Running make cube
+Done             
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>Concuraturation!! You can successfully align the data!! To check the aligned data cube, please use <a href="/fisspy/read/alignCube">alignCube</a> module in fisspy.read.</p>
+</div>
+</div>
+</div>
+</div>
+
+{% endblock %}
