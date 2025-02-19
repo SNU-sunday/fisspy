@@ -1,0 +1,172 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'read' %}
+{% set active_sp = "RrasterSet" %}
+
+{% block manual %}
+<h2 class="page-header subpack-title">Raster Set</h2>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-class">class</span> fisspy.image.raster_set.<span class="text-warning">makeRasterSet</span>(<span class="code-arg">flistA, flistB, wvset=None, ii=None, show=True, **kwargs</span>)</p>
+
+<strong>Description: Make raster image set.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>flistA (<span class="code-type">list</span>) - list of the cam A file (one among proc, comp data).</li>
+    <li>flistB (<span class="code-type">list</span>) - list of the cam B file (one among proc, comp data).</li>
+    <li>wvset (<span class="code-type">numpy.ndarray</span>, optional) - 1D array for relative wavelength set to draw raster image. Default is [-4,-0.7,-0.5,-0.2,0,0.2,0.5,0.7].</li>
+    <li>ii (<span class="code-type">int</span>, optional) - Time index to show initially. Default is 0.</li>
+    <li>show (<span class="code-type">bool</span>, optional) - Show plot. Default is True. Please set this value to False to save the image or animation.</li>
+    <li>**kwargs - <a href='/fisspy/read/FISS/'>fisspy.read.FISS</a>.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+  <li>Make raster set object</li>
+</ul>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">Make raster set</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<h3 class="code-h3">Attributes Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Attributes</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td>nwv</td>  <td>The number of the wavelength of the raster set.</td>
+        </tr>
+        <tr>
+          <td>nf</td>  <td>The number of frames.</td>
+        </tr>
+        <tr>
+          <td>stT</td>  <td>Image start time (astropy.time.Time object).</td>
+        </tr>
+        <tr>
+          <td>edT</td>  <td>Image end time (astropy.time.Time object)</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Methods</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td><a href="./#chData">chData</a>(i)</td>  <td>Change data shown in figure.</td>
+        </tr>
+        <tr>
+          <td><a href="./#saveImage">saveImage</a>(fname, i=None, dpi=100)</td>  <td>Save image for given frame i.</td>
+        </tr>
+        <tr>
+          <td><a href="./#saveAllImages">saveAllImages</a>(fname, i=None, dpi=100)</td>  <td>Save all images.</td>
+        </tr>
+        <tr>
+          <td><a href="./#animation">animation</a>(interval=100)</td>  <td>Make animation and show.</td>
+        </tr>
+        <tr>
+          <td><a href="./#saveAnimation">saveAnimation</a>(dirn, interval=100)</td>  <td>Save animation.</td>
+        </tr>
+        <tr>
+          <td><a href="./#makeCatalogFiles">makeCatalogFiles</a>(dirn, interval=100, incdata=True)</td>  <td>Make JSON file for the data catalog.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Documentation</h3>
+<hr>
+<h4 class="code-h4" id="chData"><span class="md-title">chData</span>(<span class="code-arg">i</span>)</h4>
+<strong style="margin-bottom: 20px;">Change data shown in figure.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>i - (<span class="code-type">int</span>) Frame number.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>None</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="saveImage"><span class="md-title">saveImage</span>(<span class="code-arg">fname, i=None, dpi=100</span>)</h4>
+<strong style="margin-bottom: 20px;">Save image for given frame i.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>fname - (<span class="code-type">str</span>) Save filename.</li>
+    <li>i - (<span class="code-type">int</span>, optional) Frame number. If None, save current frame. Default is None.</li>
+    <li>dpi - (<span class="code-type">int</span>, optional) Dots per inch. Default is 100.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>None</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="saveAllImages"><span class="md-title">saveAllImages</span>(<span class="code-arg">dirn, dpi=100</span>)</h4>
+<strong style="margin-bottom: 20px;">Save all images.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>dirn - (<span class="code-type">str</span>) Save directory.</li>
+    <li>dpi - (<span class="code-type">int</span>, optional) Dots per inch. Default is 100.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>None</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="animation"><span class="md-title">animation</span>(<span class="code-arg">interval=100</span>)</h4>
+<strong style="margin-bottom: 20px;">Make animation and show.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>interval - (<span class="code-type">int</span>, optional) Frame interval in unit of ms. Default is 100.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>None</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="saveAnimation"><span class="md-title">saveAnimation</span>(<span class="code-arg">dirn, interval=100</span>)</h4>
+<strong style="margin-bottom: 20px;">Save animation.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>dirn - (<span class="code-type">str</span>) Directory to save the movie file.</li>
+    <li>interval - (<span class="code-type">int</span>, optional) Frame interval in unit of ms. Default is 100.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>None</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="makeCatalogFiles"><span class="md-title">makeCatalogFiles</span>(<span class="code-arg">dirn, interval=100, incdata=True</span>)</h4>
+<strong style="margin-bottom: 20px;">Make JSON file for the data catalog.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>dirn - (<span class="code-type">str</span>) Directory to save the files.</li>
+    <li>interval - (<span class="code-type">int</span>, optional) Frame interval in unit of ms. Default is 100.</li>
+    <li>incdata - (<span class="code-type">bool</span>, optional) If true, include data in the JSON file. Default is True.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>None</li>
+</ul>
+{% endblock %}

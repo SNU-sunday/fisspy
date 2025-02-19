@@ -1552,7 +1552,7 @@ def rawYF(sraw, aws):
     mr = np.log10(sraw.mean(0))
     mr = np.nan_to_num(mr, True, 1,1,1)
     mRaw = mr - mr[5:-5].mean(0) - mr[:, 5:-5].mean(1)[:, None]
-    wvlet = Wavelet(mRaw, dt=1, axis=0)
+    wvlet = Wavelet(mRaw, dt=1, axis=0, pad=True)
     freq = np.arctan2(wvlet.wavelet.imag, wvlet.wavelet.real)
     wvs = aws*(np.cos(freq) + 1j*np.sin(freq))
     fringe = wvlet.iwavelet(wvs, wvlet.scale)
@@ -1564,7 +1564,7 @@ def rawYF2(sraw, aws):
     mr = np.nan_to_num(mr, True, 1,1,1)
     tmp = detrending(mr)
     mRaw = detrending(tmp,1)
-    wvlet = Wavelet(mRaw, dt=1, axis=0)
+    wvlet = Wavelet(mRaw, dt=1, axis=0, pad=True)
     freq = np.arctan2(wvlet.wavelet.imag, wvlet.wavelet.real)
     wvs = aws*(np.cos(freq) + 1j*np.sin(freq))
     fringe = wvlet.iwavelet(wvs, wvlet.scale)
@@ -1577,7 +1577,7 @@ def YFart_correction(yf):
     for i, el in enumerate(yf):
         sp[i] = yf2sp(el)
         syf[i] = el - sp[i]
-        wvl = Wavelet(syf[i], dt=1, axis=0)
+        wvl = Wavelet(syf[i], dt=1, axis=0, pad=True)
         if i == 0:
             s1,s2,s3 = wvl.wavelet.shape
             aws = np.zeros((yf.shape[0], s1, s2, s3))

@@ -1,0 +1,53 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'align' %}
+{% set active_sp = "ALtools" %}
+
+{% block manual %}
+<h2 class="page-header subpack-title">Align Tools</h2>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">alignOffset and shiftImage</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<br><br>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-function">function</span> fisspy.align.base.<span class="text-warning">alignOffset</span>(<span class="code-arg">image0, template0, cor=None</span>)</p>
+<strong>Description: Calculate the align offset between two images using the corss-correlation.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>image0 (<span class="code-type">numpy.ndarray</span>) - Images for coalignment with the template. Two dimensional array.</li>
+    <li>template0 (<span class="code-type">numpy.ndarray</span>) - The reference image for coalignment. Two dimensional array.</li>
+    <li>cor (<span class="code-type">bool</span>, optional) - If True, return the correlation between template0 and result.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>sh (<span class="code-type">numpy.ndarray</span>) - Shifted value of the image0. ex) np.array([yshift, xshift])</li>
+</ul>
+<br>
+<p class="code-par">Notes</p>
+<p>This code is based on the IDL code ALIGNOFFSET.PRO written by J.Chae.</p>
+
+<br><br>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-function">function</span> fisspy.align.base.<span class="text-warning">shiftImage</span>(<span class="code-arg">image, sh, missing=0, cubic=False</span>)</p>
+<strong>Description: Shift the given image.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>image (<span class="code-type">numpy.ndarray</span>) - Two dimensional array.</li>
+    <li>sh (<span class="code-type">numpy.ndarray, tuple or list</span>) - Shifting value set (y, x).</li>
+    <li>missing (<span class="code-type">float</span>, optional) - The value of extrapolated position. If -1, extrapolate the outer region. Default is 0.</li>
+    <li>cubic (<span class="code-type">bool</span>, optional) - Whether cubic or linear interpolation. Default is False</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>simage (<span class="code-type">numpy.ndarray</span>) - Shifted image</li>
+</ul>
+{% endblock %}

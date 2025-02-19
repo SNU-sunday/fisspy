@@ -11,7 +11,7 @@ from .. import cm
 from .readbase import getRaster, getHeader, readFrame
 from ..analysis import lambdameter
 from ..image.interactive_image import singleBand
-from ..correction import lineName, wvCalib, smoothingProf, corSLA
+from ..correction import get_lineName, smoothingProf, corSLA, get_centerWV, wvCalib_simple
 from ..analysis import FourierFilter, Wavelet, makeTDmap
 
 __author__= "Juhyung Kang"
@@ -232,7 +232,7 @@ class FISS:
         self.filename = file
         self.xDelt = 0.16
         self.yDelt = 0.16
-
+        self._cor = False
         self.header = getHeader(file)
         self.pfile = self.header.pop('pfile', False)
         self.data = readFrame(file, self.pfile, x1=x1, x2=x2, y1=y1, y2=y2, ncoeff=ncoeff)
@@ -252,9 +252,10 @@ class FISS:
         except:
             self.band = str(self.header['gratwvln'])[:4]
 
-        self.refProfile = self.data.mean((0,1))
-        self.wave = self.wvCalib(method=wvCalibMethod)
+        self.wave = self.wvCalib()
         self.cwv = self.centralWavelength = cwv = self.header['crval1']
+        self.line = get_lineName(cwv)
+        self.wvlab = get_centerWV(self.line)
 
         self.smoothing = False
         if smoothingMethod is not None:
@@ -263,7 +264,6 @@ class FISS:
             self.smoothingProf(method=smoothingMethod, **kwargs)
         
 
-        self.line = lineName(cwv)
         if self.line == 'Ha':
             self.cam = 'A'
             self.set = '1'
@@ -279,7 +279,7 @@ class FISS:
         elif self.line == 'Fe':
             self.cam = 'B'
             self.set = '2'
-            self.cmap = cm.fe
+            self.cmap = cm.ㄴfe
 
         self.extentRaster = [-self.xDelt/2, (self.nx-0.5)*self.xDelt,
                              -self.yDelt/2, (self.ny-0.5)*self.yDelt]
@@ -340,35 +340,24 @@ class FISS:
         if self.smoothing:
             self.smoothingProf(method=smoothingMethod, **kwargs)
 
-    def wvCalib(self, profile=None, method='photo'):
+    def wvCalib(self):
         """
         Wavelength calibration
-
-        Parameters
-        ---------
-        profile: `~numpy.ndarray`
-            Spectrum
-        method: `str`
-            Method to calibrate wavelength.
-            'simple': calibration with the information of the header.
-            'center': calibration with the center of the main line.
-            'photo': calibration with the photospheric line and the main line.
-            Default is 'simple'.
 
         Returns
         -------
         wv: `~numpy.ndarray`
             Wavelength.
         """
-        if profile is None:
-            pf = self.refProfile
-        else:
-            pf = profile
-        try:
-            wv = wvCalib(pf, self.header, method=method)
-        except:
-            raise ValueError(f"Please change the wvCalibMethod among 'simple', 'center', and 'photo'. Current: {method}")
+        wv = wvCalib_simple(self.header)
+
         return wv
+    
+
+    def get_avProfile(self):
+        ic = self.data[..., 50]
+        qs = ic > (ic.max()*0.7)
+        return self.data[qs, :].mean(0)
 
     def corSLA(self, refProf=None, pure=None, eps=0.027, zeta=0.055):
         """

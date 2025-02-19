@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division
+import numpy as np
 
-__all__ = ["lineName", "centerWV", "Pure"]
+__all__ = ["get_lineName", "get_centerWV", "get_pure", "get_sel", "get_Inoise", "get_Linecenter", "get_photoLineWV"]
 
-def lineName(cwv):
+def get_lineName(cwv):
     """
     Get name of the spectrum
 
@@ -26,7 +27,7 @@ def lineName(cwv):
         line = 'Fe'
     return line
 
-def centerWV(line):
+def get_centerWV(line):
     """
     Get the central wavelength of a line
 
@@ -53,7 +54,85 @@ def centerWV(line):
 
     return cwv 
 
-def Pure(wv, line):
+def get_Linecenter(wv, prof, nd):
+    """
+    Get pixel of the line center.
+    To determine the central wavelength of an absorption line using the 2-nd polynomial fitting of the line core.
+
+    Parameters
+    ----------
+    wv: `~numpy.ndarray`
+        Wavelength
+    prof: `~numpy.ndarray`
+        Spectrum
+    nd: `int`, optional
+        half number of data points.
+        Default is 2.
+
+    Returns
+    -------
+    value:  central wavelength
+    """
+    ndim = prof.ndim
+    if ndim == 1:
+        return _get_Linecenter1D(wv, prof, nd)
+    elif ndim == 2:
+        return _get_Linecenter2D(wv, prof, nd)
+
+def _get_Linecenter1D(wv, prof, nd):
+    """
+    Get pixel of the line center.
+    To determine the central wavelength of an absorption line using the 2-nd polynomial fitting of the line core.
+
+    Parameters
+    ----------
+    wv: `~numpy.ndarray`
+        Wavelength
+    prof: `~numpy.ndarray`
+        Spectrum
+    nd: `int`, optional
+        half number of data points.
+        Default is 2.
+
+    Returns
+    -------
+    value:  central wavelength
+    """
+    s = prof[nd:-nd].argmin()+nd
+    prof1 = prof[s-nd:s+nd+1]
+    wv1 = wv[s-nd:s+nd+1]
+    coeff = np.polyfit(wv1, prof1, 2)
+    return -coeff[1]/(2*coeff[0])
+
+def _get_Linecenter2D(wv, prof, nd):
+    """
+    Get pixel of the line center.
+    To determine the central wavelength of an absorption line using the 2-nd polynomial fitting of the line core.
+
+    Parameters
+    ----------
+    wv: `~numpy.ndarray`
+        Wavelength
+    prof: `~numpy.ndarray`
+        Spectrum
+    nd: `int`, optional
+        half number of data points.
+        Default is 2.
+
+    Returns
+    -------
+    value:  central wavelength
+    """
+    s = (prof[:,nd:-nd].argmin(1)+nd)[:,None]
+    xx = np.arange(prof.shape[1])
+    wh = (xx >= s-nd) * (xx<s+nd+1)
+    prof1 = prof[wh].reshape((prof.shape[0], 2*nd+1))
+    dwv = wv[1] - wv[0]
+    ww = np.arange(-nd, nd+1)*dwv
+    coeff = np.polyfit(ww, prof1.T, 2)
+    return -coeff[1]/(2*coeff[0]) + wv[s[:,0]]
+
+def get_pure(wv, line):
     """
     Determine whether blending by weak lines is absent or not at the specified wavelength(s)
 
@@ -89,7 +168,82 @@ def Pure(wv, line):
         raise ValueError("Line should be one of 'Ha' or 'Ca'")
     return pure 
 
-def BadSteps(FS):
+def get_sel(wv, line):
     """
+    To determine whether the data are to be selected or not for fitting
+
+    Parameters
+    ----------
+    wv1 : `numpy.ndarray`
+        wavelengths.
+    line : `str`
+        line designation.
+
+    Returns
+    -------
+    sel : `numpy.ndarray`
+        Boolean array. True if selected for fitting.
+
     """
-    None
+    sel = get_pure(wv + get_centerWV(line), line=line)
+    if line.lower() == 'ha':
+        sel = sel*(abs(wv)<3.)
+    else:    
+        sel = sel*(abs(wv)<3.)
+    return sel
+
+def get_Inoise(intensity, line='ha'):
+    """
+    To get the noise level of intensity
+
+    Parameters
+    ----------
+    intensity : `float` or `numpy.ndarray`
+        intensities normalized by continuum.
+    line : `str`, optional
+        line designation. The default is 'Ha'.
+
+    Returns
+    -------
+    Inoise : `float` `or `numpy.ndarray`
+        standard noises.
+    """
+
+    if line.lower() == 'ha':
+        sigma0 = 0.01 
+    elif line.lower() == 'ca':
+        sigma0 = 0.01
+    Inoise = sigma0*np.sqrt(intensity) 
+    return Inoise
+    
+def get_photoLineWV(line, wvmin, wvmax):
+    """
+    To specicy the spectral line used to determine photospheric velocity 
+
+    Parameters
+    ----------
+    line : `str`
+        spectral band designation.
+    wvmin : `float`
+        minimum wavelength of the spectral band.
+    wvmax : `float`
+        maximum wavelength of the spectral band.
+
+    Returns
+    -------
+    wvp : `float`
+        laboratory wavelength of the photosperic line.
+    dwv : `float`
+        half of the wavelength range to be used 
+
+    """
+    if line.lower() == 'ha':
+        wvp, dwv = 6559.580, 0.25
+    if line.lower() == 'ca':
+        wvp,dwv = 8536.165, 0.25 
+        if (wvp > (wvmin+2*dwv))*(wvp < (wvmax-2*dwv)): return wvp, dwv
+        wvp,dwv = 8548.079*(1+(-0.62)/3.e5), 0.25 
+        
+    return wvp, dwv
+
+
