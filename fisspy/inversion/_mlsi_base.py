@@ -8,9 +8,7 @@ from scipy.special import expn
 from scipy.signal import savgol_filter
 from scipy.interpolate import interp1d
 from scipy.optimize import least_squares
-from interpolation.splines import LinearSpline
 from joblib import Parallel, delayed
-from numba import njit, jit, prange
 
 def Penalty(x):
     """
@@ -187,11 +185,11 @@ def parInform(nlayers=3):
                 ("log w0", "Doppler width at the top of the choromosphere"),
                 ("log S1", "Source function in the middle of the chromosphere"),
                 ("log S0", "Source function at the top of the choromosphere"),
-                ("log wg", "123"),
-                ("log epsD", "The goodness of the model for data requirement"),
-                ("log epsP", "The goodness of the model for parameter requirements"),
-                ("log Radloss2", "Radiative loss at the bottom of the chromosphere"),
-                ("log Radloss1", "Radiative loss in the middle of the chromosphere"),
+                ("wg", "123"),
+                ("epsD", "The goodness of the model for data requirement"),
+                ("epsP", "The goodness of the model for parameter requirements"),
+                ("Radloss2", "Radiative loss at the bottom of the chromosphere"),
+                ("Radloss1", "Radiative loss in the middle of the chromosphere"),
                 ]
     return lpar
 
@@ -623,7 +621,7 @@ def cal_residue(pf, wv1, intensity,  p0, psig, p, line, free, constr):
     
     return Res 
 
-def par0_3layers(wv1, prof,  line='Ha'):
+def par0_3layers(wv1, prof,  line='ha'):
     """
     Determine the initial guess of model parameters  and  their prior deviations
 
@@ -678,7 +676,7 @@ def par0_3layers(wv1, prof,  line='Ha'):
     intb = (fprofav(wv1b)+fprofav(-wv1b))/2.
     # print(inta, intb, T)
    
-    Tav = Trad(inta,line)
+    Tav = Trad(intb,line)
     wha, wca = Dwidth(Tav, 1.)
    
     if line.lower() == 'Ha':
@@ -701,7 +699,8 @@ def par0_3layers(wv1, prof,  line='Ha'):
         par[12] = par[5]*0.5 + np.log10(profav[sel].min())*0.5  
     else: 
         par[14] = wp*1.E-3 #ap*0.0
-        par[12] = par[5]+0.1 #np.log10(profav[sel].max())*0.6 + np.log10(profav[sel].min())*0.4 
+        # par[12] = par[5]+0.1 #np.log10(profav[sel].max())*0.6 + np.log10(profav[sel].min())*0.4 
+        par[12] = np.log10(profav[sel].max())*0.5 + np.log10(profav[sel].min())*0.5 
     S1=10**par[12]
     int0 = profav[sel].min()
     x1=1./10**par[7]
@@ -716,7 +715,7 @@ def par0_3layers(wv1, prof,  line='Ha'):
             
     return par, psig
 
-def par0_3layers_2D(wv1, prof,  line='Ha'):
+def par0_3layers_2D(wv1, prof,  line='ha'):
     """
     Determine the initial guess of model parameters  and their prior deviations
 
@@ -768,7 +767,7 @@ def par0_3layers_2D(wv1, prof,  line='Ha'):
     inta = (Iarr[:,0]+Iarr[:,1])/2.
     intb = (Iarr[:,2]+Iarr[:,3])/2.
    
-    Tav = Trad(inta,line)
+    Tav = Trad(intb,line)
     wha, wca = Dwidth(Tav, 1.)
    
     if line.lower() == 'ha':
@@ -791,7 +790,8 @@ def par0_3layers_2D(wv1, prof,  line='Ha'):
         par[12] =   par[5]*0.5 + np.log10(profav[:,sel].min(-1))*0.5  
     else: 
         par[14]   = wp*1.E-3 #ap*0.0
-        par[12] =  par[5]+0.1 #np.log10(profav[sel].max())*0.6 + np.log10(profav[sel].min())*0.4 
+        # par[12] =  par[5]+0.1 #np.log10(profav[sel].max())*0.6 + np.log10(profav[sel].min())*0.4 
+        par[12] =  np.log10(profav[:,sel].max(-1))*0.3 + np.log10(profav[:,sel].min(-1))*0.7 
     S1 = 10**par[12]
     int0 = profav[:,sel].min(-1)
     x1 = 1./10**par[7]
@@ -824,13 +824,13 @@ def ParControl(line='ha'):
         indexes of priorly constrained parameters. 
 
     """
-    if line.lower() == 'ha':
-        free   = [1,2,3,4,5,8,9,10,11,12,13]
-        constr = [1,2,3,8,9,10,11,12,13]
+    if line == 'Ha':
+        free   = [1,3,4,5,8,9,10,11,12,13]
+        constr = [1,3,8,9,10,11,12,13]
        
     else:    
-        free   = [1,2,3,4,5,8,9,10,11,12,13]
-        constr = [1,2,3, 8,9,10,11,12,13]
+        free   = [1,3,4,5,8,9,10,11,12,13]
+        constr = [1,3, 8,9,10,11,12,13]
     return free, constr
 
 def Model(wv1, prof, **kwargs):
@@ -1279,7 +1279,7 @@ def _RadLoss2D(p, line='ha'):
     psh = p.shape[1]
     RL1 = np.zeros(psh)
     RL2 = np.zeros(psh)
-    for i in prange(psh):
+    for i in range(psh):
         RL1[i], RL2[i] = _RadLossBase(p[:,i], line)
     return RL1, RL2
         
@@ -1289,11 +1289,85 @@ def lsq_single(iparf, iww, ifp, ipari, ipsigi, ipi, iline, ifree, iconstr):
                             args=(iww, ifp, ipari, ipsigi,  ipi, iline, ifree, iconstr), jac='2-point',  max_nfev=100, ftol=1e-3)
     return np.append(res_lsq.x, res_lsq.fun)
     
-def testMLSI(Infile):
-    fiss = FISS(Infile)
-    fiss.correction()
 
-def testMLSI_4(Infile):
-    fiss = FISS(Infile)
-    fiss.correction()
+def get_Cloud(wv1, p, inprofile, line='Ha'):
+    """
+    To calculate the intensity profile of a cloud model 
 
+    Parameters
+    ----------
+    wv1 : array_like
+        wavelengths from line center (in A).
+    p : array_like
+        model parameters. [log S0, log tau0, log w, v]
+    inprofile : array_like
+        profile of incident light intensity.
+    line : str, optional
+        line designation. The default is 'Ha'.
+
+    Returns
+    -------
+    model : array_like
+        model profile.
+
+    """
+    
+    S0 = 10**p[0]
+    tau0 = 10**p[1]
+    w = 10**p[2]
+    wv0 = p[3]/3.e5*get_centerWV(line)    
+    tau = tau0*absP_Gauss(wv1, wv0, w, line =line) #exp(-((wv1-wv0)/w)**2)    
+    model = inprofile*np.exp(-tau)+S0*(1-np.exp(-tau))
+    return model
+
+def CloudRes(p,wv1, inprofile, profile, sigma, p0, psig, line):
+    model = get_Cloud(wv1,p, inprofile, line=line)
+    resD = (np.log10(profile)-np.log10(model))/(sigma*0.43)
+    resC = (p-p0)/psig
+    Res = np.append(resD/np.sqrt(len(resD)), resC/np.sqrt(len(resC)))
+    return Res
+
+def CloudModel(wv1, inprofile, profile, line='Ha'):
+    """
+    To do the cloud model inversion of a profile
+
+    Parameters
+    ----------
+    wv1 : array_like
+        wavelengths from line center (in A).
+    inprofile : array_like
+        profile of incident light profile.
+    profile : array_like
+        observed profile of light intensity.
+    line : str, optional
+        line designation. The default is 'Ha'.
+
+    Returns
+    -------
+    par : array_like
+        model parameters.
+    model : array_like
+        model profile of intensity.
+
+    """
+    c = const.c.value * 1e-3
+    weight = abs(1.-inprofile/profile)
+    weight =weight/weight.sum()
+    wv0 = (wv1*weight).sum()
+    v = wv0/get_centerWV(line) * c
+    sigma = get_Inoise(wv1,profile, line=line)
+    if line == 'Ha':
+         p = np.array([-0.5, -0.3,-0.45, v])
+    elif line == 'Ca':
+         p = np.array([-0.5, -0.3,-0.70, v])
+    p0 =  np.copy(p)     
+    psig = np.array([0.5, 0.1,  0.05, 2.])
+    
+    res_lsq = least_squares(CloudRes, p,
+                            args=(wv1, inprofile,  profile, sigma, p0, psig, line),
+                            jac='2-point',  max_nfev=50, ftol=1.e-3) #, bounds=(low[free],up[free]))
+   
+   
+    par = res_lsq.x.copy()
+    model = get_Cloud(wv1, par, inprofile, line=line)
+    return par,  model

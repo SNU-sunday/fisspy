@@ -326,7 +326,6 @@ def rotImage(img, angle, xc=False, yc=False, dx=0, dy=0, xmargin=0, ymargin=0, m
     xa = np.arange(nx1)-xmargin
     ya = (np.arange(ny1)-ymargin)[:,None]
 
-
     if not xc:
         XC = nx/2
     else:

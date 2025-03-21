@@ -4,8 +4,10 @@ from ..align import alignOffset
 from .get_inform import get_lineName, get_centerWV, get_pure, get_Linecenter, get_Inoise
 from scipy.signal import savgol_filter
 from scipy.ndimage import gaussian_filter1d
-from scipy.special import wofz, expn
+from scipy.special import wofz
 from scipy.optimize import least_squares
+from joblib import Parallel, delayed
+from multiprocessing import cpu_count
 
 __author__ = "Juhyung Kang"
 __email__ = "jhkang0301@gmail.com"
@@ -488,7 +490,7 @@ def get_TauH2O(wv, rtau, dwv, line='ha'):
         tau0 = np.array([7., 1.5, 7.5, 4.5, 3.,  5., 4.2, 14.7, 1.5])/100.*2            
         a = 1.4
         w = 0.022
-    elif line.lower == 'ca':
+    elif line.lower() == 'ca':
         wvCaline = get_centerWV(line)
         wvlines = np.array([8539.895, 8540.817, 8546.22]) - wvCaline + 0.032
         tau0 = np.array([3.3, 8., 3.4])/100.*2.0       
@@ -520,7 +522,7 @@ def resTauH2O(par, wave, profile, sigma, line):
     res  = np.append(resD/np.sqrt(len(resD)), 0.01*resP/np.sqrt(len(resP)))                
     return res
 
-def get_Tlines(wave, profile, line='ha'):
+def get_Tlines(wave, profile, line='ha', ncore=-1):
     """
     To determine the parameter relevant to the content of water vapor in the Earth's atmosphere
 
@@ -549,6 +551,7 @@ def get_Tlines(wave, profile, line='ha'):
         raise ValueError("Unsupported line. Use 'ha' or 'ca'.")
 
     wave1 = wave[s]
+    
     def process_profile(p):
         profile1 = p[s] / p.max()
         sigma = get_Inoise(profile1, line=line)
@@ -560,8 +563,12 @@ def get_Tlines(wave, profile, line='ha'):
         return process_profile(profile)
     
     else:
-        params = np.apply_along_axis(process_profile, axis=ndim-1, arr=profile)
-        return params
+        shape = profile.shape[:-1]  # 마지막 축 제외한 모양
+        profile_reshaped = profile.reshape(-1, profile.shape[-1])  # 2D 형태로 변환
+        results = Parallel(n_jobs=ncore, backend='loky')(
+            delayed(process_profile)(p) for p in profile_reshaped
+        )
+        return np.array(results).reshape(*shape, -1)  # 원래 모양으로 복구
 
 def corTlines(wave, profile, par, line='ha'):
     tau = get_TauH2O(wave, par[...,0]**2, par[...,1], line=line)
@@ -609,47 +616,53 @@ def resTauS(par, wave, profile, sigma):
     res  = np.append(resD/np.sqrt(len(resD)), 0.01*resP/np.sqrt(len(resP)))     
     return res
 
-def get_Sline(wv, profile):
+def get_Sline(wv, profile, ncore=-1):
     """
-    To determine the optical thickness parameter of Co I line from the fitting 
+    Optimized function to determine the optical thickness parameter of Co I line.
 
     Parameters
     ----------
-    wave: `numpy.ndarray`
-        wavelengths (1D)
+    wv: `numpy.ndarray`
+        Wavelengths (1D).
     profile: `numpy.ndarray`
-        intensities (1D or ND)
+        Intensities (1D or ND).
 
     Returns
     -------
     par: `numpy.ndarray`
-        Array of parameters for each profile (rtau, dwv)
-
-    """      
+        Array of parameters for each profile (rtau, dwv).
+    """
     ndim = profile.ndim
-    s = ((wv-0.25)*(wv-1.) < 0 )  
+    s = ((wv - 0.25) * (wv - 1.) < 0)  
     wv1 = wv[s]
 
     def process_Sprofile(p):
-        par = [0.5, 0.]
-        profile1 = p[s]/p.max() 
-        sigma = get_Inoise(profile1, line='ha')
+        if p.max() > 0.95:
+            return np.array([0., 0.])
         
-        res_lsq = least_squares(resTauS, par, max_nfev=50, jac='2-point', args=(wv1, profile1, sigma))
+        profile1 = p[s] / p.max()
+        sigma = get_Inoise(profile1, line='ha')
+        par0 = [0.5, 0.]
+        
+        res_lsq = least_squares(resTauS, par0, max_nfev=50, jac='2-point', args=(wv1, profile1, sigma))
         par = res_lsq.x
         par[0] = abs(par[0])
         return par
-    
+
     if ndim == 1:
-        if profile.max() > 0.95:
-            par = np.array([0., 0.])
-        else:    
-            par = process_Sprofile(profile)
+        return process_Sprofile(profile)
+
     else:
-        wh = profile.max(-1) > 0.95
-        par = np.apply_along_axis(process_Sprofile, axis=ndim-1, arr=profile)
-        par[wh] = 0.
-    return par
+        # 3D 이상 배열일 경우 2D로 변환하여 병렬 처리
+        shape = profile.shape[:-1]  # 마지막 축 제외한 차원 저장
+        profile_reshaped = profile.reshape(-1, profile.shape[-1])  # (N, M) 형태로 변환
+
+        # 병렬 실행
+        results = Parallel(n_jobs=ncore, backend='loky')(
+            delayed(process_Sprofile)(p) for p in profile_reshaped
+        )
+
+        return np.array(results).reshape(*shape, -1)  # 원래 차원으로 복원
 
 def corSline(wv, profile, par):
     """
@@ -673,13 +686,18 @@ def corSline(wv, profile, par):
     tau = get_TauS(wv, par[...,0]**2, par[...,1])
     return profile * np.exp(tau)
 
-def corAll(fissobj, subsect=None):
+def corAll(fissobj, subsect=None, ncore=-1):
     """
     subsect: `list`, optional
         Subsection of the data to be corrected.
         The default is None.
         [l, r, b, t]
     """
+    nc = cpu_count()
+
+    ncc = np.minimum(nc, ncore)
+    if ncc == -1:
+        ncc = nc
     avp = fissobj.get_avProfile()
     fissobj.wave = wvRecalib(fissobj.wave, avp, fissobj.line)
     fissobj.Awave = fissobj.wave.copy()
@@ -693,7 +711,7 @@ def corAll(fissobj, subsect=None):
     fissobj.data = fissobj.data/refc
 
     pure = get_pure(fissobj.Awave, fissobj.line)
-    Tpar = get_Tlines(fissobj.Rwave, fissobj.avp, fissobj.line)
+    Tpar = get_Tlines(fissobj.Rwave, fissobj.avp, fissobj.line, ncore=nc)
     fissobj.refProfile = corTlines(fissobj.Rwave, fissobj.avp, Tpar, fissobj.line)
     fissobj.refProfile = corSLA(fissobj.Awave, fissobj.refProfile, refProf=fissobj.avp, line=fissobj.line, pure=pure)
 
@@ -706,7 +724,7 @@ def corAll(fissobj, subsect=None):
     Tpar = get_Tlines(fissobj.Rwave, do, line=fissobj.line)
     d = corTlines(fissobj.Rwave, do, Tpar, line=fissobj.line)
     if fissobj.line.lower() == 'ha':
-        spar = get_Sline(fissobj.Rwave, d)
+        spar = get_Sline(fissobj.Rwave, d, ncore=nc)
         d = corSline(fissobj.Rwave, d, spar)
     d = corSLA(fissobj.Awave, d, refProf=fissobj.avp, line=fissobj.line, pure=pure)
 

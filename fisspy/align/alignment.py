@@ -308,8 +308,8 @@ def alignDataCube(data, fapar, xmargin=None, ymargin=None, cubic=False):
     ----------
     data: `~numpy.ndarray`
         3-dimensional data array with the shape of (nt, ny, nx).
-    fapar: `dict`
-        File name of the alignpar.
+    fapar: `dict` like or `str`
+        Alignpar object or file name of the alignpar.
     xmargin: `int`
         Margin for x-axis.
         The size of the x-axis increases to nx + 2*xmargin.
@@ -333,7 +333,10 @@ def alignDataCube(data, fapar, xmargin=None, ymargin=None, cubic=False):
     if data.ndim != 3:
         raise ValueError("Dimension of the Data should be 3.")
     nt, ny, nx = data.shape
-    apar = readAlignPars(fapar)
+    if fapar is str:
+        apar = readAlignPars(fapar)
+    else:
+        apar = fapar
     time = apar['time']
     nap = len(time)
     if nt != nap:
@@ -355,7 +358,7 @@ def alignDataCube(data, fapar, xmargin=None, ymargin=None, cubic=False):
         ym = int(l*np.sin(aa).max() - ny//2 + 0.5)
     else:
         ym = ymargin
-    
+
     cdata = np.zeros((nt, ny+2*ym, nx+2*xm),dtype='float')
 
     for i, d in enumerate(data):
@@ -369,7 +372,7 @@ def alignDataCube(data, fapar, xmargin=None, ymargin=None, cubic=False):
 
     return cdata
 
-def alignTwoDataCubes(dataA, dataB, faparA, faparB, xmargin=None, ymargin=None, cubic=False):
+def alignTwoDataCubes(dataA, dataB, faparA, faparB, xmargin=None, ymargin=None, cubic=False, subFrame=None):
     """
     Align two 3D data cubes.
     Note that the data will be flip in the x axis to correct the mirror reversal.
@@ -398,6 +401,10 @@ def alignTwoDataCubes(dataA, dataB, faparA, faparB, xmargin=None, ymargin=None, 
         Use cubic interpolation to determine the value in the aligned position.
         If False, use linear interpolation.
         Default is None.
+    subFrame: `tuple`, (optional)
+        SubFrame for the alignment (st, ed).
+        If None, use the whole frame.
+        Default is None.
     
     Returns
     -------
@@ -408,19 +415,43 @@ def alignTwoDataCubes(dataA, dataB, faparA, faparB, xmargin=None, ymargin=None, 
     l = ((nx//2)**2+(ny//2)**2)**0.5
     aparA = readAlignPars(faparA)
     aparB = readAlignPars(faparB)
+    if subFrame is not None:
+        st, ed = subFrame
+        nt2 = ed-st
+        if nt2 != nt:
+            raise ValueError("The size of the subFrame should be the same as the size of the data.")
+        dl = ['time', 'xc', 'yc', 'dx', 'dy', 'angle']
+        aparA = {key: aparA[key] for key in aparA}
+        aparB = {key: aparB[key] for key in aparB}
+        for d in dl:
+            aparA[d] = aparA[d][st:ed]
+            aparB[d] = aparB[d][st:ed]
+        aparA['angle'] -= aparA['angle'][nt2//2]
+        aparB['angle'] -= aparB['angle'][nt2//2]
+        tmpX = aparA['dx'][nt2//2]
+        tmpY = aparA['dy'][nt2//2]
+        aparA['dx'] -= tmpX
+        aparB['dx'] -= tmpX
+        aparA['dy'] -= tmpY
+        aparB['dy'] -= tmpY
+        
     ang0 = np.arctan2(ny//2,nx//2)
     ang = aparA['angle']+ang0
+    nf = len(aparB['dx'])
+    ddx = aparB['dx'] - aparA['dx']
+    ddy = aparB['dy'] - aparA['dy']
     if xmargin is None:
-        xm = int(l*np.cos(ang).max() - nx//2 + int(abs(aparB['dx'][100])) + 0.5)
+        xm = int(l*np.cos(ang).max() - nx//2 + abs(ddx[nf//2]) + abs(aparA['dx']).max() + 0.5)
     else:
         xm = xmargin
     if ymargin is None:
-        ym = int(l*np.sin(ang).max() - ny//2 + int(abs(aparB['dy'][100])) + 0.5)
+        ym = int(l*np.sin(ang).max() - ny//2 + abs(ddx[nf//2]) + abs(aparA['dy']).max() + 0.5)
     else:
         ym = ymargin
-
-    cdataA = alignDataCube(dataA, faparA, xmargin=xm, ymargin=ym, cubic=cubic)
-    cdataB = alignDataCube(dataB, faparB, xmargin=xm, ymargin=ym, cubic=cubic)
+    # print(xm, ym)
+    # print(l*np.cos(ang).max() - nx//2, l*np.sin(ang).max() - ny//2)
+    cdataA = alignDataCube(dataA, aparA, xmargin=xm, ymargin=ym, cubic=cubic)
+    cdataB = alignDataCube(dataB, aparB, xmargin=xm, ymargin=ym, cubic=cubic)
     return cdataA, cdataB
 
 def saveAlignCube(adata, time, sname, dt=None, dx=0.16*725, dy=0.16*725):
