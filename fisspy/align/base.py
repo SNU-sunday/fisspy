@@ -391,5 +391,4 @@ def shiftImage3D(image, sh, missing=0, cubic=False):
     yt = y - sh[0][:, None, None] + t*0 + x*0
     xt = x - sh[1][:, None, None] + t*0 + y*0
 
-    print(missing)
     return get_interpVal3D(image, t, y, x, tt, yt, xt, missing=missing, cubic=cubic)

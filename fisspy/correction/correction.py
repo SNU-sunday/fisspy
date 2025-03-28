@@ -11,7 +11,7 @@ from multiprocessing import cpu_count
 
 __author__ = "Juhyung Kang"
 __email__ = "jhkang0301@gmail.com"
-__all__ = ["get_InstShift", "wvCalib", "wvCalib_simple", "smoothingProf", "corSLA", "corStrayLight", "corAsymmetry", "get_TauH2O", "get_Tlines", "corTlines", "get_TauS", "get_Sline", "corSline", "Voigt", "wvRecalib", "corAll"]
+__all__ = ["get_InstShift", "wvCalib", "wvCalib_simple", "smoothingProf", "corSLA", "corStrayLight", "corAsymmetry", "get_TauH2O", "get_Tlines", "corTlines", "get_TauS", "get_Sline", "corSline", "Voigt", "wvRecalib", "corAll", "normalizeProfile"]
 
 def Voigt(u, a):
     """
@@ -686,7 +686,7 @@ def corSline(wv, profile, par):
     tau = get_TauS(wv, par[...,0]**2, par[...,1])
     return profile * np.exp(tau)
 
-def corAll(fissobj, subsect=None, ncore=-1):
+def corAll(fissobj, subsec=None, ncore=-1):
     """
     subsect: `list`, optional
         Subsection of the data to be corrected.
@@ -698,6 +698,35 @@ def corAll(fissobj, subsect=None, ncore=-1):
     ncc = np.minimum(nc, ncore)
     if ncc == -1:
         ncc = nc
+    if subsec is None:
+        x1, x2, y1, y2 = [0, fissobj.nx, 0, fissobj.ny]
+    else:
+        x1, x2, y1, y2 = subsec
+
+    nprof = (x2-x1) * (y2-y1)
+    if nprof < 50:
+        ncc = 1
+
+    if fissobj.avp is None:
+        normalizeProfile(fissobj)
+
+    if nprof == 1:
+        do = fissobj.data[y1, x1]
+    else:
+        do = fissobj.data[y1:y2, x1:x2]
+    Tpar = get_Tlines(fissobj.Rwave, do, line=fissobj.line, ncore=ncc)
+    d = corTlines(fissobj.Rwave, do, Tpar, line=fissobj.line)
+    if fissobj.line.lower() == 'ha':
+        spar = get_Sline(fissobj.Rwave, d, ncore=ncc)
+        d = corSline(fissobj.Rwave, d, spar)
+    d = corSLA(fissobj.Awave, d, refProf=fissobj.avp, line=fissobj.line, pure=fissobj.pure)
+
+    return d
+
+def normalizeProfile(fissobj):
+    """
+    Normalize the profile of the data
+    """
     avp = fissobj.get_avProfile()
     fissobj.wave = wvRecalib(fissobj.wave, avp, fissobj.line)
     fissobj.Awave = fissobj.wave.copy()
@@ -711,21 +740,7 @@ def corAll(fissobj, subsect=None, ncore=-1):
     fissobj.data = fissobj.data/refc
 
     pure = get_pure(fissobj.Awave, fissobj.line)
-    Tpar = get_Tlines(fissobj.Rwave, fissobj.avp, fissobj.line, ncore=nc)
+    Tpar = get_Tlines(fissobj.Rwave, fissobj.avp, fissobj.line, ncore=1)
     fissobj.refProfile = corTlines(fissobj.Rwave, fissobj.avp, Tpar, fissobj.line)
     fissobj.refProfile = corSLA(fissobj.Awave, fissobj.refProfile, refProf=fissobj.avp, line=fissobj.line, pure=pure)
-
-    if subsect is None:
-        x1, x2, y1, y2 = [0, fissobj.nx, 0, fissobj.ny]
-    else:
-        x1, x2, y1, y2 = subsect
-
-    do = fissobj.data[y1:y2, x1:x2]
-    Tpar = get_Tlines(fissobj.Rwave, do, line=fissobj.line)
-    d = corTlines(fissobj.Rwave, do, Tpar, line=fissobj.line)
-    if fissobj.line.lower() == 'ha':
-        spar = get_Sline(fissobj.Rwave, d, ncore=nc)
-        d = corSline(fissobj.Rwave, d, spar)
-    d = corSLA(fissobj.Awave, d, refProf=fissobj.avp, line=fissobj.line, pure=pure)
-
-    return d
+    fissobj.pure = pure

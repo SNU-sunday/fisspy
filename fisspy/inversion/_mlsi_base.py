@@ -1327,7 +1327,7 @@ def CloudRes(p,wv1, inprofile, profile, sigma, p0, psig, line):
     Res = np.append(resD/np.sqrt(len(resD)), resC/np.sqrt(len(resC)))
     return Res
 
-def CloudModel(wv1, inprofile, profile, line='Ha'):
+def CloudModel(wv1, inprofile, profile, line='ha'):
     """
     To do the cloud model inversion of a profile
 
@@ -1355,10 +1355,10 @@ def CloudModel(wv1, inprofile, profile, line='Ha'):
     weight =weight/weight.sum()
     wv0 = (wv1*weight).sum()
     v = wv0/get_centerWV(line) * c
-    sigma = get_Inoise(wv1,profile, line=line)
-    if line == 'Ha':
+    sigma = get_Inoise(profile, line=line)
+    if line.lower() == 'ha':
          p = np.array([-0.5, -0.3,-0.45, v])
-    elif line == 'Ca':
+    elif line.lower() == 'ca':
          p = np.array([-0.5, -0.3,-0.70, v])
     p0 =  np.copy(p)     
     psig = np.array([0.5, 0.1,  0.05, 2.])

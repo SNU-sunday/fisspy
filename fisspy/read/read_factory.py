@@ -225,6 +225,7 @@ class FISS:
         if self.ftype != 'proc' and self.ftype != 'comp':
             raise ValueError("Input file is neither proc nor comp data")
 
+        self.avp = None
         self.x1 = x1
         self.x2 = x2
         self.y1 = y1
