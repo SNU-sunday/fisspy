@@ -1,0 +1,385 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'read' %}
+{% set active_sp = "Rfiss" %}
+
+{% block manual %}
+<h2 class="page-header subpack-title">FISS </h2>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-class">class</span> fisspy.read.read_factory.<span class="text-warning">FISS</span>(<span class="code-arg">filename, x1=0, x2=None, y1=0, y2=None, ncoeff=False, smoothingMethod=None, wvCalibMethod='simple', **kwargs</span>)</p>
+
+<strong>Description: Read FISS data</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>filename (<span class="code-type">str</span>) - File name of the proc or comp data file.</li>
+    <li>x1 (<span class="code-type">int</span>, optional) - A left limit index of the frame along the scan direction.</li>
+    <li>x2 (<span class="code-type">int</span>, optional) - A right limit index of the frame along the scan direction. If None, read all data from x1 to the end of the scan direction.</li>
+    <li>y1 (<span class="code-type">int</span>, optional) - A left limit index of the frame along the slit direction.</li>
+    <li>y2 (<span class="code-type">int</span>, optional) - A right limit index of the frame along the slit direction. If None, read all data from x1 to the end of the slit direction.</li>
+    <li>ncoeff (<span class="code-type">int</span>, optional) - The number of coefficients(eigen vectors) to be used for the construction of frame in a pca file.</li>
+    <li>smoothingMethod (<span class="code-type">str</span>, optional) - If it is not given, do not apply the noise filter. If 'savgol', apply the Savitzky-Golay noise filter in the wavelength axis. If 'gauss', apply the Gaussian noise filter in the wavelength axis. Default is None.</li>
+    <li>wvCalibMethod (<span class="code-type">str</span>, optional) - Method to calibrate wavelength. 'simple': calibration with the information of the header. 'center': calibration with the center of the main line. 'photo': calibration with the photospheric line and the main line. Default is 'simple'.</li>
+    <li>**kwargs - smoothing properties. Either <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html">scipy.signal.savgol_filter</a> properties or <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter1d.html">scipy.ndimage.gaussian_filter1d</a>.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+  <li>Read FISS object</li>
+</ul>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">Read FISS data</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<h3 class="code-h3">Attributes Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Attributes</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td>data</td>  <td>Data array.</td>
+        </tr>
+        <tr>
+          <td>header</td>  <td>FITS Header.</td>
+        </tr>
+        <tr>
+          <td>wave</td>  <td>1D Wavelength array.</td>
+        </tr>
+        <tr>
+          <td>cwv</td>  <td>Central wavelength.</td>
+        </tr>
+        <tr>
+          <td>refProfile</td>  <td>Spatially averaged reference profile.</td>
+        </tr>
+        <tr>
+          <td>date</td>  <td>Observation date.</td>
+        </tr>
+        <tr>
+          <td>nwv</td>  <td>Number of pixel in wavelength direction.</td>
+        </tr>
+        <tr>
+          <td>ny</td>  <td>Number of pixel in slit direction.</td>
+        </tr>
+        <tr>
+          <td>nx</td>  <td>Number of pixel in scan direction.</td>
+        </tr>
+        <tr>
+          <td>ftype</td>  <td>File type of the input data frame. It should be either 'proc' or 'comp'</td>
+        </tr>
+        <tr>
+          <td>filename</td>  <td>input file name.</td>
+        </tr>
+        <tr>
+          <td>pfile</td>  <td>file for egienvector of the comp data.</td>
+        </tr>
+        <tr>
+          <td>cam</td>  <td>Camera inform. Either 'A' or 'B'.</td>
+        </tr>
+        <tr>
+          <td>band</td>  <td>Wavelength band.</td>
+        </tr>
+        <tr>
+          <td>dx</td>  <td>Pixel scale for x-axis (scan direction).</td>
+        </tr>
+        <tr>
+          <td>dy</td>  <td>Pixel scale for y-axis (slit direction).</td>
+        </tr>
+        <tr>
+          <td>dwv</td>  <td>Pixel scale for &lambda;-axis (wavelength direction).</td>
+        </tr>
+        <tr>
+          <td>smoothing</td>  <td>Whether the profiles are smoothed or not.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Methods</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td><a href="./#imshow">imshow</a>(x=None, y=None, wv=None, scale='log', sigFactor=2, helpBox=True, **kwargs)</td>  <td>Draw the interactive images (raster, spectrogram and profile).</td>
+        </tr>
+        <tr>
+          <td><a href="./#vshow">vshow</a>(x=None, y=None, **kw)</td>  <td>Draw line-of-sight Doppler map.</td>
+        </tr>
+        <tr>
+          <td><a href="./#reload">reload</a>(x1=0, x2=None, y1=0, y2=None, ncoeff=False, smoothingMethod=None, **kwargs)</td>  <td>Reload the FISS data.</td>
+        </tr>
+        <tr>
+          <td><a href="./#wvCalib">wvCalib</a>(profile=None, method='photo')</td>  <td>Wavelength calibration</td>
+        </tr>
+        <tr>
+          <td><a href="./#corSLA">corSLA</a>(refProf=None, pure=None, eps=0.027, zeta=0.055)</td>  <td>Correction of spectral line profile(s) for stray light and far wing red-blue asymmetry.</td>
+        </tr>
+        <tr>
+          <td><a href="./#smoothingProf">smoothingProf</a>(method='savgol', **kwargs)</td>  <td>Smoothing spectral profiles.</td>
+        </tr>
+        <tr>
+          <td><a href="./#getRaster">getRaster</a>(wv, hw=0,05)</td>  <td>Get a raster image for a given wavelength.</td>
+        </tr>
+        <tr>
+          <td><a href="./#lambdameter">lambdameter</a>(**kwargs)</td>  <td>Calculate the line-of-sight Doppler shift by using the lambda-meter (bisector) method.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chRasterClim">chRasterClim</a>(cmin, cmax)</td>  <td>Change color limit for raster image.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chSpectroClim">chSpectroClim</a>(cmin, cmax)</td>  <td>Change color limit for Spectrograph image.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chcmap">chcmap</a>(cmap)</td>  <td>Change color map.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chRaster">chRaster</a>(wv)</td>  <td>Change raster image for a given wavelength.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chSpect">chSpect</a>(x, y)</td>  <td>Change Spectrograph for a given position.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chIclim">chIclim</a>(cmin, cmax)</td>  <td>Change the color limit of the intensity map on the vshow figure.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chVclim">chVclim</a>(cmin, cmax)</td>  <td>Change the color limit of the velocity map on the vshow figure.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Documentation</h3>
+<hr>
+<h4 class="code-h4" id="imshow"><span class="md-title">imshow</span>(<span class="code-arg">x=None, y=None, wv=None, scale='log', sigFactor=2, helpBox=True, **kwargs</span>)</h4>
+<strong>Description: Draw the interactive images (raster, spectrogram and profile)</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>x (<span class="code-type">float</span>) - X position to draw a spectral profile. Default is image center.</li>
+    <li>y (<span class="code-type">float</span>) - Y position to draw a spectral profile. Default is image center.</li>
+    <li>wv (<span class="code-type">float</span>) - Wavelength position to draw a raster image. Default is central wavelength.</li>
+    <li>scale (<span class="code-type">str</span>) - Colorbar scale. Default is 'log'. Options: 'minMax', 'std', 'log'.</li>
+    <li>sigFactor (<span class="code-type">float</span>) - Factor of standard deviation of the color scale of 'std'.</li>
+    <li>helpBox (<span class="code-type">bool</span>) - Show helpbox for the interactive keys. Default is True.</li>
+    <li>**kwargs: <a href="https://matplotlib.org/3.5.3/api/_as_gen/matplotlib.pyplot.html">matplotlib.pyplot</a> properties</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - It draw the matplotlib figure.</li>
+</ul>
+<div class="alert alert-warning">
+  <strong>Note:</strong> To use the function correctly, you should change the backend of the matplotlib from inline to any of interactive backend <a href="https://matplotlib.org/stable/users/explain/figure/backends.html#interactive-backends">(see here)</a>. In IPython you can simply change the backend by using '%matplotlib' magic function.
+</div>
+
+<br><br>
+<h4 class="code-h4" id="vshow"><span class="md-title">vshow</span>(<span class="code-arg">x=None, y=None, **kw</span>)</h4>
+<strong>Description: Draw line-of-sight Doppler map</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>x (<span class="code-type">float</span>) - X position to draw a spectral profile. Default is image center.</li>
+    <li>y (<span class="code-type">float</span>) - Y position to draw a spectral profile. Default is image center.</li>
+    <li>**kwargs: <a href="/fisspy/analysis/doppler/">fisspy.analysis.lambameter</a> properties</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - It draw the matplotlib figure.</li>
+</ul>
+<div class="alert alert-warning">
+  <strong>Note:</strong> To use the function correctly, you should change the backend of the matplotlib from inline to any of interactive backend <a href="https://matplotlib.org/stable/users/explain/figure/backends.html#interactive-backends">(see here)</a>. In IPython you can simply change the backend by using '%matplotlib' magic function.
+</div>
+
+<br><br>
+<h4 class="code-h4" id="reload"><span class="md-title">reload</span>(<span class="code-arg">x1=0, x2=None, y1=0, y2=None, ncoeff=False, smoothingMethod=None, **kwargs</span>)</h4>
+<strong>Description: Reload the FISS data</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>x1 (<span class="code-type">int</span>, optional) - A left limit index of the frame along the scan direction.</li>
+    <li>x2 (<span class="code-type">int</span>, optional) - A right limit index of the frame along the scan direction. If None, read all data from x1 to the end of the scan direction.</li>
+    <li>y1 (<span class="code-type">int</span>, optional) - A left limit index of the frame along the slit direction.</li>
+    <li>y2 (<span class="code-type">int</span>, optional) - A right limit index of the frame along the slit direction. If None, read all data from x1 to the end of the slit direction.</li>
+    <li>ncoeff (<span class="code-type">int</span>, optional) - The number of coefficients(eigen vectors) to be used for the construction of frame in a pca file.</li>
+    <li>smoothingMethod (<span class="code-type">str</span>, optional) - If it is not given, do not apply the noise filter. If 'savgol', apply the Savitzky-Golay noise filter in the wavelength axis. If 'gauss', apply the Gaussian noise filter in the wavelength axis. Default is None.</li>
+    <li>wvCalibMethod (<span class="code-type">str</span>, optional) - Method to calibrate wavelength. 'simple': calibration with the information of the header. 'center': calibration with the center of the main line. 'photo': calibration with the photospheric line and the main line. Default is 'simple'.</li>
+    <li>**kwargs - smoothing properties. Either <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html">scipy.signal.savgol_filter</a> properties or <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter1d.html">scipy.ndimage.gaussian_filter1d</a>.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span></li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="wvCalib"><span class="md-title">wvCalib</span>(<span class="code-arg">profile=None, method='photo'</span>)</h4>
+<strong>Description: Wavelength calibration</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>profile (<span class="code-type">numpy.ndarray</span>) - Reference spectral profile.</li>
+    <li>method (<span class="code-type">str</span>) - Method to calibrate wavelength. 'simple': calibration with the information of the header. 'center': calibration with the center of the main line. 'photo': calibration with the photospheric line and the main line. Default is 'simple'.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>wv (<span class="code-type">numpy.ndarray</span>) - Wavelength.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="corSLA"><span class="md-title">corSLA</span>(<span class="code-arg">refProf=None, pure=None, eps=0.027, zeta=0.055</span>)</h4>
+<strong>Description: Correction of spectral line profile(s) for stray light and far wing red-blue asymmetry</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>refProf (<span class="code-type">numpy.ndarray</span>, optional) - (Spatially averaged) Reference line profile. If None, make refProfile by spatially averaging the Data. Default is None.</li>
+    <li>pure (<span class="code-type">numpy.ndarry</span>, optional) - True if not blended. Please see fisspy.correction.get_inform.Pure</li>
+    <li>eps (<span class="code-type">float</span>, optional) - Fraction of spatial stray light. The default is 0.027</li>
+    <li>eps (<span class="code-type">float</span>, optional) - Fration of spectral stray light. The default is 0.055</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>cdata (<span class="code-type">numpy.ndarray</span>) - Stray light and asymmetry corrected data.</li>
+</ul>
+<p class="code-par">See Also</p>
+<ul>
+  <li><a href="https://ui.adsabs.harvard.edu/abs/2013SoPh..288....1C/abstract">Chae et al. (2013)</a></li>
+  <li>CorStrayLight: correction for stray light.</li>
+  <li>CorAsymmetry: correction for far wing red-blue asymmetry.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="smoothingProf"><span class="md-title">smoothingProf</span>(<span class="code-arg">method='savgol', **kwargs</span>)</h4>
+<strong>Description: Smoothing spectral profiles</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>method (<span class="code-type">str</span>, optional) - If 'savgol', apply the Savitzky-Golay noise filter in the wavelength axis. If 'gauss', apply the Gaussian noise filter in the wavelength axis. Default is 'savgol'.</li>
+    <li>**kwargs - <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html">scipy.signal.savgol_filter</a> properties or <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter1d.html">scipy.ndimage.gaussian_filter1d</a> properties.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>wv (<span class="code-type">numpy.ndarray</span>) - Wavelength.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="getRaster"><span class="md-title">getRaster</span>(<span class="code-arg">wv, hw=0.05</span>)</h4>
+<strong>Description: Get a raster image for a given wavelength</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>wv (<span class="code-type">float</span>) - Referenced wavelength.</li>
+    <li>hw (<span class="code-type">float</span>) - A half-width of wavelength to be integrated. Default is 0.05</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>rasterImage (<span class="code-type">numpy.ndarray</span>) - Raster Image at given wavelength.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="lambdameter"><span class="md-title">lambdameter</span>(<span class="code-arg">wv, hw=0.05</span>)</h4>
+<strong>Description: Calculate the line-of-sight Doppler shift by using the lambda-meter (bisector) method</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>**kwargs - <a href="/fisspy/analysis/doppler/">fisspy.analysis.lambdameter</a> properties</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>wc (<span class="code-type">numpy.ndarray</span>) - n dimensional array of central wavelength values.</li>
+  <li>intc (<span class="code-type">numpy.ndarray</span>) - n dimensional array of intensies of the line segment.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chRasterClim"><span class="md-title">chRasterClim</span>(<span class="code-arg">cmin, cmax</span>)</h4>
+<strong>Description: Change color limit for raster image</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>cmin (<span class="code-type">float</span>) - Minimum color limit.</li>
+    <li>cmax (<span class="code-type">float</span>) - Maximum color limit.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change image color limit.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chSpectroClim"><span class="md-title">chSpectroClim</span>(<span class="code-arg">cmin, cmax</span>)</h4>
+<strong>Description: Change color limit for Spectrograph image</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>cmin (<span class="code-type">float</span>) - Minimum color limit.</li>
+    <li>cmax (<span class="code-type">float</span>) - Maximum color limit.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change image color limit.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chcmap"><span class="md-title">chcmap</span>(<span class="code-arg">cmap</span>)</h4>
+<strong>Description: Change color map</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>cmap (<span class="code-type"><a href="https://matplotlib.org/stable/users/explain/colors/colormaps.html">matplotlib.pyplot.cmap</a></span>) - Change color map</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change color map.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chRaster"><span class="md-title">chRaster</span>(<span class="code-arg">wv</span>)</h4>
+<strong>Description: Change raster image for a given wavelength</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>wv (<span class="code-type">float</span>) - Wavelength position to draw raster image</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change raster image.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chSpect"><span class="md-title">chSpect</span>(<span class="code-arg">x, y</span>)</h4>
+<strong>Description: Change Spectrograph for a given position</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>x (<span class="code-type">float</span>) - X position to draw a spectral profile.</li>
+    <li>y (<span class="code-type">float</span>) - Y position to draw a spectral profile.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change spectral profile.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chIclim"><span class="md-title">chIclim</span>(<span class="code-arg">cmin, cmax</span>)</h4>
+<strong>Description: Change the color limit of the intensity map on the vshow figure</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+  <li>cmin (<span class="code-type">float</span>) - Minimum color limit.</li>
+  <li>cmax (<span class="code-type">float</span>) - Maximum color limit.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change color limit of the intensity map.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chVclim"><span class="md-title">chVclim</span>(<span class="code-arg">cmin, cmax</span>)</h4>
+<strong>Description: Change the color limit of the velocity map on the vshow figure</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+  <li>cmin (<span class="code-type">float</span>) - Minimum color limit.</li>
+  <li>cmax (<span class="code-type">float</span>) - Maximum color limit.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change color limit of the velocity map.</li>
+</ul>
+{% endblock %}

@@ -85,7 +85,7 @@ class Wavelet:
     """
     
     def __init__(self, data, dt, axis=0, dj=0.1, s0=None, j=None,
-                 mother='MORLET', param=False, pad=True):
+                 mother='MORLET', param=False, pad=False):
 
         
         shape0 = np.array(data.shape)
@@ -730,13 +730,13 @@ class WaveCoherency:
         Parameters
         ----------
         wave1 : ~numpy.ndarray
-            Wavelet power spectrum for time series 1.
+            Wavelet spectrum for time series 1.
         time1 : ~numpy.ndarray
             A vector of times for time series 1.
         scale1 : ~numpy.ndarray
             A vector of scales for time series 1.
         wave2 : ~numpy.ndarray
-            Wavelet power spectrum for time series 2.
+            Wavelet spectrum for time series 2.
         time2 : ~numpy.ndarray
             A vector of times for time series 2.
         scale2 : ~numpy.ndarray

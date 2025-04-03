@@ -326,7 +326,6 @@ def rotImage(img, angle, xc=False, yc=False, dx=0, dy=0, xmargin=0, ymargin=0, m
     xa = np.arange(nx1)-xmargin
     ya = (np.arange(ny1)-ymargin)[:,None]
 
-
     if not xc:
         XC = nx/2
     else:
@@ -392,5 +391,4 @@ def shiftImage3D(image, sh, missing=0, cubic=False):
     yt = y - sh[0][:, None, None] + t*0 + x*0
     xt = x - sh[1][:, None, None] + t*0 + y*0
 
-    print(missing)
     return get_interpVal3D(image, t, y, x, tt, yt, xt, missing=missing, cubic=cubic)

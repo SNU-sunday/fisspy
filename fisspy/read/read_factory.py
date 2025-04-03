@@ -11,12 +11,12 @@ from .. import cm
 from .readbase import getRaster, getHeader, readFrame
 from ..analysis import lambdameter
 from ..image.interactive_image import singleBand
-from ..correction import lineName, wvCalib, smoothingProf, corSLA
+from ..correction import get_lineName, smoothingProf, corSLA, get_centerWV, wvCalib_simple
 from ..analysis import FourierFilter, Wavelet, makeTDmap
 
 __author__= "Juhyung Kang"
 __email__ = "jhkang0301@gmail.com"
-__all__ = ["raw", "FISS", "FD", "AlignCube"]
+__all__ = ["raw", "FISS", "FD", "AlignCube", "MLSIpar"]
 
 class raw:
     """
@@ -225,6 +225,7 @@ class FISS:
         if self.ftype != 'proc' and self.ftype != 'comp':
             raise ValueError("Input file is neither proc nor comp data")
 
+        self.avp = None
         self.x1 = x1
         self.x2 = x2
         self.y1 = y1
@@ -232,7 +233,7 @@ class FISS:
         self.filename = file
         self.xDelt = 0.16
         self.yDelt = 0.16
-
+        self._cor = False
         self.header = getHeader(file)
         self.pfile = self.header.pop('pfile', False)
         self.data = readFrame(file, self.pfile, x1=x1, x2=x2, y1=y1, y2=y2, ncoeff=ncoeff)
@@ -252,9 +253,10 @@ class FISS:
         except:
             self.band = str(self.header['gratwvln'])[:4]
 
-        self.refProfile = self.data.mean((0,1))
-        self.wave = self.wvCalib(method=wvCalibMethod)
+        self.wave = self.wvCalib()
         self.cwv = self.centralWavelength = cwv = self.header['crval1']
+        self.line = get_lineName(cwv).lower()
+        self.wvlab = get_centerWV(self.line)
 
         self.smoothing = False
         if smoothingMethod is not None:
@@ -263,23 +265,22 @@ class FISS:
             self.smoothingProf(method=smoothingMethod, **kwargs)
         
 
-        self.line = lineName(cwv)
-        if self.line == 'Ha':
+        if self.line == 'ha':
             self.cam = 'A'
             self.set = '1'
             self.cmap = cm.ha
-        elif self.line == 'Ca':
+        elif self.line == 'ca':
             self.cam = 'B'
             self.set = '1'
             self.cmap = cm.ca
-        elif self.line == 'Na':
+        elif self.line == 'na':
             self.cam = 'A'
             self.set = '2'
             self.cmap = cm.na
-        elif self.line == 'Fe':
+        elif self.line == 'fe':
             self.cam = 'B'
             self.set = '2'
-            self.cmap = cm.fe
+            self.cmap = cm.ㄴfe
 
         self.extentRaster = [-self.xDelt/2, (self.nx-0.5)*self.xDelt,
                              -self.yDelt/2, (self.ny-0.5)*self.yDelt]
@@ -333,41 +334,31 @@ class FISS:
         self.extentSpectro = [self.wave.min()-self.wvDelt/2,
                               self.wave.max()+self.wvDelt/2,
                               0, self.ny*self.yDelt]
-        
-        if smoothingMethod is None:
+
+        self.smoothing = False
+        if smoothingMethod is not None:
             self.smoothing = True
         if self.smoothing:
             self.smoothingProf(method=smoothingMethod, **kwargs)
 
-    def wvCalib(self, profile=None, method='photo'):
+    def wvCalib(self):
         """
         Wavelength calibration
-
-        Parameters
-        ---------
-        profile: `~numpy.ndarray`
-            Spectrum
-        method: `str`
-            Method to calibrate wavelength.
-            'simple': calibration with the information of the header.
-            'center': calibration with the center of the main line.
-            'photo': calibration with the photospheric line and the main line.
-            Default is 'simple'.
 
         Returns
         -------
         wv: `~numpy.ndarray`
             Wavelength.
         """
-        if profile is None:
-            pf = self.refProfile
-        else:
-            pf = profile
-        try:
-            wv = wvCalib(pf, self.header, method=method)
-        except:
-            raise ValueError(f"Please change the wvCalibMethod among 'simple', 'center', and 'photo'. Current: {method}")
+        wv = wvCalib_simple(self.header)
+
         return wv
+    
+
+    def get_avProfile(self):
+        ic = self.data[..., 50]
+        qs = ic > (ic.max()*0.7)
+        return self.data[qs, :].mean(0)
 
     def corSLA(self, refProf=None, pure=None, eps=0.027, zeta=0.055):
         """
@@ -1380,6 +1371,188 @@ class AlignCube:
         None
         """
         self.td = makeTDmap(self.data, dx=self.dx, dy=self.dy, dt=self.dt, **kwargs)
+
+class MLSIpar:
+    """
+    Read MLSI parameter file.
+
+    Parameters
+    ----------
+    fname: `str`
+        File name of the MLSI parameter file.
+        
+    Returns
+    -------
+    None
+    """
+    def __init__(self, fname):
+        self._read(fname)
+
+    def imshow(self, layer='all', figsize=None):
+        if layer == 'all':
+            self._imAll(figsize)
+        else:
+            self._imLayer(layer, figsize)
+
+    def _imAll(self, figsize=None):
+        if figsize is None:
+            fs = (4/3*self.sh[2]/self.sh[1]*10+3, 10)
+        else:
+            fs = figsize
+        self.fig, self.ax = plt.subplots(3, 4, figsize=fs, sharex=True, sharey=True)
+
+        yticks = np.arange(0, self.ext[3]+0.01, 5)
+        xticks = np.arange(0, self.ext[1]+0.01, 5)
+        ax = self.ax.flatten()
+        self.im = [None]*12
+        didx = [4, 5, 12, 13,
+                17, 0, 8, 9,
+                15, 16, 10, 11] # index list for ploting
+        cmap = [self.cmap, self.cmap, self.cmap, self.cmap,
+                plt.cm.afmhot, plt.cm.RdBu_r, plt.cm.RdBu_r, plt.cm.RdBu_r,
+                plt.cm.RdYlGn_r, plt.cm.RdYlGn_r, plt.cm.PuOr_r, plt.cm.PuOr_r]
+        title = ['log $S_p$', 'log $S_2$', 'log $S_1$', 'log $S_0$',
+                 "Rad. loss (lower)", '$v_p$', '$v_1$', '$v_0$',
+                 r'$\epsilon_D$', r'$\epsilon_P$', 'log $w_1$', 'log $w_0$']
+        clim = [None, None, None, None,
+                None, [-1.5, 1.5], [-3.5, 3.5], [-5, 5],
+                [0, 2], [0, 2], None, None]
+        
+        
+        for i, idx in enumerate(didx):
+            dd = self.data[idx]
+            if clim[i] is None:
+                m = dd.mean()
+                std = dd.std()
+                cc = [m-3*std, m+3*std]
+            else:
+                cc = clim[i]
+
+            self.im[i] = ax[i].imshow(dd, origin='lower', cmap=cmap[i], clim=cc, extent=self.ext)
+            ax[i].set_title(title[i])
+            ax[i].set_xticks(xticks)
+            ax[i].set_yticks(yticks)
+
+            if i % 4 != 0:
+                ax[i].tick_params(labelleft=False)
+            else:
+                ax[i].set_ylabel('Y (Mm)')
+            if i // 4 != 2:
+                ax[i].tick_params(labelbottom=False)
+            else:
+                ax[i].set_xlabel('X (Mm)')
+
+        self.fig.tight_layout(rect=(-0.05,0,0.98,1), w_pad=0.1)
+        for i in range(len(didx)):
+            cbar = self.fig.colorbar(self.im[i], ax=ax[i])
+            pos = ax[i].get_position().bounds
+            cbar.ax.set_position([pos[0] + pos[2] + 0.01, pos[1], 0.02, pos[3]])
+        self.fig.show()
+
+    def _imLayer(self, layer, figsize=[12,5]):
+        try:
+            plt.rcParams['keymap.back'].remove('left')
+            plt.rcParams['keymap.forward'].remove('right')
+        except:
+            pass
+        self.layer = layer
+        dd, tl, vclim = self.lpar(layer)
+
+        clim = [None, vclim, None]
+        cmap = [self.cmap, plt.cm.RdBu_r, plt.cm.PuOr_r]
+        self.fig, self.ax = plt.subplots(1, 3, figsize=figsize, sharex=True, sharey=True)
+        yticks = np.arange(0, self.ext[3]+0.01, 5)
+        xticks = np.arange(0, self.ext[1]+0.01, 5)
+        self.im = [None]*3
+        for i, ax in enumerate(self.ax):
+            if clim[i] is None:
+                m = dd[i].mean()
+                std = dd[i].std()
+                cc = [m-3*std, m+3*std]
+            else:
+                cc = clim[i]
+
+            self.im[i] = ax.imshow(dd[i], origin='lower', cmap=cmap[i], clim=cc, extent=self.ext)
+            ax.set_title(tl[i])
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            if i != 0:
+                ax.tick_params(labelleft=False)
+            else:
+                ax.set_ylabel('Y (Mm)')
+            ax.set_xlabel('X (Mm)')
+        self.fig.tight_layout()
+        self.fig.canvas.mpl_connect('key_press_event', self._onKeyLayer)
+        self.fig.show()
+
+    def lpar(self, layer):
+        if layer == 0:
+            l = [13, 9, 11]
+            tl = 0
+            vclim = [-5,5]
+        elif layer == 1:
+            l = [12, 8, 10]
+            tl = 1
+            vclim = [-3.5, 3.5]
+        elif layer == 2 or layer == 'p':
+            l = [4, 0, 2]
+            tl = 'p'
+            vclim = [-1.5, 1.5]
+
+        title = [f'log $S_{tl}$', f'$v_{tl}$', f'log $w_{tl}$']
+        return self.data[l], title, vclim
+
+    def _onKeyLayer(self, event):
+        if event.key == 'right':
+            if self.layer < 2:
+                self.layer += 1
+            else:
+                self.layer = 0
+            self._updateLayer()
+        elif event.key == 'left':
+            if self.layer > 0:
+                self.layer -= 1
+            else:
+                self.layer = 2
+            self._updateLayer()
+    
+    def _updateLayer(self):
+        dd, tl, vclim = self.lpar(self.layer)
+        clim = [None, vclim, None]
+        for i in range(3):
+            if clim[i] is None:
+                m = dd[i].mean()
+                std = dd[i].std()
+                cc = [m-3*std, m+3*std]
+            else:
+                cc = clim[i]
+
+            self.im[i].set_data(dd[i])
+            self.im[i].set_clim(cc)
+            self.ax[i].set_title(tl[i])
+        self.fig.canvas.draw_idle()
+
+    def _read(self, fname):
+        self.fname = fname
+        if fname.find('A1') >= 0:
+            self.band = 'A'
+            self.cmap = cm.ha
+        elif fname.find('B1') >= 0:
+            self.band = 'B'
+            self.cmap = cm.ca
+        opn = fits.open(fname)[0]
+        self.data = opn.data
+        self.data = self.data.astype(float)
+        self.sh = self.data.shape
+        self.h = opn.header
+        for i in range(self.sh[0]):
+            self.data[i] *= self.h[f'SCALE{i:02d}']
+        
+        delt = 0.16*0.725
+        self.ext = [-0.5*delt, (self.sh[2]-0.5)*delt, -0.5*delt, (self.sh[1]-0.5)*delt]
+        self.vp, self.log_eta, self.log_wp, self.log_ap, self.log_Sp, self.log_S2, self.log_tau2, self.log_tau1, self.v1, self.v0, self.log_w1, self.log_w0, self.log_S1, self.log_S0, self.wg, self.epsD, self.epsP, self.RadLoss2, self.RadLoss1 = self.data
+
+        
 
 def _isoRefTime(refTime):
     year = refTime[:4]

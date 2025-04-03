@@ -1,0 +1,38 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'analysis' %}
+{% set active_sp = "Aarcast" %}
+
+{% block manual %}
+<h2 class="page-header subpack-title">Autoregressive (AR) forecasting</h2>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-function">function</span> fisspy.analysis.forecast.<span class="text-warning">ARcast</span>(<span class="code-arg">data, time, dt</span>)</p>
+
+<strong>Description: Fill the data point using AR method, and make the unevenly sampled data to the evenly sampling data.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>data (<span class="code-type">numpy.ndarray</span>) - n-dimensional data. Data must have the same number of elements to the time. Data should be (nt,...) where nt is the size in the time axis.</li>
+    <li>time (<span class="code-type">numpy.ndarray</span>) - The time for the each data points.</li>
+    <li>dt (<span class="code-type">float</span>, optional) - An interval of the time between each data in second unit.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+    <li>ARdata (<span class="code-type">numpy.ndarray</span>) - Autoregressively filled data. It has larger elements than input data.</li>
+    <li>tf (<span class="code-type">numpy.ndarray</span>) - Filled time of the forecasted data.</li>
+</ul>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">Data interpolation</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

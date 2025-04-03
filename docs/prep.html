@@ -1,0 +1,92 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'preproc' %}
+
+{% block manual %}
+<h2 class="page-header subpack-title">Preprocess</h2>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-class">class</span> fisspy.prerpocess.proc_gui.<span class="text-warning">PrepGUI</span>(<span class="code-arg">basedir, ffocA=None, ffocB=None, savedir=None</span>)</p>
+
+<strong>Description: Run prerpocess with the GUI interactive figure.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>basedir (<span class="code-type">str</span>) - Path of the base directory. ex: '/data/fiss/2014/06/03'</li>
+    <li>ffocA (<span class="code-type">str</span>, optional) - Filename of the focus file of the camera A. It will be used for the camera tilt correction.</li>
+    <li>ffocB (<span class="code-type">str</span>, optional) - Filename of the focus file of the camera B. It will be used for the camera tilt correction.</li>
+    <li>savedir (<span class="code-type">str</span>, optional) - Target directory to save the processed and compressed data. If it is not given, the file will be stored in the base directory.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+  <li>PrepGUI object</li>
+</ul>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">Preprocess</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<h3 class="code-h3">Attributes Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Attributes</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td>CF</td>  <td>calFlat object. It includes 'rawFlat', 'logRF', and etc... attributes that are required to the calibration.</td>
+        </tr>
+          <td>CF.rawFlat</td>  <td>Raw data of the flat frame.</td>
+        </tr>
+          <td>CF.tilt</td>  <td>Tilt anlge of the camera.</td>
+        </tr>
+          <td>CF.rlRF</td>  <td>Tilt corrected log(raw flat).</td>
+        </tr>
+          <td>CF.coeff</td>  <td>Polynomial fitting paramerter set for the 1st curvature correction.</td>
+        </tr>
+          <td>dw</td>  <td> (1st) curvature shifted value.</td>
+        </tr>
+          <td>CF.logF</td>  <td>curvature corrected flat frame.</td>
+        </tr>
+          <td>CF.rmFlat</td>  <td>Atlas subtracted flat.</td>
+        </tr>
+          <td>wvlet_y</td>  <td>Wavlet object applied to the y (slit) direction.</td>
+        </tr>
+          <td>yFringe</td>  <td>Horizontal fringe pattern.</td>
+        </tr>
+          <td>s1</td>  <td>Horizontal fringe subtracted image.</td>
+        </tr>
+          <td>ms1</td>  <td>Spectral line masked image.</td>
+        </tr>
+          <td>xFringe</td>  <td>Vertical fringe pattern.</td>
+        </tr>
+          <td>s2</td>  <td>Vertical fringe subtracted image.</td>
+        </tr>
+          <td>CF.coeff2</td>  <td>Polynomial fitting paramerter set for the 2ndt curvature correction.</td>
+        </tr>
+          <td>CF.logF2</td>  <td>2nd curvature corrected flat frame.</td>
+        </tr>
+          <td>ms_cF</td>  <td>Master flat.</td>
+        </tr>
+          <td>sp</td>  <td>Slit pattern.</td>
+        </tr>
+          <td>rsp</td>  <td>Slit pattern derived from the raw data.</td>
+        </tr>
+          <td>cd1</td>  <td>Horizontal fringe corrected data.</td>
+        </tr>
+          <td>cd2</td>  <td>Final result of the calibration.</td>
+        </tr>
+      </tbody>
+</table>
+
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'read' %}
+{% set active_sp = "Ralign" %}
+
+{% block manual %}
+<h2 class="page-header subpack-title">AlignCube</h2>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-class">class</span> fisspy.read.read_factory.<span class="text-warning">AlignCube</span>(<span class="code-arg">fname</span>)</p>
+
+<strong>Description: Read align cube.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>fname (<span class="code-type">str</span>) - File name of the align cube.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+  <li>Read align cube object</li>
+</ul>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">Read align cube</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<h3 class="code-h3">Attributes Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Attributes</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td>data</td>  <td>Data array.</td>
+        </tr>
+        <tr>
+          <td>time</td>  <td>Time array in the unit of second.</td>
+        </tr>
+        <tr>
+          <td>dt</td>  <td>Averaged time cadence.</td>
+        </tr>
+        <tr>
+          <td>dx</td>  <td>Pixel scale in the step direction.</td>
+        </tr>
+        <tr>
+          <td>dy</td>  <td>Pixel scale in the slit direction.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Methods</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td><a href="./#imshow">imshow</a>(**kwargs)</td>  <td>Show the align data and make Time-Distance map.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Documentation</h3>
+<hr>
+<h4 class="code-h4" id="imshow"><span class="md-title">imshow</span>(<span class="code-arg">**kwargs</span>)</h4>
+<strong style="margin-bottom: 20px;">Description: Show align data and make Time-Distance map.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>**kwargs - <a href="/fisspy/analysis/tdmap">fisspy.analysis.makeTDmap</a> properties</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>None</li>
+</ul>
+{% endblock %}

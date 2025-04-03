@@ -1932,7 +1932,7 @@ class prepGUI:
 
         for i in range(self.CF.nf):
             data = proc_base.detrending(self.CF.rmFlat[i])
-            self.wvlet_y[i] = Wavelet(data, dt=1, axis=0, dj=0.05, param=12)
+            self.wvlet_y[i] = Wavelet(data, dt=1, axis=0, dj=0.05, param=12, pad=True)
 
         self.log += "> Done.<br>"
         self._writeLog()
@@ -2273,7 +2273,7 @@ class prepGUI:
         x = np.arange(14)
         for i in range(self.CF.nf):
             dd = proc_base.detrending(self.ms1[i][5:-5,5:-5], 1)
-            self.wvlet_x[i] = Wavelet(dd, dt=1, axis=1, dj=0.05, param=12)
+            self.wvlet_x[i] = Wavelet(dd, dt=1, axis=1, dj=0.05, param=12, pad=True)
             data = np.abs(self.wvlet_x[i].wavelet).mean((0,2))
             xwh[i] = data[:-25].argmax()
             hmax = data[:-25].max()/2
@@ -3045,8 +3045,8 @@ class prepGUI:
                     lpks[j] = pks
 
                     # get wavelet
-                    # wvl = Wavelet(lyf[nf//2], dt=1, axis=0)
-                    wvl = Wavelet(lyf[nf//2] - sp, dt=1, axis=0)
+                    # wvl = Wavelet(lyf[nf//2], dt=1, axis=0, pad=True)
+                    wvl = Wavelet(lyf[nf//2] - sp, dt=1, axis=0, pad=True)
                     lYFaws[j] = np.abs(wvl.wavelet)
                     lYFJD[j] = Time(proc_base.fname2isot(f)).jd
                     lSP[j] = 10**sp

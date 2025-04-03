@@ -1,0 +1,199 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'analysis' %}
+{% set active_sp = "Atd" %}
+
+{% block manual %}
+<h2 class="page-header subpack-title" id="makeTDmap">MakeTDmap </h2>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-class">class</span> fisspy.analysis.tdmap.<span class="text-warning">makeTDmap</span>(<span class="code-arg">data, dx=1, dy=1, dt=1, cmap=None, figsize=None, dpi=100, clim=None, label=None, aspect=1/10</span>)</p>
+
+<strong>Description: Make Time-Distance map for given slit position interactively</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>data (<span class="code-type">numpy.ndarray</span>) - 3-dimensional data array with the shape of (nt, ny, nx).</li>
+    <li>dx (<span class="code-type">float</span>, optional) - Pixel scale along x-axis in the unit of km.</li>
+    <li>dy (<span class="code-type">float</span>, optional) - Pixel scale along y-axis in the unit of km.</li>
+    <li>dt (<span class="code-type">float</span>, optional) - Pixel scale along t-axis in the unit of sec.</li>
+    <li>cmap (<span class="code-type">matplotlib color map</span>, optional) - Colormap of the image.</li>
+    <li>figsize (<span class="code-type">list</span>, optional) - Figure size.</li>
+    <li>dpi (<span class="code-type">int</span>, optional) - Depth per inch.</li>
+    <li>clim (<span class="code-type">list</span>, optional) - Color limit of the image.</li>
+    <li>label (<span class="code-type">str</span>, optional) - Label of the figure.</li>
+    <li>aspect (<span class="code-type">float</span>, optional) - aspect of the figure slope of the TDmap ((km/s)^-1). Default is 1/10.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+  <li>Make TDmap object</li>
+</ul>
+<div class="alert alert-warning">
+    <strong>Note:</strong> To use the function correctly, you should change the backend of the matplotlib from inline to any of interactive backend <a href="https://matplotlib.org/stable/users/explain/figure/backends.html#interactive-backends">(see here)</a>. In IPython you can simply change the backend by using '%matplotlib' magic function.
+  </div>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">TD map</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<h3 class="code-h3">Attributes Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Attributes</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td>data</td>  <td>Data array.</td>
+        </tr>
+        <tr>
+          <td>aspect</td>  <td>aspect ratio of the TD map.</td>
+        </tr>
+        <tr>
+          <td>nx</td>  <td>Number of pixels in scan direction.</td>
+        </tr>
+        <tr>
+          <td>ny</td>  <td>Number of pixels in slit direction.</td>
+        </tr>
+        <tr>
+          <td>nt</td>  <td>Number of frames in time direction.</td>
+        </tr>
+        <tr>
+          <td>date</td>  <td>Observation date.</td>
+        </tr>
+        <tr>
+          <td>nwv</td>  <td>Number of pixel in wavelength direction.</td>
+        </tr>
+        <tr>
+          <td>ny</td>  <td>Number of pixel in slit direction.</td>
+        </tr>
+        <tr>
+          <td>nx</td>  <td>Number of pixel in scan direction.</td>
+        </tr>
+        <tr>
+          <td>dx</td>  <td>Pixel scale for x-axis (scan direction).</td>
+        </tr>
+        <tr>
+          <td>dy</td>  <td>Pixel scale for y-axis (slit direction).</td>
+        </tr>
+        <tr>
+          <td>dt</td>  <td>Time candence.</td>
+        </tr>
+        <tr>
+          <td>TD</td>  <td>Time-distance map array.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Methods</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td><a href="./#save">save</a>(fname=None)</td>  <td>Save the TDmap and slit information. Extension should be npz.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Documentation</h3>
+<hr>
+<h4 class="code-h4" id="save"><span class="md-title">save</span>(<span class="code-arg">fname=None</span>)</h4>
+<strong>Description: Save the TDmap and slit information.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>fname (<span class="code-type">str</span>) - Filename to save the TD map array, and slit. Extension should be npz.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span></li>
+</ul>
+
+
+<br><br>
+<h2 class="page-header subpack-title" id="analysisTDmap">analysisTDmap </h2>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-class">class</span> fisspy.analysis.tdmap.<span class="text-warning">analysisTDmap</span>(<span class="code-arg">TD, dl, dt, cmap=None, figsize=[19, 8], dpi=100, parent=None, clim=None, t=0, label=None, aspect=1/10</span>)</p>
+
+<strong>Description: Analysis TDmap measuring the velocity of ridges and period of the time-series.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>TD (<span class="code-type">numpy.ndarray</span>) - Time-distance map (nl, nt).</li>
+    <li>dl (<span class="code-type">float</span>) - Pixel scale of the distance slit.</li>
+    <li>dt (<span class="code-type">float</span>) - Time cadence.</li>
+    <li>cmap (<span class="code-type">matplotlib color map</span>, optional) - Colormap of the data.</li>
+    <li>figsize (<span class="code-type">list</span>, optional) - Figure size.</li>
+    <li>dpi (<span class="code-type">int</span>, optional) - Depth per inch.</li>
+    <li>clim (<span class="code-type">list</span>, optional) - Color limit of the image.</li>
+    <li>label (<span class="code-type">str</span>, optional) - Label of the figure.</li>
+    <li>aspect (<span class="code-type">float</span>, optional) - aspect of the figure slope of the TDmap ((km/s)^-1). Default is 1/10.</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+  <li>Analysis TDmap object</li>
+</ul>
+
+<h3 class="code-h3">Attributes Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Attributes</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td>TD</td>  <td>Time-Distance map array.</td>
+        </tr>
+        <tr>
+          <td>dl</td>  <td> Pixel scale of the distance slit.</td>
+        </tr>
+        <tr>
+          <td>dt</td>  <td>Time candence.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Methods</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td><a href="./#save_atd">save</a>(fname=None)</td>  <td>Save the measuring parameters of the TDmap.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Documentation</h3>
+<hr>
+<h4 class="code-h4" id="save_atd"><span class="md-title">save</span>(<span class="code-arg">fname=None</span>)</h4>
+<strong>Description: Save the TDmap parameters.</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>fname (<span class="code-type">str</span>) - Filename to save the TD map parameters. Extension should be npz.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span></li>
+</ul>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'read' %}
+{% set active_sp = "S2cams" %}
+
+{% block manual %}
+<h2 class="page-header subpack-title">Show two cams</h2>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-class">class</span> fisspy.image.interactive_image.<span class="text-warning">dualBand</span>(<span class="code-arg">fissA, fissB, x=None, y=None, wvA=None, wvB=None, scale='log', sigFactor=3, helpBox=True, **kwargs</span>)</p>
+
+<strong>Description: Draw interactive FISS raster images, spectrograms and profiles of two cameras.</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>fissA (<a href="/fisspy/read/FISS">fisspy.read.FISS</a>) - FISS instance.</li>
+    <li>fissB (<a href="/fisspy/read/FISS">fisspy.read.FISS</a>) - FISS instance.</li>
+    <li>x (<span class="code-type">float</span>) - X position that you draw a spectral profile. Default is image center.</li>
+    <li>y (<span class="code-type">float</span>) - Y position that you draw a spectral profile. Default is image center.</li>
+    <li>wvA (<span class="code-type">float</span>) - Wavelength position of the camera A to draw a raster images. Default is central wavelength.</li>
+    <li>wvB (<span class="code-type">float</span>) - Wavelength position of the camera B to draw a raster images. Default is central wavelength.</li>
+    <li>scale (<span class="code-type">str</span>) - Scale method of colarbar limit. Default is 'minMax'. option: 'minMax', 'std', 'log'.</li>
+    <li>sigFactor (<span class="code-type">float</span>) - Factor of standard deviation. This is worked if scale is set to be 'std'.</li>
+    <li>helpBox (<span class="code-type">bool</span>) - Show the interacitve key and simple explanation. Default is True.</li>
+    <li>**kwargs - <a href="https://matplotlib.org/stable/api/pyplot_summary.html#module-matplotlib.pyplot">matplotlib.pyplot</a></li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+  <li>dualBand object</li>
+</ul>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">show two cams</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<h3 class="code-h3">Attributes Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Attributes</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td>fissA</td>  <td>FISS instance.</td>
+        </tr>
+        <tr>
+          <td>fissB</td>  <td>FISS instance.</td>
+        </tr>
+        <tr>
+          <td>dx</td>  <td>Pixel scale in the step direction.</td>
+        </tr>
+        <tr>
+          <td>dy</td>  <td>Pixel scale in the slit direction.</td>
+        </tr>
+        <tr>
+          <td>dwvA</td>  <td>Pixel scale in the wavelength for the A camera.</td>
+        </tr>
+        <tr>
+          <td>dwvB</td>  <td>Pixel scale in the wavelength for the A camera.</td>
+        </tr>
+        <tr>
+          <td>nx</td>  <td>Number of pixels in the scan direction.</td>
+        </tr>
+        <tr>
+          <td>nx</td>  <td>Number of pixels in the slit direction.</td>
+        </tr>
+        <tr>
+          <td>nwvA</td>  <td>Number of pixels in the wavelength for the A camera.</td>
+        </tr>
+        <tr>
+          <td>nwvB</td>  <td>Number of pixels in the wavelength for the B camera.</td>
+        </tr>
+        <tr>
+          <td>dataA</td>  <td>Data of the A camera.</td>
+        </tr>
+        <tr>
+          <td>dataB</td>  <td>Data of the B camera.</td>
+        </tr>
+        <tr>
+          <td>fig</td>  <td>Interactive figure.</td>
+        </tr>
+      </tbody>
+</table>
+
+{% endblock %}

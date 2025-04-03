@@ -1,0 +1,210 @@
+{% extends 'docs/fisspy_template.html' %}
+{% set active_panel = 'read' %}
+{% set active_sp = "Rraw" %}
+
+{% block manual %}
+<h2 class="page-header subpack-title">raw </h2>
+<p style="font-size: x-large; font-weight: bold;"><span class="code-class">class</span> fisspy.read.read_factory.<span class="text-warning">raw</span>(<span class="code-arg">filename</span>)</p>
+
+<strong>Description: Read raw data</strong><br><br>
+
+<p class="code-par">Parameters</p>
+<ul>
+    <li>file (<span class="code-type">str</span>) - File name of the raw data file (object frame).</li>
+</ul>
+
+<p class="code-par">Returns</p>
+<ul>
+  <li>Read raw object</li>
+</ul>
+
+<h3 class="code-h3">Examples</h3>
+<hr>
+<div class="col-md-6">
+  <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+    <div class="col p-4 d-flex flex-column position-static">
+      <h3 class="mb-0">Read raw data</h3>
+      <a href="./example/" class="icon-link gap-1 icon-link-hover stretched-link">
+        View
+        <svg class="bi"><use xlink:href="#chevron-right"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<h3 class="code-h3">Attributes Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Attributes</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td>data</td>  <td>Data array.</td>
+        </tr>
+        <tr>
+          <td>header</td>  <td>FITS Header.</td>
+        </tr>
+        <tr>
+          <td>wave</td>  <td>Wavelength array in relative units which is roughly calculated.</td>
+        </tr>
+        <tr>
+          <td>date</td>  <td>Observation date.</td>
+        </tr>
+        <tr>
+          <td>nwv</td>  <td>Number of pixel in wavelength direction.</td>
+        </tr>
+        <tr>
+          <td>ny</td>  <td>Number of pixel in slit direction.</td>
+        </tr>
+        <tr>
+          <td>nx</td>  <td>Number of pixel in scan direction.</td>
+        </tr>
+        <tr>
+          <td>ftype</td>  <td>File type of the input data frame. It is 'raw' in this case.</td>
+        </tr>
+        <tr>
+          <td>filename</td>  <td>input file name.</td>
+        </tr>
+        <tr>
+          <td>cam</td>  <td>Camera inform. Either 'A' or 'B'.</td>
+        </tr>
+        <tr>
+          <td>band</td>  <td>Wavelength band.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Summary</h3>
+<hr>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+          <th class="thbg">Methods</th><th class="thbg">Description</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        <tr>
+          <td><a href="./#getRaster">getRaster</a>(wv, hw=0.05)</td>  <td>Get a raster image for a given wavelength.</td>
+        </tr>
+        <tr>
+          <td><a href="./#imshow">imshow</a>(x=None, y=None, wv=None, scale='minMax', sigFactor=3, helpBox=True, **kwargs)</td>  <td>Draw the interactive image for raw data.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chRasterClim">chRasterClim</a>(cmin, cmax)</td>  <td>Change color limit for raster image.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chSpectroClim">chSpectroClim</a>(cmin, cmax)</td>  <td>Change color limit for Spectrograph image.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chcmap">chcmap</a>(cmap)</td>  <td>Change color map.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chRaster">chRaster</a>(wv)</td>  <td>Change raster image for a given wavelength.</td>
+        </tr>
+        <tr>
+          <td><a href="./#chSpect">chSpect</a>(x, y)</td>  <td>Change Spectrograph for a given position.</td>
+        </tr>
+      </tbody>
+</table>
+
+<h3 class="code-h3">Methods Documentation</h3>
+<hr>
+<h4 class="code-h4" id="getRaster"><span class="md-title">getRaster</span>(<span class="code-arg">wv, hw=0.05</span>)</h4>
+<strong style="margin-bottom: 20px;">Description: Get a raster image for a given wavelength</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>wv (<span class="code-type">float</span>) - Referenced wavelength.</li>
+    <li>hw (<span class="code-type">float</span>) - A half-width of wavelength to be integrated. Default is 0.05</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li>rasterImage (<span class="code-type">numpy.ndarray</span>) - Raster Image at given wavelength.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="imshow"><span class="md-title">imshow</span>(<span class="code-arg">x=None, y=None, wv=None, scale='minMax', sigFactor=3, helpBox=True, **kwargs</span>)</h4>
+<strong style="margin-bottom: 20px;">Description: Draw the interactive image for raw data</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>x (<span class="code-type">float</span>) - X position to draw a spectral profile. Default is image center.</li>
+    <li>y (<span class="code-type">float</span>) - Y position to draw a spectral profile. Default is image center.</li>
+    <li>wv (<span class="code-type">float</span>) - Wavelength position to draw a raster image. Default is central wavelength.</li>
+    <li>scale (<span class="code-type">str</span>) - Colorbar scale. Default is 'minMax'. Options: 'minMax', 'std', 'log'.</li>
+    <li>sigFactor (<span class="code-type">float</span>) - Factor of standard deviation of the color scale of 'std'.</li>
+    <li>helpBox (<span class="code-type">bool</span>) - Show helpbox for the interactive keys. Default is True.</li>
+    <li>**kwargs: <a href="https://matplotlib.org/3.5.3/api/_as_gen/matplotlib.pyplot.html">matplotlib.pyplot</a> properties</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - It draw the matplotlib figure.</li>
+</ul>
+<div class="alert alert-warning">
+  <strong style="margin-bottom: 20px;">Note:</strong> To use the function correctly, you should change the backend of the matplotlib from inline to any of interactive backend <a href="https://matplotlib.org/stable/users/explain/figure/backends.html#interactive-backends">(see here)</a>. In IPython you can simply change the backend by using '%matplotlib' magic function.
+</div>
+
+<br><br>
+<h4 class="code-h4" id="chRasterClim"><span class="md-title">chRasterClim</span>(<span class="code-arg">cmin, cmax</span>)</h4>
+<strong style="margin-bottom: 20px;">Description: Change color limit for raster image</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>cmin (<span class="code-type">float</span>) - Minimum color limit.</li>
+    <li>cmax (<span class="code-type">float</span>) - Maximum color limit.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change image color limit.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chSpectroClim"><span class="md-title">chSpectroClim</span>(<span class="code-arg">cmin, cmax</span>)</h4>
+<strong style="margin-bottom: 20px;">Description: Change color limit for Spectrograph image</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>cmin (<span class="code-type">float</span>) - Minimum color limit.</li>
+    <li>cmax (<span class="code-type">float</span>) - Maximum color limit.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change image color limit.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chcmap"><span class="md-title">chcmap</span>(<span class="code-arg">cmap</span>)</h4>
+<strong style="margin-bottom: 20px;">Description: Change color map</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>cmap (<span class="code-type"><a href="https://matplotlib.org/stable/users/explain/colors/colormaps.html">matplotlib.pyplot.cmap</a></span>) - color map</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change color map.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chRaster"><span class="md-title">chRaster</span>(<span class="code-arg">wv</span>)</h4>
+<strong style="margin-bottom: 20px;">Description: Change raster image for a given wavelength</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>wv (<span class="code-type">float</span>) - Wavelength position to draw raster image</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change raster image.</li>
+</ul>
+
+<br><br>
+<h4 class="code-h4" id="chSpect"><span class="md-title">chSpect</span>(<span class="code-arg">x, y</span>)</h4>
+<strong style="margin-bottom: 20px;">Description: Change Spectrograph for a given position</strong><br><br>
+<p class="code-par">Parameters</p>
+<ul>
+    <li>x (<span class="code-type">float</span>) - X position to draw a spectral profile.</li>
+    <li>y (<span class="code-type">float</span>) - Y position to draw a spectral profile.</li>
+</ul>
+<p class="code-par">Returns</p>
+<ul>
+  <li><span class="code-type">None</span> - Change spectral profile./li>
+</ul>
+{% endblock %}
