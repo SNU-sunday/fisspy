@@ -255,7 +255,7 @@ class FISS:
 
         self.wave = self.wvCalib()
         self.cwv = self.centralWavelength = cwv = self.header['crval1']
-        self.line = get_lineName(cwv)
+        self.line = get_lineName(cwv).lower()
         self.wvlab = get_centerWV(self.line)
 
         self.smoothing = False
@@ -265,19 +265,19 @@ class FISS:
             self.smoothingProf(method=smoothingMethod, **kwargs)
         
 
-        if self.line == 'Ha':
+        if self.line == 'ha':
             self.cam = 'A'
             self.set = '1'
             self.cmap = cm.ha
-        elif self.line == 'Ca':
+        elif self.line == 'ca':
             self.cam = 'B'
             self.set = '1'
             self.cmap = cm.ca
-        elif self.line == 'Na':
+        elif self.line == 'na':
             self.cam = 'A'
             self.set = '2'
             self.cmap = cm.na
-        elif self.line == 'Fe':
+        elif self.line == 'fe':
             self.cam = 'B'
             self.set = '2'
             self.cmap = cm.ㄴfe

@@ -18,13 +18,13 @@ def get_lineName(cwv):
         Spectral line designation.
     """
     if (cwv > 6550) * (cwv < 6570):
-        line = 'Ha'
+        line = 'ha'
     elif (cwv > 8530) * (cwv < 8550):
-        line = 'Ca'
+        line = 'ca'
     elif (cwv > 5880) * (cwv < 5900):
-        line = 'Na'
+        line = 'na'
     elif (cwv > 5425) * (cwv < 5445):
-        line = 'Fe'
+        line = 'fe'
     return line
 
 def get_centerWV(line):

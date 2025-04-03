@@ -235,7 +235,7 @@ def parDefault(line='ha'):
           psig[8:10] = 3.0        
     elif line.lower() == 'ca':    
           par0[10:12]= -0.70
-          psig[10:12] = 0.10
+          psig[10:12] = 0.30
           psig[12:14] = [0.05, 0.3]
           psig[8:10] = 3.0
                
@@ -679,7 +679,7 @@ def par0_3layers(wv1, prof,  line='ha'):
     Tav = Trad(intb,line)
     wha, wca = Dwidth(Tav, 1.)
    
-    if line.lower() == 'Ha':
+    if line.lower() == 'ha':
         wp = wha       
     else:
         wp = wca
@@ -694,7 +694,7 @@ def par0_3layers(wv1, prof,  line='ha'):
     Sp = d1 + S2
     par[4] = np.log10(np.maximum(Sp, intb*0.5))
     par[5] = np.log10(np.maximum(S2, intb*0.02))
-    if line.lower() == 'Ha': 
+    if line.lower() == 'ha': 
         par[14] = wp*1.E-3 #ap*0.0
         par[12] = par[5]*0.5 + np.log10(profav[sel].min())*0.5  
     else: 
@@ -824,7 +824,7 @@ def ParControl(line='ha'):
         indexes of priorly constrained parameters. 
 
     """
-    if line == 'Ha':
+    if line.lower() == 'ha':
         free   = [1,3,4,5,8,9,10,11,12,13]
         constr = [1,3,8,9,10,11,12,13]
        
@@ -1290,7 +1290,7 @@ def lsq_single(iparf, iww, ifp, ipari, ipsigi, ipi, iline, ifree, iconstr):
     return np.append(res_lsq.x, res_lsq.fun)
     
 
-def get_Cloud(wv1, p, inprofile, line='Ha'):
+def get_Cloud(wv1, p, inprofile, line='ha'):
     """
     To calculate the intensity profile of a cloud model 
 
