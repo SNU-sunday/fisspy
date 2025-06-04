@@ -794,8 +794,8 @@ class IMLSI:
         self.x, self.y = self._pix2Mm(self.xp, self.yp, cam=0)
         
         for i in range(len(self.P1)):
-            self.P1[i].set_xdata(self.x)
-            self.P1[i].set_ydata(self.y)
+            self.P1[i].set_xdata([self.x])
+            self.P1[i].set_ydata([self.y])
             
         self.yline1.set_ydata([self.y, self.y])
 
@@ -808,8 +808,8 @@ class IMLSI:
             self.xp2, self.yp2 = self._Mm2Pix(self.x, self.y, cam=1)
             self.x2, self.y2 = self._pix2Mm(self.xp2, self.yp2, cam=1)
             for i in range(len(self.rwv2)):
-                self.P2[i].set_xdata(self.x2)
-                self.P2[i].set_ydata(self.y2)
+                self.P2[i].set_xdata([self.x2])
+                self.P2[i].set_ydata([self.y2])
             self.yline2.set_ydata([self.y2, self.y2])
             prof = corAll(self.fiss2, [self.xp2, self.xp2+1, self.yp2, self.yp2+1])
             title = f"(x,y) = ({self.x2:.2f}, {self.y2:.2f}) Mm / ({self.xp2}, {self.yp2}) pix"

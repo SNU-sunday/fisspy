@@ -243,7 +243,7 @@ class FISS:
         self.dx = self.xDelt
         self.dy = self.yDelt
         self.dwv = self.wvDelt
-        self.date = self.header['date']
+        self.date = self.header['strtime']
         try:
             wvln = self.header['wavelen']
             if type(wvln) == str:
@@ -660,7 +660,7 @@ class FISS:
             self.yp0 = y
 
     def _chPos(self):
-        self.pSpec.set_ydata(self.data[self.ypix, self.xpix])
+        self.pSpec.set_ydata([self.data[self.ypix, self.xpix]])
         self.pHL.set_xdata([self.lwc[self.ypix, self.xpix]-self.hw, self.lwc[self.ypix, self.xpix]+self.hw])
         self.pHL.set_ydata([self.lic[self.ypix, self.xpix], self.lic[self.ypix, self.xpix]])
         self.pVL.set_xdata([self.lwc[self.ypix, self.xpix], self.lwc[self.ypix, self.xpix]])
@@ -1105,9 +1105,9 @@ class FD:
         if self.t != self._t0:
             self._changeRaster()
             self.lws = self.wavelet.power[:, self.tpix]
-            self.powerLWS.set_xdata(self.lws)
-            self.vlineTS.set_xdata(self.t)
-            self.vlineWavelet.set_xdata(self.t)
+            self.powerLWS.set_xdata([self.lws])
+            self.vlineTS.set_xdata([self.t])
+            self.vlineWavelet.set_xdata([self.t])
             peakPLWS = self.period[self.lws.argmax()]
             self.hlineLWS.set_ydata(peakPLWS)
             self._t0 = self.t
@@ -1130,9 +1130,9 @@ class FD:
         data = self.data[:, ypix, xpix, self.cid]
         self.timeseries.set_ydata(data)
         self.axTS.set_ylim(data.min(), data.max())
-        self.powerGWS.set_xdata(self.gws)
+        self.powerGWS.set_xdata([self.gws])
         self.lws = self.wavelet.power[:, self.tpix]
-        self.powerLWS.set_xdata(self.lws)
+        self.powerLWS.set_xdata([self.lws])
         self.point.set_offsets([self.x, self.y])
         peakPGWS = self.period[self.gws.argmax()]
         peakPLWS = self.period[self.lws.argmax()]
@@ -1237,9 +1237,9 @@ class FD:
         self._t0 = t
         self._changeRaster()
         self.lws = self.wavelet.power[:, self.tpix]
-        self.LWS.set_xdata(self.lws)
-        self.vlineTS.set_xdata(self.t)
-        self.vlineWavelet.set_xdata(self.t)
+        self.LWS.set_xdata([self.lws])
+        self.vlineTS.set_xdata([self.t])
+        self.vlineWavelet.set_xdata([self.t])
         peakPLWS = self.period[self.lws.argmax()]
         self.hlineLWS.set_ydata(peakPLWS)
         self._t0 = self.t
