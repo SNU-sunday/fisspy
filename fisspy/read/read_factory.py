@@ -280,7 +280,7 @@ class FISS:
         elif self.line == 'fe':
             self.cam = 'B'
             self.set = '2'
-            self.cmap = cm.ㄴfe
+            self.cmap = cm.fe
 
         self.extentRaster = [-self.xDelt/2, (self.nx-0.5)*self.xDelt,
                              -self.yDelt/2, (self.ny-0.5)*self.yDelt]

@@ -17,8 +17,9 @@ from urllib.request import urlopen
 import json
 import matplotlib.ticker as ticker
 
+
 __author__ = "Juhyung Kang"
-__all__ = ['makeRasterSet']
+__all__ = ['makeRasterSet', 'makeOBSmovie']
 
 def filesize(f):
     fs = getsize(f)
@@ -437,591 +438,7 @@ class makeRasterSet:
 
         opn.write('}')
         opn.close()
-    
-class makeRecDataJSON:
-    def __init__(self, compdir, invdir, savedir, events=[""], position=["",""], publication=[""], coobs=[""], target="", note="", **kwargs):
-        self.tdur = None
-        self.tdurI = None
-        self.compD = compdir
-        self.invD = invdir
-        self.saveD = savedir
-        self.kwg = kwargs
-        self.sn_cont = None
-        self.sn_raster = None
-        self.sn_rasterani = None
-        self.sn_inversion = None
-        self.sn_inversionani = None
-        self.tjd = None
-        self.json = {"title": "",
-                     "date": "",
-                     "obstime": "",
-                     "duration": [""],
-                     "cadence": 0.,
-                     "target": target,
-                     "events": events,
-                     "position": position,
-                     "obsarea": ["", ""],
-                     "observer": "",
-                     "publication": publication,
-                     "img_target": "",
-                     "img_raster": "",
-                     "img_inv": "",
-                     "movie_raster": "",
-                     "movie_inv": "",
-                     "data_com": "",
-                     "data_inv": "",
-                     "size_com": "",
-                     "size_inv": "",
-                     "coobs": coobs,
-                     "note": note}
-        
-        self.lca =  glob(join(compdir, "*A1_c.fts"))
-        self.lcb =  glob(join(compdir, "*B1_c.fts"))
-        self.lia =  glob(join(invdir, "*A1_par.fts"))
-        self.lib =  glob(join(invdir, "*B1_par.fts"))
-        self.lca.sort()
-        self.lcb.sort()
-        self.lia.sort()
-        self.lib.sort()
-        self.nf = len(self.lca)
-
-    def saveAll(self, ii=None, wvset=[-4,-0.5,0,0.5], excinv=False):
-        if ii is None:
-            idx = self.nf//2
-        else:
-            idx = ii
-
-        self.idx = idx
-        fig = self.Itarget(idx, wvset[0], save=True)
-        plt.close(fig)
-        fig = self.Iraster(idx, wvset, save=True)
-        plt.close(fig)
-        if not excinv:
-            fig = self.Iinversion(idx, save=True)
-            plt.close(fig)
-        self.updateJSON()
-        self.saveJSON()
-
-    def saveJSON(self):
-        time = fname2isot(self.lca[self.idx])
-        jname = join(self.saveD, time[:10].replace('-', '')+'_'+time[11:].replace(':',"")+".json")
-        opn = open(jname, 'w')
-        opn.write('{\n')
-        opn.write(f"""  "title": "{self.json['title']}",\n""")
-        opn.write(f"""  "date": "{self.json['date']}",\n""")
-        opn.write(f"""  "obstime": "{self.json['obstime']}",\n""")
-        opn.write(f"""  "duration": {self.json['duration']},\n""")
-        opn.write(f"""  "cadence": "{self.json['cadence']}",\n""")
-        opn.write(f"""  "target": "{self.json['target']}",\n""")
-        opn.write(f"""  "events": {self.json['events']},\n""")
-        opn.write(f"""  "position": {self.json['position']},\n""")
-        opn.write(f"""  "obsarea": {self.json['obsarea']},\n""")
-        opn.write(f"""  "observer": "{self.json['observer']}",\n""")
-        opn.write(f"""  "publication": {self.json['publication']},\n""")
-        opn.write(f"""  "pubname": {self.json['pubname']},\n""")
-        opn.write(f"""  "img_target": "{self.json['img_target']}",\n""")
-        opn.write(f"""  "img_raster": "{self.json['img_raster']}",\n""")
-        opn.write(f"""  "img_inv": "{self.json['img_inv']}",\n""")
-        opn.write(f"""  "movie_raster": "{self.json['movie_raster']}",\n""")
-        opn.write(f"""  "movie_inv": "{self.json['movie_inv']}",\n""")
-        opn.write(f"""  "data_com": "{self.json['data_com']}",\n""")
-        opn.write(f"""  "data_inv": "{self.json['data_inv']}",\n""")
-        opn.write(f"""  "size_com": "{self.json['size_com']}",\n""")
-        opn.write(f"""  "size_inv": "{self.json['size_inv']}",\n""")
-        opn.write(f"""  "coobs": {self.json['coobs']},\n""")
-        opn.write(f"""  "note": "{self.json['note']}"\n""")
-        opn.write('}')
-        opn.close()
-
-        print(f"Save json file: {jname}")
-
-    def reviseJSON(self, key, arg):
-        if key == 'publication' and type(arg) == list:
-            for i,p in enumerate(arg):
-                arg[i] = basename(p)
-        if type(arg) == list:
-            self.json[key] = f"{arg}".replace("'",'"')
-        self.json[key] = arg
-
-    def updateJSON(self):
-
-        A = FISS(self.lca[self.idx], **self.kwg)
-        h = A.header
-        observer = h['observer']
-        st = Time(fname2isot(self.lca[0])).isot[11:]
-        ed = Time(fname2isot(self.lca[-1])).isot[11:]
-        obstime = f"{st} ~ {ed}"
-        if not self.json["position"][0]:
-            try:
-                position = f"""["{h['tel_xpos']}", "{h['tel_ypos']}"]"""
-            except:
-                position = f"""["", ""]"""
-        else:
-            position = self.json["position"]
-        if not self.json["target"]:
-            try:
-                target = h['target']
-            except:
-                target = 'None'
-        else:
-            target = self.json["target"]
-
-        tmp = fname2isot(self.lca[self.idx])
-        date = tmp[:10]
-        title = f'{date} ({target})'
-        if self.tjd is not None:
-            tt = np.roll(self.tjd,-1) - self.tjd
-            tsec = tt*3600*24
-            cadence = np.median(tsec[:-1])
-            wh = tsec >= cadence*1.5
-            w0 = 0
-            dur = """["""
-            wh2 = np.arange(self.nf)[wh]
-            tsec = self.tjd*3600*24
-            for w in wh2:
-                dt = (tsec[w]-tsec[w0])/60 # in min
-                st = Time(fname2isot(self.lca[w0])).isot[11:]
-                ed = Time(fname2isot(self.lca[w])).isot[11:]
-                dur += f'"{st} ~ {ed} ({dt:.1f} min)", '
-                w0 = w+1
-            dt = (tsec[-1]-tsec[w0])/60
-            st = Time(fname2isot(self.lca[w0])).isot[11:]
-            ed = Time(fname2isot(self.lca[-1])).isot[11:]
-            dur += f'"{st} ~ {ed} ({dt:.1f} min)"]'
-
-        self.reviseJSON('date', date)
-        self.reviseJSON('title', title)
-        self.reviseJSON('observer', observer)
-        self.reviseJSON('duration', dur)
-        self.reviseJSON('obstime', obstime)
-        self.reviseJSON('position', position)
-        self.reviseJSON('target', target)
-        self.reviseJSON('obsarea', f"""["{A.nx*0.16:.0f}", "{A.ny*0.16:.0f}"]""")
-        self.reviseJSON('cadence', f"{cadence:.2f}")
-        time = fname2isot(self.lca[self.idx])
-        namebase = join(self.saveD, time[:10].replace('-', '')+'_'+time[11:].replace(':',""))
-        if self.sn_raster is not None:
-            self.reviseJSON('img_raster', basename(self.sn_raster))
-        if self.sn_rasterani is not None:
-            self.reviseJSON('movie_raster', basename(self.sn_rasterani))
-            czipn = namebase+'_comp.zip'
-            flist = glob(join(self.compD, '*.fts'))
-            flist.sort()
-            if not isfile(czipn):
-                zp = ZipFile(czipn, 'w')
-                for f in flist:
-                    zp.write(f, arcname=basename(f))
-                zp.close()
-            self.reviseJSON("data_com", basename(czipn))
-            self.reviseJSON("size_com", filesize(czipn))
-        if self.sn_inversion is not None:
-            self.reviseJSON('img_inv', basename(self.sn_inversion))
-        if self.sn_inversionani is not None:
-            self.reviseJSON('movie_inv', basename(self.sn_inversionani))
-            izipn = namebase+'_inv.zip'
-            if not isfile(izipn):
-                zp = ZipFile(izipn, 'w')
-                for i in range(self.nf):
-                    zp.write(self.lia[i], arcname=basename(self.lia[i]))
-                    zp.write(self.lib[i], arcname=basename(self.lib[i]))
-                zp.close()
-            self.reviseJSON("data_inv", basename(izipn))
-            self.reviseJSON("size_inv", filesize(izipn))
-        if self.sn_cont is not None:
-            self.reviseJSON('img_target', basename(self.sn_cont))
-
-
-
-
-        if type(self.json['events']) == list:
-            self.json['events'] = f"{self.json['events']}".replace("'",'"')
-        if type(self.json['position']) == list:
-            self.json['position'] = f"{self.json['position']}".replace("'",'"')
-        if type(self.json['publication']) == list:
-            self.json['pubname'] = [None]*len(self.json['publication'])
-            for i,p in enumerate(self.json['publication']):
-                self.json['publication'][i] = basename(p)
-                url = 'https://ui.adsabs.harvard.edu/abs/' + self.json['publication'][i]
-                name = self.getPub(url)
-                self.json['pubname'][i] = name
-            self.json['publication'] = f"{self.json['publication']}".replace("'",'"')
-            self.json['pubname'] = f"{self.json['pubname']}".replace("'",'"')
-        if type(self.json['coobs']) == list:
-            self.json['coobs'] = f"{self.json['coobs']}".replace("'",'"')
-
-
-    def getPub(self, url):
-        opn = urlopen(url+'/abstract')
-        par = bs(opn.read(), 'html.parser')
-        meta = par.find_all('meta')
-        opn.close()
-
-        for m in meta:
-            if m.get('name') == 'citation_authors':
-                authors =  m.get('content')
-
-        na = authors.count(';')
-        name = authors.split(',')[0]
-        if na == 1:
-            name += f" ({basename(url)[:4]})"
-        else:
-            name += f" et al. ({basename(url)[:4]})"
-        return name
-
-    def Iduration(self, ax):
-        I = np.zeros(len(self.lca), dtype=float)
-        t = [None]*len(self.lca)
-        self.tjd = tjd = np.zeros(len(self.lca), dtype=float)
-        a = FISS(self.lca[0], **self.kwg)
-
-        for i, f in enumerate(self.lca):
-            a = FISS(f, **self.kwg)
-            cpix = abs(a.wave-a.cwv).argmin()
-            I[i] = a.data[:,:-1,cpix-50:cpix+50].sum()
-            tmp = a.header['strtime'][:10].replace('.', '-')+'T'+a.header['strtime'][11:]
-            t[i] = Time(tmp).datetime
-            tjd[i] = Time(tmp).jd
-        
-        ax.plot(t, I/I[0], 'w+-')
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-        ax.set_title('Mean Intensity at line center (normalized by the first frame value)', color='w')
-        ax.tick_params(axis='both', colors='white')
-        ax.spines['top'].set_color('white')
-        ax.spines['bottom'].set_color('white')
-        ax.spines['left'].set_color('white')
-        ax.spines['right'].set_color('white')
-        return t
-
-    def Itarget(self, ii=None, wv=-4, save=True):
-        if ii is None:
-            idx = self.nf//2
-        else:
-            idx = ii
-        self.idx = idx
-        A, B, time = self.loadData(idx)
-        cwv = A.centralWavelength
-        nx = A.nx
-        ny = A.ny
-        figy = 7
-        r = nx/ny
-        fig, ax = plt.subplots(figsize=[r*figy,figy])
-        ax.set_position([0,0,1,1])
-        aa = A.getRaster(cwv+wv)
-        M = aa.max()
-        if M > 1e2:
-            m = aa[aa>1e2].min()
-        else:
-            m = aa.min()
-        aa = np.log10(aa)
-        m = np.log10(m)
-        M = np.log10(M)
-        ax.imshow(aa, cm.ha, origin='lower', clim=[m,M])
-        fig.show()
-        if save:
-            time = fname2isot(self.lca[self.idx])
-            tmp = join(self.saveD, time[:10].replace('-', '')+'_'+time[11:].replace(':',"")+"_cont.png")
-            self.sn_cont = join(self.saveD, tmp)
-            print(f"Save continuum figure: {self.sn_cont}")
-            fig.savefig(self.sn_cont)
-            return fig
-            # self.updateJSON()
-
-    def loadData(self, i):
-        A = FISS(self.lca[i], **self.kwg)
-        B = FISS(self.lcb[i], **self.kwg)
-        time = Time(fname2isot(self.lca[self.idx]))
-
-        return A, B, time
-
-    def Iraster(self, ii=None, wvset=[-4,-0.5,0,0.5], save=True, interval=100):
-        bgcolor = "#212529"
-        bg_second = "#484c4f"
-        fontcolor = "#adb5bd"
-        titlecolor = "#ffda6a"
-
-        if ii is None:
-            idx = self.nf//2
-        else:
-            idx = ii
-
-        self.idx = idx
-        A, B, time = self.loadData(idx)
-        self.rh = A.header
-        cwvA = A.centralWavelength
-        cwvB = B.centralWavelength
-
-        self.nx = A.nx
-        self.nx0 = A.nx
-        self.ny = A.ny
-        self.nw = A.nwv
-
-        if type(wvset) == np.ndarray:
-            self.wvset = wvset
-        else:
-            self.wvset = np.array(wvset)
-
-        self.nwv = nwv = len(self.wvset)
-
-        self.wvA = cwvA+self.wvset
-        self.wvB = cwvB+self.wvset
-
-        self.figy = 8
-        fs = [self.figy/2.78*self.nx/self.ny*self.nwv, self.figy]
-        self.fig, self.ax = plt.subplots(4, nwv, figsize=fs)
-        self.fig.set_facecolor(bgcolor)
-
-        self.tax = self.fig.add_subplot(121)
-        self.tax.set_position([0,2.72/2.81,1,0.1/2.81])
-        self.tax.set_facecolor(bgcolor)
-        self.tax.set_axis_off()
-
-        self.axD = self.fig.add_subplot(121)
-        self.axD.set_position([0.06,0.03,0.92,0.3/2.81])
-        self.axD.set_facecolor(bgcolor)
-        if self.tdur is None:
-            self.tdur = self.Iduration(self.axD)
-        
-        time = fname2isot(self.lca[self.idx])
-        self.sn_raster = join(self.saveD, time[:10].replace('-', '')+'_'+time[11:].replace(':',"")+"_raster.png")
-
-        yl = self.axD.get_ylim()
-        self.axD.set_ylim(yl)
-        self.pt = self.axD.plot([self.tdur[self.idx], self.tdur[self.idx]], yl, color='r')[0]
-
-        self.titleR = self.tax.text(0.5,0.5, time, transform=self.tax.transAxes, ha='center', va='center', weight='bold', size=15, c=titlecolor)
-        self.imRasterA = [None]*nwv
-        self.imRasterB = [None]*nwv
-
-        for i in range(nwv):
-            self.ax[0, i].set_position([i/nwv,0.48/2.81,1/nwv,0.1/2.81])
-            self.ax[1, i].set_position([i/nwv,0.58/2.81,1/nwv,1.02/2.81])
-            self.ax[2, i].set_position([i/nwv,1.60/2.81,1/nwv,0.1/2.81])
-            self.ax[3, i].set_position([i/nwv,1.70/2.81,1/nwv,1.02/2.81])
-            
-            if i == nwv//2:
-                self.ax[0, i].text(0.5, 0.5, f'{cwvB:.1f} $\\AA$', transform=self.ax[0, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
-                self.ax[2, i].text(0.5, 0.5, f'{cwvA:.1f} $\\AA$', transform=self.ax[2, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
-            else:
-                self.ax[0, i].text(0.5, 0.5, f'{self.wvset[i]:.1f} $\\AA$', transform=self.ax[0, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
-                self.ax[2, i].text(0.5, 0.5, f'{self.wvset[i]:.1f} $\\AA$', transform=self.ax[2, i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
-
-            aa = A.getRaster(self.wvA[i])
-            M = aa.max()
-            if M > 1e2:
-                m = aa[aa>1e2].min()
-            else:
-                m = aa.min()
-            aa = np.log10(aa)
-            m = np.log10(m)
-            M = np.log10(M)
-            self.imRasterA[i] = self.ax[3, i].imshow(aa, cm.ha, origin='lower', clim=[m, M])
-            bb = B.getRaster(self.wvB[i])
-            M = bb.max()
-            if M > 1e2:
-                m = bb[bb>1e2].min()
-            else:
-                m = bb.min()
-            bb = np.log10(bb)
-            m = np.log10(m)
-            M = np.log10(M)
-            self.imRasterB[i] = self.ax[1, i].imshow(bb, cm.ca, origin='lower', clim=[m, M])
-            for j in range(4):
-                self.ax[j, i].set_axis_off()
-                self.ax[j, i].set_facecolor(bgcolor)
-
-        self.fig.show()
-        if save:
-            print(f"Save raster figure: {self.sn_raster}")
-            self.fig.savefig(self.sn_raster)
-        self.animation(interval, save=save)
-        return self.fig
-
-    def chData(self, i):
-        A, B, time = self.loadData(i)
-        nx = A.nx
-        time = fname2isot(self.lca[i])
-        self.titleR.set_text(time)
-        self.pt.set_xdata([self.tdur[i], self.tdur[i]])
-        if self.nx != nx:
-            self.nx = nx
-            self.fig.set_figwidth(self.figy/2.78*self.nx/self.ny*self.nwv)
-            for i in range(self.nwv):
-                self.imRasterA[i].set_extent([-0.5, self.nx-0.5,-0.5, self.ny-0.5])
-                self.imRasterB[i].set_extent([-0.5, self.nx-0.5,-0.5, self.ny-10-0.5])
-
-
-        for i in range(self.nwv):
-            self.imRasterA[i].set_data(np.log10(A.getRaster(self.wvA[i])))
-            self.imRasterB[i].set_data(np.log10(B.getRaster(self.wvB[i])))
-
-        self.fig.canvas.draw_idle()
-
-    def animation(self, interval=100, save=True):
-        self.ani = FuncAnimation(self.fig, self.chData, frames=np.arange(self.nf), interval=interval)
-        self.fig.canvas.draw_idle()
-        if save:
-            self.sn_rasterani = self.sn_raster[:-3]+'mp4'
-            print(f"Save raster animation: {self.sn_rasterani}")
-            self.ani.save(self.sn_rasterani)
-            # self.updateJSON()
-
-    def Iinversion(self, ii=None, save=True, interval=100, ani=True):
-        bgcolor = "#212529"
-        bg_second = "#484c4f"
-        fontcolor = "#adb5bd"
-        titlecolor = "#ffda6a"
-
-        if ii is None:
-            idx = self.nf//2
-        else:
-            idx = ii
-
-        self.idx = idx
-        A = fits.open(self.lia[idx])[0]
-        B = fits.open(self.lib[idx])[0]
-        time = fname2isot(self.lia[idx])
-
-        self.nyI, self.nxI = A.data.shape[1:]
-        nyB, nxB = B.data.shape[1:]
-        self.figy = 8
-        cx = 0.25*3.5
-        fs = [(self.figy/2.78*(self.nxI/self.nyI)+cx)*4, self.figy]
-        CX = cx/fs[0]
-        nwv = 4
-        w = 1/nwv-CX
-        self.figI, self.axI = plt.subplots(4, 4, figsize=fs)
-        self.figI.set_facecolor(bgcolor)
-
-        self.tax = self.figI.add_subplot(121)
-        self.tax.set_position([0,2.72/2.81,1,0.1/2.81])
-        self.tax.set_facecolor(bgcolor)
-        self.tax.set_axis_off()
-
-        self.axD = self.figI.add_subplot(121)
-        self.axD.set_position([0.06,0.03,0.92,0.3/2.81])
-        self.axD.set_facecolor(bgcolor)
-        if self.tdurI is None:
-            self.tdurI = self.Iduration(self.axD)
-        self.sn_inversion = join(self.saveD, time[:10].replace('-', '')+'_'+time[11:].replace(':',"")+"_inversion.png")
-
-        yl = self.axD.get_ylim()
-        self.axD.set_ylim(yl)
-        self.pt = self.axD.plot([self.tdurI[idx], self.tdurI[idx]], yl, color='r')[0]
-
-        
-        self.title = self.tax.text(0.5,0.5, time, transform=self.tax.transAxes, ha='center', va='center', weight='bold', size=15, c=titlecolor)
-        self.imIA = [None]*nwv
-        self.imIB = [None]*nwv
-
-        name = ['log S$_p, $', 'log S$_0, $', '$v_0, $', 'log $\\omega_0, $']
-        self.Iid = [4, 13, 9, 11]
-        lcmA = [cm.ha, cm.ha, plt.cm.RdBu_r, plt.cm.PuOr_r]
-        lcmB = [cm.ca, cm.ca, plt.cm.RdBu_r, plt.cm.PuOr_r]
-
-        self.caxA = [None]*nwv
-        self.caxB = [None]*nwv
-
-        for i in range(nwv):
-            self.caxA[i] = self.figI.add_subplot(122)
-            self.caxB[i] = self.figI.add_subplot(122)
-            self.caxA[i].set_position([w+i/nwv+3e-3,1.70/2.81,CX/3.5,1.02/2.81])
-            self.caxB[i].set_position([w+i/nwv+3e-3,0.58/2.81,CX/3.5,1.02/2.81*nyB/self.nyI])
-            self.axI[0, i].set_position([i/nwv,0.48/2.81,w,0.1/2.81])
-            self.axI[1, i].set_position([i/nwv,0.58/2.81,w,1.02/2.81*nyB/self.nyI])
-            self.axI[2, i].set_position([i/nwv,1.60/2.81,w,0.1/2.81])
-            self.axI[3, i].set_position([i/nwv,1.70/2.81,w,1.02/2.81])
-
-            self.axI[0, i].text(0.5, 0.5, name[i]+r'$_{Ca II}$', transform=self.axI[0, i].transAxes, ha='center', va='center', size=12, c=fontcolor)
-            self.axI[2, i].text(0.5, 0.5, name[i]+r'$_{H\alpha}$', transform=self.axI[2, i].transAxes, ha='center', va='center', size=12, c=fontcolor)
-
-            da = A.data[self.Iid[i]]*A.header[f'scale{self.Iid[i]:02}']
-            db = B.data[self.Iid[i]]*B.header[f'scale{self.Iid[i]:02}']
-            wh = (da>-8)*(da < 8)
-            mA = np.median(da[wh])
-            stdA = da[wh].std()
-
-            wh = (db>-8)*(db < 8)
-            mB = np.median(db[wh])
-            stdB = db[wh].std()
-            if i == 2:
-                da -= mA
-                db -= mB
-                self.mA = mA
-                self.mB = mB
-
-            self.imIA[i] = self.axI[3,i].imshow(da, lcmA[i], origin='lower')
-            self.imIB[i] = self.axI[1,i].imshow(db, lcmB[i], origin='lower')
-            if i == 2:
-                self.imIA[i].set_clim([-7, 7])
-                self.imIB[i].set_clim([-7, 7])
-            elif i == 3:
-                self.imIA[i].set_clim([mA-3*stdA, mA+3*stdA])
-                self.imIB[i].set_clim([mB-3*stdB, mB+3*stdB])
-
-            self.cbarA = self.figI.colorbar(self.imIA[i], cax=self.caxA[i])
-            self.cbarA.locator = ticker.MaxNLocator(nbins=5)
-            self.cbarA.ax.tick_params(colors=fontcolor)
-            self.cbarA.update_ticks()
-            self.cbarB = self.figI.colorbar(self.imIB[i], cax=self.caxB[i], orientation='vertical')
-            self.cbarB.locator = ticker.MaxNLocator(nbins=5)
-            self.cbarB.ax.tick_params(colors=fontcolor)
-            self.cbarB.update_ticks()
-            for j in range(4):
-                self.axI[j,i].set_axis_off()
-                self.axI[j,i].set_facecolor(bgcolor)
-
-        self.figI.show()
-        if save:
-            print(f"Save inversion figure: {self.sn_inversion}")
-            self.figI.savefig(self.sn_inversion)
-
-        if ani:
-            self.animationI(interval, save=save)
-        return self.figI
-
-    def chDataI(self, i):
-        A = fits.open(self.lia[i])[0]
-        B = fits.open(self.lib[i])[0]
-        time = fname2isot(self.lia[i])
-        nx = A.data.shape[-1]
-        self.title.set_text(time)
-        self.pt.set_xdata([self.tdurI[i], self.tdurI[i]])
-        if self.nxI != nx:
-            self.nxI = nx
-            self.figI.set_figwidth(self.figy/2.78*self.nxI/self.nyI*4)
-            for i in range(4):
-                self.imIA[i].set_extent([-0.5, self.nxI-0.5,-0.5, self.nyI-0.5])
-                self.imIB[i].set_extent([-0.5, self.nxI-0.5,-0.5, self.nyI-10-0.5])
-
-
-        for i in range(4):
-            da = A.data[self.Iid[i]]*A.header[f'scale{self.Iid[i]:02}']
-            db = B.data[self.Iid[i]]*B.header[f'scale{self.Iid[i]:02}']
-            if i == 2:
-                da -= self.mA
-                db -= self.mB
-            self.imIA[i].set_data(da)
-            self.imIB[i].set_data(db)
-
-        self.figI.canvas.draw_idle()
-
-    def animationI(self, interval=100, save=True):
-        self.aniI = FuncAnimation(self.figI, self.chDataI, frames=np.arange(self.nf), interval=interval)
-        self.figI.canvas.draw_idle()
-        if save:
-            self.sn_inversionani = self.sn_inversion[:-3]+'mp4'
-            print(f"Save inversion animation: {self.sn_inversionani}")
-            self.aniI.save(self.sn_inversionani)
-            # self.updateJSON()
-
-
-    # def convert2json(self):
-    #     if type(arg) == list:
-    #         con = """["""
-    #         for ag in arg:
-    #             con += f""""{ag}", """ 
-    #         con = con[:-2]+"""]"""
-
+ 
 def flipInv(invD):
     lia = glob(join(invD, "*A1_par.fts"))
     lib = glob(join(invD, "*B1_par.fts"))
@@ -1110,15 +527,529 @@ def zipComp(dirn, saveD, fjson=None):
     zp.close()
     print(zname)
 
+def upateJSON(fjson, lparam, lvalue):
+    """
+    Update the json file revising the parameter values.
+
+    Parameters
+    ----------
+    fjson : `str`
+        The filename of the json file to be updated.
+    lparam : `list`
+        The list of parameters to be updated.
+    lvalue : `list`
+        The list of values corresponding to the parameters to be updated.
+    """
+    oj = open(fjson, 'r')
+    js = json.load(oj)
+    oj.close()
+
+    for p, v in zip(lparam, lvalue):
+        if p in js:
+            js[p] = v
+        else:
+            print(f"Parameter '{p}' not found in the JSON file.")
+
+    saveJSON(fjson, js)
+
+def saveJSON(fjson, json_data):
+    """
+    Save the JSON data to a file.
+
+    Parameters
+    ----------
+    fjson : `str`
+        The filename of the JSON file to be saved.
+    json_data : `dict`
+        The JSON data to be saved.
+    """
+    opn = open(fjson, 'w')
+    opn.write("{\n")
+
+    js = json_data
+    keys = list(js.keys())
+    nk = len(keys)
+    for i, k in enumerate(keys):
+        if type(js[k]) == str:
+            tmp = js[k].replace('"', "'")
+            txt = f"""  "{k}": "{tmp}" """
+        else:
+            txt = f'  "{k}": {js[k]}'.replace("'",'"')
+        if i != nk-1:
+            txt += ',\n'
+        else:
+            txt +='\n'
+        opn.write(txt)
+    opn.write("}")
+    opn.close()
+
+class makeOBSmovie:
+    def __init__(self, compD, saveD, invD=None, recData=False, target="", events=[""], position=["",""], publication=[""], coobs=[""], note="", **FISSkwargs):
+        self.tdur = None
+        self.tdurI = None
+        self.compD = compD
+        self.invD = invD
+        self.saveD = saveD
+        self.kwg = FISSkwargs
+        self.sn_cont = None
+        self.sn_raster = None
+        self.sn_rasterani = None
+        self.tjd = None
+        self.json = {"title": "",
+                     "date": "",
+                     "obstime": "",
+                     "duration": [""],
+                     "cadence": 0.,
+                     "target": target,
+                     "events": events,
+                     "position": position,
+                     "obsarea": ["", ""],
+                     "observer": "",
+                     "publication": publication,
+                     "img_target": "",
+                     "img_raster": "",
+                     "movie_raster": "",
+                     "data_com": "",
+                     "data_inv": "",
+                     "size_com": "",
+                     "size_inv": "",
+                     "recommend": int(recData),
+                     "coobs": coobs,
+                     "note": note}
+        
+        self.lca =  glob(join(compD, "*A1_c.fts"))
+        self.lcb =  glob(join(compD, "*B1_c.fts"))
+        if invD is not None:
+            self.lia =  glob(join(invD, "*A1_par.fts"))
+            self.lib =  glob(join(invD, "*B1_par.fts"))
+            self.lia.sort()
+            self.lib.sort()
+        self.lca.sort()
+        self.lcb.sort()
+        self.nf = len(self.lca)
+        a,b,t0 = self.loadData(0)
+        a = FISS(self.lca[0], **self.kwg)
+        b = FISS(self.lcb[0], **self.kwg)
+        self.t0 = t0
+        self.nya, self.nxa, self.nwa = a.data.shape
+        self.nyb, self.nxb, self.nwb = b.data.shape
+        self.cwva = a.cwv
+        self.wva = a.wave - a.cwv
+        self.dwa = np.median(np.diff(self.wva))
+        self.cwvb = b.cwv
+        self.wvb = b.wave - b.cwv
+        self.dwb = np.median(np.diff(self.wvb))
+        self.binit = False
+        self.dsa = None
+
+    def _initDS(self, wvset):
+        self.tjd0 = np.zeros(self.nf, dtype=float)
+        for i, f in enumerate(self.lca[:self.nf]):
+            tstr = fname2isot(f)
+            self.tjd0[i] = Time(tstr).jd*24*3600
+        self.tjd0 -= self.tjd0[0]
+        dt = np.median(np.diff(self.tjd0))
+        nt = int(round((self.tjd0[-1] / dt)))
+        self.newT = np.arange(nt)*dt
+        self.dsa = np.zeros((self.nwa, nt), dtype=float)
+        self.dsb = np.zeros((self.nwb, nt), dtype=float)
+        self.extA = [self.newT[0]-dt*0.5, self.newT[-1]+dt*0.5, self.wva[0] + self.dwa/2, self.wva[-1] + self.dwa/2]
+        self.extB = [self.newT[0]-dt*0.5, self.newT[-1]+dt*0.5, self.wvb[-1] - self.dwb/2, self.wvb[0] - self.dwb/2]
+        self.rasterA = np.zeros((self.nf, len(wvset), self.nya, self.nxa))
+        self.rasterB = np.zeros((self.nf, len(wvset), self.nyb, self.nxb))
+        self.binit = True
+
+    def saveAll(self, ii=None, wvset=[-4,-0.5,0,0.5]):
+        if ii is None:
+            idx = self.nf//2
+        else:
+            idx = ii
+
+        self.idx = idx
+        fig = self.Itarget(idx, wvset[0], save=True)
+        plt.close(fig)
+        fig = self.Iraster(idx, wvset, save=True)
+        plt.close(fig)
+        self.updateJSON()
+        self.saveJSON()
+
+    def saveJSON(self):
+        time = fname2isot(self.lca[self.idx])
+        jname = join(self.saveD, time[:10].replace('-', '')+'_'+time[11:].replace(':',"")+".json")
+        saveJSON(jname, self.json)
+        print(f"Save json file: {jname}")
+
+    def reviseJSON(self, key, arg):
+        if key == 'publication' and type(arg) == list:
+            for i,p in enumerate(arg):
+                arg[i] = basename(p)
+        if type(arg) == list:
+            self.json[key] = f"{arg}".replace("'",'"')
+        self.json[key] = arg
+
+    def updateJSON(self):
+
+        A = FISS(self.lca[self.idx], **self.kwg)
+        h = A.header
+        observer = h['observer']
+        st = Time(fname2isot(self.lca[0])).isot[11:]
+        ed = Time(fname2isot(self.lca[-1])).isot[11:]
+        obstime = f"{st} ~ {ed}"
+        if not self.json["position"][0]:
+            try:
+                position = f"""["{h['tel_xpos']}", "{h['tel_ypos']}"]"""
+            except:
+                position = f"""["", ""]"""
+        else:
+            position = self.json["position"]
+        if not self.json["target"]:
+            try:
+                target = h['target']
+            except:
+                target = 'None'
+        else:
+            target = self.json["target"]
+
+        tmp = fname2isot(self.lca[self.idx])
+        date = tmp[:10]
+        title = f'{date} ({target})'
+        nf = len(self.lca)
+        if self.tjd is None:
+            self.tjd = np.zeros(nf, dtype=float)
+            for i, f in enumerate(self.lca):
+                tstr = fname2isot(f)
+                self.tjd[i] = Time(tstr).jd
+        tt = np.roll(self.tjd,-1) - self.tjd
+        tsec = tt*3600*24
+        cadence = np.median(tsec[:-1])
+        wh = tsec >= cadence*1.5
+        w0 = 0
+        dur = """["""
+        wh2 = np.arange(nf)[wh]
+        tsec = self.tjd*3600*24
+        for w in wh2:
+            dt = (tsec[w]-tsec[w0])/60 # in min
+            st = Time(fname2isot(self.lca[w0])).isot[11:]
+            ed = Time(fname2isot(self.lca[w])).isot[11:]
+            dur += f'"{st} ~ {ed} ({dt:.1f} min)", '
+            w0 = w+1
+        dt = (tsec[-1]-tsec[w0])/60
+        st = Time(fname2isot(self.lca[w0])).isot[11:]
+        ed = Time(fname2isot(self.lca[-1])).isot[11:]
+        dur += f'"{st} ~ {ed} ({dt:.1f} min)"]'
+
+        self.reviseJSON('date', date)
+        self.reviseJSON('title', title)
+        self.reviseJSON('observer', observer)
+        self.reviseJSON('duration', dur)
+        self.reviseJSON('obstime', obstime)
+        self.reviseJSON('position', position)
+        self.reviseJSON('target', target)
+        self.reviseJSON('obsarea', f"""["{A.nx*0.16:.0f}", "{A.ny*0.16:.0f}"]""")
+        self.reviseJSON('cadence', f"{cadence:.2f}")
+        time = fname2isot(self.lca[self.idx])
+        sd = join(self.saveD, 'data')
+        if not isdir(sd):
+            mkdir(sd)
+        namebase = join(sd, time[:10].replace('-', '')+'_'+time[11:].replace(':',""))
+        if self.sn_raster is not None:
+            self.reviseJSON('img_raster', basename(self.sn_raster))
+        if self.sn_rasterani is not None:
+            self.reviseJSON('movie_raster', basename(self.sn_rasterani))
+            czipn = namebase+'_comp.zip'
+            flist = glob(join(self.compD, '*.fts'))
+            flist.sort()
+            if not isfile(czipn):
+                zp = ZipFile(czipn, 'w')
+                for f in flist:
+                    zp.write(f, arcname=basename(f))
+                zp.close()
+            self.reviseJSON("data_com", basename(czipn))
+            self.reviseJSON("size_com", filesize(czipn))
+        if self.invD is not None:
+            izipn = namebase+'_inv.zip'
+            if not isfile(izipn):
+                zp = ZipFile(izipn, 'w')
+                for i in range(len(self.lia)):
+                    zp.write(self.lia[i], arcname=basename(self.lia[i]))
+                    zp.write(self.lib[i], arcname=basename(self.lib[i]))
+                zp.close()
+            self.reviseJSON("data_inv", basename(izipn))
+            self.reviseJSON("size_inv", filesize(izipn))
+        if self.sn_cont is not None:
+            self.reviseJSON('img_target', basename(self.sn_cont))
+
+        if type(self.json['events']) == list:
+            self.json['events'] = f"{self.json['events']}".replace("'",'"')
+        if type(self.json['position']) == list:
+            self.json['position'] = f"{self.json['position']}".replace("'",'"')
+        if type(self.json['publication']) == list:
+            self.json['pubname'] = [None]*len(self.json['publication'])
+            for i,p in enumerate(self.json['publication']):
+                self.json['publication'][i] = basename(p)
+                url = 'https://ui.adsabs.harvard.edu/abs/' + self.json['publication'][i]
+                name = self.getPub(url)
+                self.json['pubname'][i] = name
+            self.json['publication'] = f"{self.json['publication']}".replace("'",'"')
+            self.json['pubname'] = f"{self.json['pubname']}".replace("'",'"')
+        if type(self.json['coobs']) == list:
+            self.json['coobs'] = f"{self.json['coobs']}".replace("'",'"')
+
+    def getPub(self, url):
+        opn = urlopen(url+'/abstract')
+        par = bs(opn.read(), 'html.parser')
+        meta = par.find_all('meta')
+        opn.close()
+
+        for m in meta:
+            if m.get('name') == 'citation_authors':
+                authors =  m.get('content')
+
+        na = authors.count(';')
+        name = authors.split(',')[0]
+        if na == 1:
+            name += f" ({basename(url)[:4]})"
+        else:
+            name += f" et al. ({basename(url)[:4]})"
+        return name
+
+    def Itarget(self, ii=None, wv=-4, save=True):
+        if ii is None:
+            idx = self.nf//2
+        else:
+            idx = ii
+        self.idx = idx
+        A, B, time = self.loadData(idx)
+        cwv = A.centralWavelength
+        nx = A.nx
+        ny = A.ny
+        figy = 7
+        r = nx/ny
+        fig, ax = plt.subplots(figsize=[r*figy,figy])
+        ax.set_position([0,0,1,1])
+        aa = A.getRaster(cwv+wv)
+        M = aa.max()
+        if M > 1e2:
+            m = aa[aa>1e2].min()
+        else:
+            m = aa.min()
+        aa = np.log10(aa)
+        m = np.log10(m)
+        M = np.log10(M)
+        ax.imshow(aa, cm.ha, origin='lower', clim=[m,M])
+        fig.show()
+        if save:
+            sd = join(self.saveD, 'img')
+            if not isdir(sd):
+                mkdir(sd)
+            time = fname2isot(self.lca[self.idx])
+            tmp = join(sd, time[:10].replace('-', '')+'_'+time[11:].replace(':',"")+"_cont.png")
+            print(tmp)
+            self.sn_cont = tmp
+            print(f"Save continuum figure: {self.sn_cont}")
+            fig.savefig(self.sn_cont)
+            return fig
+            # self.updateJSON()
+
+    def loadData(self, i):
+        A = FISS(self.lca[i], **self.kwg)
+        B = FISS(self.lcb[i], **self.kwg)
+        time = Time(fname2isot(self.lca[i]))
+
+        return A, B, time
+
+    def makeData(self, wvset=[-4,-0.5,0,0.5]):
+        self.wvset = wvset
+        self._initDS(wvset)
+        # wvseta = np.array(wvset) + self.cwva
+        # wvsetb = np.array(wvset) + self.cwvb
+        
+        self.isot = [None]*self.nf
+        self.nwvset = len(wvset)
+        for i in range(self.nf):
+            A, B, time = self.loadData(i)
+            self.isot[i] = time
+            it = np.abs(self.newT-self.tjd0[i]).argmin()
+            self.dsa[:, it] = A.data.mean((0,1))
+            self.dsb[:, it] = B.data.mean((0,1)).T
+
+            for j,w in enumerate(wvset):
+                self.rasterA[i,j] = A.getRaster(self.cwva + w)
+                self.rasterB[i,j] = B.getRaster(self.cwvb + w)
+        wh = (self.dsa[200] > 0)
+        self.dsa -= self.dsa[:,wh].mean(1)[:, None]
+        self.dsb -= self.dsb[:,wh].mean(1)[:, None]
+        self.dsa[:, ~wh] = 0
+        self.dsb[:, ~wh] = 0
+
+    def Iraster(self, ii=None, wvset=[-4,-0.5,0,0.5], save=False, interval=100):
+        bgcolor = "#212529"
+        bg_second = "#484c4f"
+        fontcolor = "#adb5bd"
+        titlecolor = "#ffda6a"
+
+        if self.dsa is None:
+            self.makeData(wvset)
+        
+        if ii is None:
+            idx = self.nf//2
+        else:
+            idx = ii
+
+        t = self.isot[idx]
+        
+        nx = self.nxa
+        ny = self.nya
+        nwv = self.nwvset
+
+        fy = 7
+        fx = 19
+        dy = ny/6
+        ty = 3*dy+2*ny
+        trx = nx*nwv
+        xds = fx/fy*ty-trx-2.5*dy
+        tx = trx + xds+2.5*dy
+
+        wr = nx/tx
+        hr = ny/ty
+        dr = dy/ty
+        drx = dy/tx*2
+        wds = xds/tx
+
+        fs = [fx, fy]
+
+        self.fig, self.ax = plt.subplots(4, nwv, figsize=fs)
+        self.fig.set_facecolor(bgcolor)
+        self.axH = self.ax[0]
+        self.axHt = self.ax[1]
+        self.axC = self.ax[2]
+        self.axCt = self.ax[3]
+        self.axTitle = self.fig.add_subplot(121)
+        self.axTitle.set_position([0, (hr+dr)*2, nwv*wr, dr])
+
+        self.axDSH = self.fig.add_subplot(121)
+        self.axDSH.set_position([nwv*wr+drx, hr+dr*2, wds, hr])
+        self.axDSH.set_facecolor(bgcolor)
+
+        self.axDSC = self.fig.add_subplot(121)
+        self.axDSC.set_position([nwv*wr+drx, dr, wds, hr])
+        self.axDSC.set_facecolor(bgcolor)
+
+        self.axTitle.set_axis_off()
+
+        self.imRA = [None]*nwv
+        self.imRB = [None]*nwv
+
+        for i in range(nwv):
+            self.axCt[i].set_facecolor(bgcolor)
+            self.axC[i].set_facecolor(bgcolor)
+            self.axHt[i].set_facecolor(bgcolor)
+            self.axH[i].set_facecolor(bgcolor)
+            self.axCt[i].set_position([i*wr, 0, wr, dr])
+            self.axC[i].set_position([i*wr, dr, wr, hr])
+            self.axHt[i].set_position([i*wr, hr+dr, wr, dr])
+            self.axH[i].set_position([i*wr, hr+dr*2, wr, hr])
+            self.axCt[i].set_axis_off()
+            self.axC[i].set_axis_off()
+            self.axHt[i].set_axis_off()
+            self.axH[i].set_axis_off()
+
+            aa = self.rasterA[idx, i]
+            M = aa.max()
+            if M > 1e2:
+                m = aa[aa>1e2].min()
+            else:
+                m = aa.min()
+            aa = np.log10(aa)
+            m = np.log10(m)
+            M = np.log10(M)
+            self.imRA[i] = self.axH[i].imshow(aa, cm.ha, origin='lower', clim=[m, M])
+
+            bb = self.rasterB[idx, i]
+            M = bb.max()
+            if M > 1e2:
+                m = bb[bb>1e2].min()
+            else:
+                m = bb.min()
+            bb = np.log10(bb)
+            m = np.log10(m)
+            M = np.log10(M)
+            self.imRB[i] = self.axC[i].imshow(bb, cm.ca, origin='lower', clim=[m, M])
+
+            if i == nwv//2:
+                self.axHt[i].text(0.5, 0.5, f'{self.cwva:.1f} $\\AA$', transform=self.axHt[i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
+                self.axCt[i].text(0.5, 0.5, f'{self.cwvb:.1f} $\\AA$', transform=self.axCt[i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
+            else:
+                self.axHt[i].text(0.5, 0.5, f'{self.wvset[i]:.1f} $\\AA$', transform=self.axHt[i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
+                self.axCt[i].text(0.5, 0.5, f'{self.wvset[i]:.1f} $\\AA$', transform=self.axCt[i].transAxes, ha='center', va='center', weight='bold', size=12, c=fontcolor)
+
+        self.titleR = self.axTitle.text(0.5,0.4, self.isot[idx].value, transform=self.axTitle.transAxes, ha='center', va='center', weight='bold', size=15, c=titlecolor)
+        M = max(np.abs(self.dsa.min()), np.abs(self.dsa.max()))
+        self.imDSH = self.axDSH.imshow(self.dsa, plt.cm.RdBu_r, origin='lower', aspect='auto', clim=[-M,M], extent=self.extA, interpolation='nearest')
+        M = max(np.abs(self.dsb.min()), np.abs(self.dsb.max()))
+        self.imDSC = self.axDSC.imshow(self.dsb, plt.cm.RdBu_r, origin='lower', aspect='auto', clim=[-M,M], extent=self.extB, interpolation='nearest')
+
+        self.axDSH.set_title('Dynamic Spectrum for cam A', color=fontcolor)
+        self.axDSC.set_title('Dynamic Spectrum for cam B', color=fontcolor)
+        self.axDSC.set_xlabel('Time (s)', color=fontcolor)
+        self.axDSH.set_ylabel('Wavelength ($\\AA$)', color=fontcolor)
+        self.axDSC.set_ylabel('Wavelength ($\\AA$)', color=fontcolor)
+        self.axDSH.tick_params(colors=fontcolor)
+        self.axDSC.tick_params(colors=fontcolor)
+
+        self.tlineH = self.axDSH.plot([self.tjd0[idx], self.tjd0[idx]], [self.extA[2], self.extA[3]], ls='dashed', color='k')[0]
+        self.tlineC = self.axDSC.plot([self.tjd0[idx], self.tjd0[idx]], [self.extB[2], self.extB[3]], ls='dashed', color='k')[0]
+
+        self.fig.show()
+
+        if save:
+            tt = self.isot[idx].value
+            sd = join(self.saveD, 'img')
+            self.sn_raster = join(sd, tt[:10].replace('-', '')+'_'+tt[11:].replace(':',"")+"_raster.png")
+            if not isdir(sd):
+                mkdir(sd)
+            print(f"Save raster figure: {self.sn_raster}")
+            self.fig.savefig(self.sn_raster)
+        self.animation(interval, save=save)
+        return self.fig
+
+    def chData(self, i):
+        self.titleR.set_text(self.isot[i].value)
+        self.tlineH.set_xdata([self.tjd0[i], self.tjd0[i]])
+        self.tlineC.set_xdata([self.tjd0[i], self.tjd0[i]])
+
+        for j in range(self.nwvset):
+            self.imRA[j].set_data(np.log10(self.rasterA[i, j]))
+            self.imRB[j].set_data(np.log10(self.rasterB[i, j]))
+
+        self.fig.canvas.draw_idle()
+
+    def animation(self, interval=100, save=True):
+        self.ani = FuncAnimation(self.fig, self.chData, frames=np.arange(self.nf), interval=interval)
+        self.fig.canvas.draw_idle()
+        if save:
+            sd = join(self.saveD, 'movie')
+            if not isdir(sd):
+                mkdir(sd)
+            self.sn_rasterani = join(sd, basename(self.sn_raster[:-3])+'mp4')
+            if not isdir(sd):
+                mkdir(sd)
+            print(f"Save raster animation: {self.sn_rasterani}")
+            self.ani.save(self.sn_rasterani)
+            # self.updateJSON()
+
 
 def demo():
-    cdir = '/Users/jhkang/Data/FISS/200730/part2/comp'
-    sdir = '/Users/jhkang/Data/FISS/200730/part2/save'
-    idir = '/Users/jhkang/Data/FISS/200730/part2/inversion/flip'
+    cdir = '/Users/jhkang/data/FISS/2024/08/15'
+    idir = '/Users/jhkang/data/FISS/2024/08/15/inv'
+    sdir = '/Users/jhkang/data/FISS/video_test/240815'
     events = ['transverse MHD waves', 'fibrils']
     target = "Quiet Sun - Part2"
     pos = ["20","-75"]
     pub = ["https://ui.adsabs.harvard.edu/abs/2021JKAS...54..139C", "https://ui.adsabs.harvard.edu/abs/2023ApJ...958..131K"]
     cobs = ["https://www.lmsal.com/hek/hcr?cmd=view-event&event-id=ivo%3A%2F%2Fsot.lmsal.com%2FVOEvent%23VOEvent_IRIS_20200730_155928_3600011659_2020-07-30T15%3A59%3A282020-07-30T15%3A59%3A28.xml"]
-    k = makeRecDataJSON(cdir, idir, sdir, events=events, position=pos, publication=pub, target=target, coobs=cobs)
-    k.saveAll(excinv=True)
+    k = makeOBSmovie(cdir, sdir, idir, events=events, position=pos, publication=pub, target=target, coobs=cobs, recData=False, note="This is a test data for FISS movie making.")
+    k.nf = 20
+    k.saveAll()
+
+

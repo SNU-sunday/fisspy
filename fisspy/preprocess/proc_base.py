@@ -16,7 +16,7 @@ from scipy.fftpack import fft, ifft
 from urllib.request import urlretrieve
 from scipy.signal.windows import tukey
 from statsmodels.tsa.ar_model import AutoReg
-
+import astropy.constants as const
 
 def fname2isot(f):
     """
@@ -1454,6 +1454,157 @@ def PCA_compression(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret=Fal
         else:
             return Evec, spec, odata, Eval[NC]
 
+
+def PCA_compression_new(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret=False):
+    """
+    Compress the given 3D data by using the PCA analysis as described in Chae et al. 2013. The eigen function is additionally created from the cloud model.
+    
+    Parameters
+    ----------
+    frpoc: `str`
+        Processed file to be compressed.
+    Evec: `~numpy.array` (optional)
+        Eigen vector of the pfile. It will be used to compress the data for a given pfile data. When you make the pfile, do not give this value!
+    pfile: `str` (optional)
+        pfile (eigen vector file) of the PCA compression. If this and Evec is not given, calculate the eigen vector from the given fproc file.
+    ncoeff: `int` (optional)
+        The number of coefficients of the principal components. If it is not given automatically find the ncoeff until the eigenvalue is higher than the given tolerance value. Min=30, Max=50
+    tol: `float` (optional)
+        The tolerance to find the ncoeff eigenvalue. The number of the coefficients is equals the number of the componenet that has an eigenvalue of higher than the tolerance.
+        Default is 1e-1.
+    ret: `bool`
+        If true return the Eigenvector, original data and compressed data and Eignevalue.
+        Default is False.
+
+    """
+    opn = fits.open(fproc)[0]
+    h = opn.header
+    data = opn.data.astype(float)
+    odata = data.copy()
+
+    nx, ny, nw = data.shape
+    Eval = None
+    check = True
+
+
+    if pfile is None and Evec is None:
+        check = False
+        pfile = fproc.replace('.fts', '_p.fts')
+        pfile = pfile.replace('proc', 'comp')
+        dirn = dirname(pfile)
+        if not isdir(dirn):
+            makedirs(dirn)
+            
+
+        ranx = np.random.uniform(0, nx-1, 5000).round().astype(int)
+        rany = np.random.uniform(0, ny-1, 5000).round().astype(int)
+        tmp = data[ranx, rany]
+        tmpMin = tmp.min(1)
+        wh = tmpMin > 1
+        nd = wh.sum()
+        if nd >= 2000:
+            spgr = tmp[wh][:2000]
+        else:
+            spgr = tmp[wh]
+        iav = data.mean((0,1))
+        wv = (np.arange(nw)-h['CRPIX1']) * h['CDELT1'] + h['CRVAL1']
+        ci = cloud(wv, iav)
+        spgr = np.concatenate((spgr, ci), axis=0)
+        spgr /= spgr.mean(1)[:,None]
+        c_arr = spgr.T.dot(spgr)
+        m = c_arr.mean()
+        c_arr = np.nan_to_num(c_arr, True, m,m,m)
+
+        Eval, Evec = np.linalg.eig(c_arr)
+        if ncoeff is None:
+            NC = (Eval >= tol).sum()
+            NC = NC if NC < 50 else 50
+            NC = NC if NC > 30 else 30
+            print(f"eigenvalue[{NC}]: {Eval[50]:.3f}")
+        else:
+            NC = ncoeff
+        Evec = Evec[:,:NC].T
+
+        hdu = fits.PrimaryHDU(Evec.astype('float32'))
+        hdu.header['NC'] = NC
+        hdu.header['date'] = h['date']
+        hdu.writeto(pfile, overwrite=True)
+        
+        
+    else:
+        if Evec is None:
+            opn = fits.open(pfile)
+            ph = opn.header
+            Evec = opn.data
+
+        NC = Evec.shape[0]
+
+
+    coeff = np.zeros((nx, ny, NC+1))
+    cfile = fproc.replace('.fts', '_c.fts')
+    cfile = cfile.replace('proc', 'comp')
+    wh = data < 1
+    data[wh] = 1
+    av = data.mean(2)
+    data /= av[:,:,None]
+    coeff[:,:,NC] = np.log10(av)
+    for i in range(NC):
+        coeff[:,:,i] = (data[:,:,:]*Evec[i]).sum(2)
+    if check:
+        std = coeff[...,15:25].std(2)
+        if std.max() > 0.3:
+            return 0
+
+    bscale = np.abs(coeff).max()/2e4
+    coeff = np.round(coeff/bscale)
+
+
+
+    hdu = fits.PrimaryHDU(coeff.astype('int16'))
+    hdu.header["bscale"] = bscale
+    hdu.header['pfile'] = basename(pfile)
+    for cards in h.cards:
+        hdu.header.add_comment(f"{cards[0]} = {cards[1]} / {cards[2]}")
+
+    hdu.writeto(cfile, overwrite=True)
+
+    if ret and pfile is not None:
+        c = coeff*bscale
+        spec = c[:,:,:NC].dot(Evec)
+        spec *= 10**c[:,:,-1][:,:,None]
+        if Eval is None:
+            return Evec, spec, odata
+        else:
+            return Evec, spec, odata, Eval[NC]
+        
+
+def cloud(wv, Iav):
+    av = np.array([-50, -40, -30, 30, 40, 50])
+    at0 = np.array([0.5, 1., 1.5])
+    aw = np.array([0.35, 0.5])
+    s0 = Iav[50:60].mean()
+    as0 = s0*np.array([0, .1, .2, .3, .4])
+    nwv = len(wv)
+    l0 = 6562.817
+    c = const.c.cgs.value * 1e-5
+
+    nprof = len(av) * len(at0) * len(aw) * len(as0)
+    I = np.zeros([nprof, nwv])
+    ii = 0
+    for v in av:
+        for t0 in at0:
+            for w in aw:
+                for s in as0:
+                    l = l0*(1+v/c)
+                    t = t0 * np.exp(-((wv-l)/w)**2)
+                    I[ii] = Iav*np.exp(-t) + s*(1-np.exp(-t))
+                    ii += 1
+    weight = 5
+    II = np.zeros([nprof*weight, nwv])
+    for i in range(weight):
+        II[i*nprof:(i+1)*nprof] = I[:nprof]
+
+    return II
 
 def yf2sp(yf, tolRate=1):
     """
