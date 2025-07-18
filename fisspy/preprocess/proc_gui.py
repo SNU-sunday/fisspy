@@ -279,6 +279,19 @@ class prepGUI:
         self.L_Step.setText(self.List_step[self.stepNum])
         self.log = f"<font color='{self.font_primary}'>"+self.List_step[self.stepNum] + '</font><br><br>'
         self.log += f"<font color='{self.font_second}'>"+self.List_subStep[num] + '</font><br><br>'
+        if num == 1:
+            if self.bandA:
+                self.LE_s3_2_FRmin.setText("0")
+                self.LE_s3_2_FRmax.setText("112")
+                self.yf_min = 0
+                self.yf_max = 112
+            else:
+                self.LE_s3_2_FRmin.setText("0")
+                self.LE_s3_2_FRmax.setText("116")
+                self.yf_min = 0
+                self.yf_max = 116
+
+
         self._writeLog()
         
         for ax in self.ax_sub[num]:
@@ -3414,7 +3427,7 @@ class prepGUI:
                         f = f.replace('.fts', '1.fts')
 
                         if makePfile:
-                            Evec, spec, odata, ev = proc_base.PCA_compression(f, ret=True, tol=tol)
+                            Evec, spec, odata, ev = proc_base.PCA_compression_new(f, ret=True, tol=tol)
                             ncoeff = Evec.shape[0]
                             # if ncoeff == 50:
                             #     maxnum = 10
@@ -3432,9 +3445,22 @@ class prepGUI:
                                 self.ax_s7_comp.set_xlabel('Wavelength (pix)')
                                 self.ax_s7_comp.set_ylabel('Intensity (DN)')
                         else:
-                            res = proc_base.PCA_compression(f, Evec=Evec, pfile=pfile, tol=tol, ret=True)
-                            odata = res[2]
-                            spec = res[1]
+                            res = proc_base.PCA_compression_new(f, Evec=Evec, pfile=pfile, tol=tol, ret=True)
+                            if type(res) == int:
+                                # make p file
+                                Evec, spec, odata, ev = proc_base.PCA_compression_new(f, ret=True, tol=tol)
+                                ncoeff = Evec.shape[0]
+                                # if ncoeff == 50:
+                                #     maxnum = 10
+                                self.log += f"> make new p file for [{i}] <br>> ncoeff: {ncoeff}.<br> Eval:{ev:.3f} <br>"
+                                self._writeLog()
+                                makePfile = False
+                                pfile = f.replace('.fts', '_p.fts')
+                                pfile = pfile.replace('proc', 'comp')
+                                nx, ny, nw = odata.shape
+                            else:
+                                odata = res[2]
+                                spec = res[1]
                         self.p_s7_odata.set_ydata(odata[nx//2, ny//2])
                         self.p_s7_comp.set_ydata(spec[nx//2, ny//2])
                         self.ax_s7_comp.set_ylim(odata[nx//2, ny//2].min()*0.98, odata[nx//2, ny//2].max()*1.02)

@@ -325,8 +325,8 @@ class singleBand:
             m = np.log10(m)
             M = np.log10(M)
         self.imRaster.set_data(raster)
-        self.vlineProfile.set_xdata(self.wv)
-        self.vlineSpectro.set_xdata(self.wv)
+        self.vlineProfile.set_xdata([self.wv])
+        self.vlineSpectro.set_xdata([self.wv])
         self.axProfile.set_title(r'%s Band (wv = %.2f $\AA$)'%(self.band, self.wv))
         if self.scale == 'std':
             self.imRaster.set_clim(np.median(raster)-raster.std()*self.sigFactor, np.median(raster)+raster.std()*self.sigFactor)
@@ -341,10 +341,10 @@ class singleBand:
             spectro = self.data[:, self.xp,::-1]
         if self.scale == 'log':
             spectro = np.log10(spectro)
-        self.plotProfile.set_ydata(self.data[self.yp, self.xp])
+        self.plotProfile.set_ydata([self.data[self.yp, self.xp]])
         self.imSpectro.set_data(spectro)
-        self.hlineSpectro.set_ydata(self.y)
-        self.vlineRaster.set_xdata(self.x)
+        self.hlineSpectro.set_ydata([self.y])
+        self.vlineRaster.set_xdata([self.x])
         self.pointRaster.set_offsets([self.x, self.y])
 
         ym = self.data[self.yp, self.xp].min()
@@ -752,8 +752,8 @@ class dualBand:
             self.wvpB0 = wvB
 
     def _chSpect(self):
-        self.plotProfileA.set_ydata(self.dataA[self.yp, self.xp])
-        self.plotProfileB.set_ydata(self.dataB[self.yp, self.xp])
+        self.plotProfileA.set_ydata([self.dataA[self.yp, self.xp]])
+        self.plotProfileB.set_ydata([self.dataB[self.yp, self.xp]])
         self.pointRasterA.set_offsets([self.x, self.y])
         self.pointRasterB.set_offsets([self.x, self.y])
 
@@ -779,7 +779,7 @@ class dualBand:
             m = np.log10(m)
             M = np.log10(M)
         self.imRasterA.set_data(rasterA)
-        self.vlineProfileA.set_xdata(self.wvA)
+        self.vlineProfileA.set_xdata([self.wvA])
         self.axProfileA.set_title(r'%s Band (wv = %.2f $\AA$)'%(self.fissA.band, self.wvA))
         if self.scale == 'std':
             self.imRasterA.set_clim(np.median(rasterA)-rasterA.std()*self.sigFactor, np.median(rasterA)+rasterA.std()*self.sigFactor)
@@ -799,7 +799,7 @@ class dualBand:
             m = np.log10(m)
             M = np.log10(M)
         self.imRasterB.set_data(rasterB)
-        self.vlineProfileB.set_xdata(self.wvB)
+        self.vlineProfileB.set_xdata([self.wvB])
         self.axProfileB.set_title(r'%s Band (wv = %.2f $\AA$)'%(self.fissB.band, self.wvB))
         if self.scale == 'std':
             self.imRasterB.set_clim(np.median(rasterB)-rasterB.std()*self.sigFactor, np.median(rasterB)+rasterB.std()*self.sigFactor)

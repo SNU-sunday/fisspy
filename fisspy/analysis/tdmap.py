@@ -711,8 +711,8 @@ class analysisTDmap:
             if self.marker[self.idx] is None:
                 self.marker[self.idx] = self.ax.plot(event.xdata, event.ydata, 'x', color='lime')[0]
             else:
-                self.marker[self.idx].set_xdata(event.xdata)
-                self.marker[self.idx].set_ydata(event.ydata)
+                self.marker[self.idx].set_xdata([event.xdata])
+                self.marker[self.idx].set_ydata([event.ydata])
             self.idx ^= True
             self.fig.canvas.draw_idle()
         elif event.key == ' ' and event.inaxes == self.axT:
@@ -720,8 +720,8 @@ class analysisTDmap:
             if self.markerT[self.idxT] is None:
                 self.markerT[self.idxT] = self.axT.plot(event.xdata, event.ydata, 'x', color='lime')[0]
             else:
-                self.markerT[self.idxT].set_xdata(event.xdata)
-                self.markerT[self.idxT].set_ydata(event.ydata)
+                self.markerT[self.idxT].set_xdata([event.xdata])
+                self.markerT[self.idxT].set_ydata([event.ydata])
             self.idxT ^= True
             self.fig.canvas.draw_idle()
         elif event.key == ' ' and event.inaxes == self.axD:
@@ -729,8 +729,8 @@ class analysisTDmap:
             if self.markerD[self.idxD] is None:
                 self.markerD[self.idxD] = self.axD.plot(event.xdata, event.ydata, 'x', color='lime')[0]
             else:
-                self.markerD[self.idxD].set_xdata(event.xdata)
-                self.markerD[self.idxD].set_ydata(event.ydata)
+                self.markerD[self.idxD].set_xdata([event.xdata])
+                self.markerD[self.idxD].set_ydata([event.ydata])
             self.idxD ^= True
             self.fig.canvas.draw_idle()
         elif event.key == 'c' and self.point[1] is not None:
