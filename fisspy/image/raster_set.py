@@ -38,7 +38,7 @@ class makeRasterSet:
         list of the cam B file (one among proc, comp data)
     wvset: `~numpy.ndarray` (optional)
         1D-array for relative wavelength set to draw raster image.
-        default is [-4, -0.7, -0.5, -0.2, 0, 0.2, 0.5, 0.7]
+        default is [-4, -0.5, -0.2, 0, 0.2, 0.5]
     ii: `int` (optional)
         time index to show initially
         default is 0
@@ -52,7 +52,7 @@ class makeRasterSet:
     **kwargs:
         `~fisspy.read.FISS` keyword arguments.
     """
-    def __init__(self, flistA, flistB, wvset=[-4.0,-0.5,0,0.5], ii=None, show=True, **kwargs):
+    def __init__(self, flistA, flistB, wvset=[-4.0,-0.5,-0.2,0,0.2,0.5], ii=None, show=True, **kwargs):
 
         
         self.show = show
@@ -659,7 +659,7 @@ class makeOBSmovie:
         self.rasterB = np.zeros((self.nf, len(wvset), self.nyb, self.nxb))
         self.binit = True
 
-    def saveAll(self, ii=None, wvset=[-4,-0.5,0,0.5]):
+    def saveAll(self, ii=None, wvset=[-4,-0.5,-0.2,0,0.2,0.5]):
         if ii is None:
             idx = self.nf//2
         else:
@@ -858,7 +858,7 @@ class makeOBSmovie:
 
         return A, B, time
 
-    def makeData(self, wvset=[-4,-0.5,0,0.5]):
+    def makeData(self, wvset=[-4,-0.5,-0.2,0,0.2,0.5]):
         self.wvset = wvset
         self._initDS(wvset)
         # wvseta = np.array(wvset) + self.cwva
@@ -882,7 +882,7 @@ class makeOBSmovie:
         self.dsa[:, ~wh] = 0
         self.dsb[:, ~wh] = 0
 
-    def Iraster(self, ii=None, wvset=[-4,-0.5,0,0.5], save=False, interval=100):
+    def Iraster(self, ii=None, wvset=[-4,-0.5,-0.2,0,0.2,0.5], save=False, interval=100):
         bgcolor = "#212529"
         bg_second = "#484c4f"
         fontcolor = "#adb5bd"

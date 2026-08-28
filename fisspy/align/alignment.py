@@ -1,8 +1,10 @@
-from .base import alignOffset, rotImage, shiftImage
+from .base import alignOffset, rotImage, shiftImage, CoordinateTransform
+from interpolation.splines import LinearSpline, CubicSpline
 import numpy as np
 from astropy.time import Time
 from ..read import FISS
-from os.path import join
+from os.path import join, basename
+from astropy.io import fits
 from os import getcwd
 
 __author__ = "Juhyung Kang"
@@ -546,3 +548,138 @@ def makeExample(lfA, lfB, faparA, faparB):
     adataA, adataB = alignTwoDataCubes(dataA, dataB, faparA, faparB)
 
     return adataA, adataB
+
+def align3D(flist, saveDir, fapar, xmargin=None, ymargin=None, cubic=False):
+    """
+    Align the 3D FISS data (y, x, lambda) for one filter (camera).
+
+    Parameters
+    ----------
+    flist: `list`
+        Sorted file list to be aligned.
+    saveDir: `str`
+        Output directory path.
+    fapar: `str`
+        Filename of the alignpar.
+    xmargin: `int`
+        x-axis margin, if that keyword is not given, the x-margin are automatically calculated, based on the align parameters.
+    ymargin: `int`
+        y-axis margin, if that keyword is not given, the y-margin are automatically calculated, based on the align parameters.
+    cubic: `bool`
+        If it set to be True, the cubic interpolation is used to align, Default is False.
+
+    Returns
+    -------
+    None (write aligned data)
+    """
+    if cubic:
+        ip = CubicSpline
+    else:
+        ip = LinearSpline
+
+    apar = readAlignPars(fapar)
+    flist.sort()
+    f = flist[apar['refFrame']]
+    r = FISS(f)
+
+    ny, nx, nw = order = r.data.shape
+    smin = [0,0,0]
+    smax = [ny-1, nx-1, nw-1]
+
+    # margin
+    l = ((nx//2)**2+(ny//2)**2)**0.5
+    ang0 = np.arctan2(ny//2,nx//2)
+    aa = apar['angle']+ang0
+    if xmargin is None:
+        xm = int(l*np.cos(aa).max() - nx//2 + 0.5)
+    else:
+        xm = xmargin
+    if ymargin is None:
+        ym = int(l*np.sin(aa).max() - ny//2 + 0.5)
+    else:
+        ym = ymargin
+
+    ny2 = ny+2*ym
+    nx2 = nx+2*xm
+
+    shape2 = (ny2, nx2, nw)
+    ones = np.ones(shape2)
+    ww = np.arange(nw)[None,None,:] * ones
+
+    for i,f in enumerate(flist[0:1]):
+        a = FISS(f)
+
+        xt, yt = getTransformPos(nx, ny, apar, i, xm, ym)
+        xx = xt[...,None] * ones
+        yy = yt[...,None] * ones
+        inp = np.array((yy.flatten(),xx.flatten(),ww.flatten())).T
+
+        interp = ip(smin, smax, order, a.data[:,::-1])
+        newdata = interp(inp).reshape(shape2)
+        mask = np.invert((xt<=nx-1) * (xt>=0) * (yt<=ny-1)*(yt>=0))[...,None] * ones.astype(bool)
+        newdata[mask] = 0
+        vM = newdata.max()
+        vm = newdata.min()
+        bscale = (vM-vm)/(2**16-1)
+        bzero = vM-bscale*(2**15-1)
+
+        newdata = (newdata-bzero)/bscale
+        newdata = np.round(newdata).astype(np.int16)
+        hdu = fits.PrimaryHDU(newdata, a.header)
+        hdu.header['BSCALE'] = bscale
+        hdu.header['BZERO'] = bzero
+        hdu.header['HISTORY'] = 'aligned'
+        fname = join(saveDir,basename(f).replace('.fts','_aligned.fts'))
+        hdu.writeto(fname, overwrite=True, output_verify='fix')
+        print(f"Write aligned data: {fname}")
+
+
+def align3DtwoCams(flistA, flistB, saveDir, faparA, faparB, cubic=False):
+    """
+    Align the 3D FISS data (y, x, lambda) for two filters (cameras).
+
+    Parameters
+    ----------
+    flistA: `list`
+        Sorted file list for cam A to be aligned.
+    flistB: `list`
+        Sorted file list for cam B to be aligned.
+    saveDir: `str`
+        Output directory path.
+    faparA: `str`
+        Filename of the alignpar for cam A.
+    faparB: `str`
+        Filename of the alignpar for cam B.
+    cubic: `bool`
+        If it set to be True, the cubic interpolation is used to align, Default is False.
+    """
+    aparA = readAlignPars(faparA)
+    aparB = readAlignPars(faparB)
+    dA = FISS(flistA[aparA['refFrame']])
+    ny, nx, nw = dA.data.shape
+    l = ((nx//2)**2+(ny//2)**2)**0.5
+    ang0 = np.arctan2(ny//2,nx//2)
+    ang = aparA['angle']+ang0
+    nf = len(aparB['dx'])
+    ddx = aparB['dx'] - aparA['dx']
+    ddy = aparB['dy'] - aparA['dy']
+    xm = int(l*np.cos(ang).max() - nx//2 + abs(ddx[nf//2]) + abs(aparA['dx']).max() + 0.5)
+    ym = int(l*np.sin(ang).max() - ny//2 + abs(ddy[nf//2]) + abs(aparA['dy']).max() + 0.5)
+    align3D(flistA, saveDir, faparA, xmargin=xm, ymargin=ym, cubic=cubic)
+    align3D(flistB, saveDir, faparB, xmargin=xm, ymargin=ym, cubic=cubic)
+
+
+def getTransformPos(nx, ny, apar, i, xm, ym):
+    ang = apar['angle'][i]
+    xc = apar['xc'][i]
+    yc = apar['yc'][i]
+    dx = apar['dx'][i]
+    dy = apar['dy'][i]
+
+    nx1 = int(nx+2*xm)
+    ny1 = int(ny+2*ym)
+    xa = np.arange(nx1)-xm
+    ya = (np.arange(ny1)-ym)[:,None]
+    xt, yt = CoordinateTransform(xa, ya, xc, yc, ang, dx=dx, dy=dy)
+
+    return xt, yt

@@ -8,7 +8,7 @@ __email__ = "jhkang0301@gmail.com"
 __all__ = ['lambdameter']
 
 
-def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm', alpha=None, reguess=True, pr=False, corInstShift=False, refSpec=None):
+def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm', alpha=None, reguess=True, pr=False, corInstShift=False, refSpec=None, tol=1e-4):
     """
     Determine the Lambdameter chord center for a given half width or intensity.
 
@@ -108,7 +108,7 @@ def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm
     data = data.reshape((na,nw))
     
     # calculation
-    wc, intc, more = _LMminimization(wv, data, hw=hw, iwc=iwc, alpha=alpha, cubic=cubic, rfm=irfm)
+    wc, intc, more = _LMminimization(wv, data, hw=hw, iwc=iwc, alpha=alpha, cubic=cubic, rfm=irfm, tol=tol)
     mm = more.sum()
     rep = 0
 
@@ -131,7 +131,7 @@ def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm
                                         wc[w-1+shape[1]:w+2+shape[1]]])
                     except:
                         iwc = np.median(wc)
-                    res = _LMminimization(wv, d, hw=hw, iwc=iwc, alpha=alpha, cubic=cubic, rfm=irfm)
+                    res = _LMminimization(wv, d, hw=hw, iwc=iwc, alpha=alpha, cubic=cubic, rfm=irfm, tol=tol)
                     wc[w] = res[0][3]
                     intc[w] = res[1][3]
                     mm += res[2][3]
@@ -154,7 +154,7 @@ def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm
                                         wc[w-1+shape[1]:w+2+shape[1]]])
                     except:
                         iwc = np.median(wc)
-                    res = _LMminimization(wv, d, hw=hw, iwc=iwc, alpha=alpha, cubic=cubic, rfm=irfm)
+                    res = _LMminimization(wv, d, hw=hw, iwc=iwc, alpha=alpha, cubic=cubic, rfm=irfm, tol=tol)
                     wc[w] = res[0][3]
                     intc[w] = res[1][3]
             if pr:
@@ -192,7 +192,7 @@ def lambdameter(wv, data0, hw=0.05, iwc=None, wvRange=None, cubic=False, rfm='hm
     #     return wc, intc, more.reshape(reshape)
     return wc, intc
         
-def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='nrm'):
+def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='nrm', tol=1e-4):
     """
     ori: bisector method
     cm: Chae's method
@@ -232,7 +232,7 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
         more = data[posi0,s0] > 100
         wl = np.array((posi0,wv[s]-hw)).T; wr = np.array((posi0,wv[s]+hw)).T
         intc = 0.5*(interp(wl)+interp(wr))
-        while ref > 0.00001 and rep < 6 and more.sum() > 0:
+        while ref > tol and rep < 6 and more.sum() > 0:
             sp1 = data-intc[:,None]
             comp = sp1[:,0:nw-1]*sp1[:,1:nw]
 
@@ -254,7 +254,7 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
             intc[more] = 0.5*(interp(wl)+interp(wr))
             ref0 = np.abs(hwc-hw)
             ref = ref0.max()
-            more = (ref0>0.00001)*(data[posi0,s0]>100)
+            more = (ref0>tol)*(data[posi0,s0]>100)
             rep += 1
 
     elif rfm == 'cm':
@@ -266,7 +266,7 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
         if alpha is None:
             Alpha = 1
         sigmaratio = (0.1*data.mean())/hw
-        while  (ref > 1e-4 or rep < 5)  and rep <  30 and more.sum() > 0:
+        while  (ref > tol or rep < 5)  and rep <  30 and more.sum() > 0:
             posi = posi0[more]
             wls = np.array((posi, wc[more]-hw)).T
             wrs = np.array((posi, wc[more]+hw)).T
@@ -288,7 +288,7 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
             intc[more] = 0.5*(interp(wls)+interp(wrs))
             #if rep ==0:
             #    print('intc[more].shape=', intc[more].shape)
-            more = (ref0 > 1e-4) 
+            more = (ref0 > tol) 
             rep += 1
         # print(f'rep={rep:3.0f}, more.sum={more.sum():3.0f}')
             
@@ -301,7 +301,7 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
         if alpha is None:
             Alpha = 1
         wc = wv[s0].copy()
-        while ref >1e-4 and rep < 30 and more.sum() > 0:
+        while ref > tol and rep < 30 and more.sum() > 0:
             posi = posi0[more]
             wl = np.array((posi, wc[more]-hw)).T
             wr = np.array((posi ,wc[more]+hw)).T
@@ -326,14 +326,14 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
             ref0 = abs(dwc)
             ref = ref0.max()
             intc[more] = 0.5*(Fr+Fl)
-            more = ref0 > 1e-4
+            more = ref0 > tol
             rep += 1
             
     elif rfm == 'hm': # Halley's method (modified NRM)
         if alpha is None:
             Alpha = 1
         wc = wv[s0].copy()
-        while ref >1e-4 and rep < 30 and more.sum() > 0:
+        while ref > tol and rep < 30 and more.sum() > 0:
             posi = posi0[more]
             wl = np.array((posi, wc[more]-hw)).T
             wr = np.array((posi ,wc[more]+hw)).T
@@ -358,7 +358,7 @@ def  _LMminimization(wv, data, hw=0.05, iwc=None, alpha=None, cubic=False, rfm='
             ref0 = abs(dwc)
             ref = ref0.max()
             intc[more] = 0.5*(Fr+Fl)
-            more = ref0 > 1e-4
+            more = ref0 > tol
             rep += 1
     else:
         raise ValueError("rfm should be one among 'ori', 'cm', 'nrm', 'hm'.")
