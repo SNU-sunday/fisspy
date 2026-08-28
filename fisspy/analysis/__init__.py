@@ -11,5 +11,6 @@ from .tdmap import *
 from .wavelet import *
 from .doppler import *
 from .filter import *
+from .wave_anal import *
 from .forecast import ARcast
 from . import ofe

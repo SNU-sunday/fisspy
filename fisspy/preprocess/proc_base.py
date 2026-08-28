@@ -12,6 +12,7 @@ from scipy.signal import find_peaks
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 from ..analysis.wavelet import Wavelet
+from ..correction.get_inform import get_centerWV, get_lineName
 from scipy.fftpack import fft, ifft
 from urllib.request import urlretrieve
 from scipy.signal.windows import tukey
@@ -1508,7 +1509,9 @@ def PCA_compression_new(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret
             spgr = tmp[wh]
         iav = data.mean((0,1))
         wv = (np.arange(nw)-h['CRPIX1']) * h['CDELT1'] + h['CRVAL1']
-        ci = cloud(wv, iav)
+        lname = get_lineName(h['crval1'])
+        cwv = get_centerWV(lname)
+        ci = cloud(wv, iav, cwv)
         spgr = np.concatenate((spgr, ci), axis=0)
         spgr /= spgr.mean(1)[:,None]
         c_arr = spgr.T.dot(spgr)
@@ -1578,14 +1581,14 @@ def PCA_compression_new(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret
             return Evec, spec, odata, Eval[NC]
         
 
-def cloud(wv, Iav):
-    av = np.array([-50, -40, -30, 30, 40, 50])
+def cloud(wv, Iav, cwv):
+    av = np.array([-45, -30, -10, 10, 30, 45])
     at0 = np.array([0.5, 1., 1.5])
-    aw = np.array([0.35, 0.5])
+    aw = np.array([0.1, 0.35, 0.5])
     s0 = Iav[50:60].mean()
-    as0 = s0*np.array([0, .1, .2, .3, .4])
+    as0 = s0*np.array([0, -0.1, .1, .2, .3, .4])
     nwv = len(wv)
-    l0 = 6562.817
+    l0 = cwv
     c = const.c.cgs.value * 1e-5
 
     nprof = len(av) * len(at0) * len(aw) * len(as0)
