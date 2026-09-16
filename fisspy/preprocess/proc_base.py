@@ -243,8 +243,8 @@ def get_tilt_old(img, tilt=None, show=False):
     iteration = 0
     while abs(tmp) > 1e-1:
         sh = alignOffset(i2, i1)
-        sh[1,0] = 0
-        tmp = sh[0,0]
+        sh[1] = 0
+        tmp = sh[0]
         shy += tmp
         # i2 = shift(i2, -sh, missing=-1, cubic=True)
         i2 = shiftImage(i2, -sh, missing=None, cubic=True)
@@ -334,7 +334,7 @@ def get_tilt(img, tilt=None, show=False):
         i1 = dy_img[whd-16:whd+16, wp:wp+16]
         i2 = dy_img[whd-16:whd+16, -(wp+16):-wp]
         sh = alignOffset(i2, i1)
-        shy += sh[0,0]
+        shy += sh[0]
     shy /= npks
     
     if tilt is None:
@@ -702,8 +702,8 @@ class calFlat:
                     continue
                 spec = d2rlRF[i,wh-16:wh+16,5:-5]
                 sh = alignOffset(spec, ref)
-                sh[1,0] = 0
-                self.shyA[i] = -sh[0,0]
+                sh[1] = 0
+                self.shyA[i] = -sh[0]
                 si[i] = shiftImage(self.rlRF[i], -sh, missing=None, cubic=True)
         else:
             si = self.rlRF
@@ -1051,15 +1051,15 @@ class calFlat:
             sh = alignOffset(refI[:,5:-5], prof[5:-5]*np.ones((4,nw-10)))
             
             wvl = wv.copy()
-            self.tsh[i] += sh[1,0]
-            while abs(sh[1,0]) >= 1e-1:
-                wvl += sh[1,0]*dw
+            self.tsh[i] += sh[1]
+            while abs(sh[1]) >= 1e-1:
+                wvl += sh[1]*dw
                 testI = interp(wvl[:,None])*np.ones((4,nw))
                 d2r = np.gradient(np.gradient(testI, axis=1), axis=1)
                 # sh = alignOffset(d2r[:, 5:-5], d2p[:, 5:-5])
                 sh = alignOffset(testI[:,5:-5], prof[5:-5]*np.ones((4,nw-10)))
                 
-                self.tsh[i] += sh[1,0]
+                self.tsh[i] += sh[1]
                 iteration += 1
                 if iteration == 10:
                     print(f"{i} break")
@@ -1168,10 +1168,10 @@ def preprocess(f, outname, flat, slit, dark, tilt, curve_coeff, cent_wv=False, o
     for i, frd in enumerate(d2rd[::step]):
         spec = frd[wh-16:wh+16,5:-5]
         sh = alignOffset(spec, ref)
-        shy[i] = sh[0,0]
+        shy[i] = sh[0]
 
-    sh[0,0] = np.median(shy)
-    sh[1,0] = 0
+    sh[0] = np.median(shy)
+    sh[1] = 0
     smflat = shiftImage(slit*flat, sh, missing=None, cubic=True)
     data = data/smflat
 
@@ -1255,7 +1255,7 @@ def wv_calib_atlas(data, header, cent_wv=False):
             else:
                 sh = alignOffset(prof[:,-int(wmax):], refI[:,-int(wmax):])
             prof = shiftImage(prof, -sh, missing=None, cubic=True)
-            wsh = sh[-1][0]
+            wsh = sh[-1]
             wmax += wsh
             iteration += 1
             if iteration == 10:
@@ -1482,7 +1482,8 @@ def PCA_compression_new(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret
     h = opn.header
     data = opn.data.astype(float)
     odata = data.copy()
-
+    if data.ndim == 2:
+        return -1
     nx, ny, nw = data.shape
     Eval = None
     check = True
@@ -1519,6 +1520,7 @@ def PCA_compression_new(fproc, Evec=None, pfile=None, ncoeff=None, tol=1e-1, ret
         c_arr = np.nan_to_num(c_arr, True, m,m,m)
 
         Eval, Evec = np.linalg.eig(c_arr)
+        Eval = Eval.astype(float)
         if ncoeff is None:
             NC = (Eval >= tol).sum()
             NC = NC if NC < 50 else 50
@@ -1635,7 +1637,11 @@ def yf2sp_poly(lyf, order=3):
     return sp
 
 def raw2sp(raw, pks):
-    mr = np.log10(raw.mean(0))
+    ndim = raw.ndim
+    if ndim == 3:
+        mr = np.log10(raw.mean(0))
+    else:
+        mr = np.log10(raw)
     mr = np.nan_to_num(mr, True, 1,1,1)
     mRaw = mr - mr[5:-5].mean(0)
     ft = fft(mRaw, axis=0)
@@ -1714,7 +1720,11 @@ def rawYF(sraw, aws):
     return 10**fringe.T
 
 def rawYF2(sraw, aws):
-    mr = np.log10(sraw.mean(0))
+    ndim = sraw.ndim
+    if ndim == 3:
+        mr = np.log10(sraw.mean(0))
+    else:
+        mr = np.log10(sraw)
     mr = np.nan_to_num(mr, True, 1,1,1)
     tmp = detrending(mr)
     mRaw = detrending(tmp,1)
@@ -1752,10 +1762,17 @@ def calShift(raw, sp, pks):
     wp = 40
     npks = len(pks)
     lraw = np.log10(raw)
-    m = np.log10(raw[:,5:-5,5:-5].mean())
-    m = np.nan_to_num(m, True, 1,1,1)
-    lraw = np.nan_to_num(lraw, True, m, m, m)
-    data = lraw.mean(0) - lraw[:,5:-5].mean((0,1))
+    if raw.ndim == 2:
+        m = np.log10(raw[5:-5,5:-5].mean())
+        m = np.nan_to_num(m, True, 1,1,1)
+        lraw = np.nan_to_num(lraw, True, m, m, m)
+        data = lraw - lraw[5:-5].mean(0)
+    else:
+        m = np.log10(raw[:,5:-5,5:-5].mean())
+        m = np.nan_to_num(m, True, 1,1,1)
+        lraw = np.nan_to_num(lraw, True, m, m, m)
+        data = lraw.mean(0) - lraw[:,5:-5].mean((0,1))
+        
     d2y = np.gradient(np.gradient(data,axis=0), axis=0)
 
     sh = 0
@@ -1771,11 +1788,11 @@ def calShift(raw, sp, pks):
     for i, whd in enumerate(pks[ss:ee]):
         rimg = rd2y[whd-8:whd+8, 10:-10]
         img = d2y[whd-8:whd+8, 10:-10]
-        ash[i] = alignOffset(img, rimg)[0,0]
+        ash[i] = alignOffset(img, rimg)[0]
     sh = np.median(ash)
-    s = np.zeros((2,1))
+    s = np.zeros(2)
     mx = int(np.round(sh))
-    s[0,0] = mx
+    s[0] = mx
     
     ssp = shiftImage(sp, s, missing=sp[5:-5,5:-5].mean())
 

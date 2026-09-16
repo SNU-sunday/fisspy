@@ -56,7 +56,7 @@ def cal_shift(fl, fref):
         for whd in pks:
             rimg = rd2y[whd-16:whd+16, 10:-10]
             img = d2y[whd-16:whd+16, 10:-10]
-            tsh += alignOffset(img, rimg)[0,0]
+            tsh += alignOffset(img, rimg)[0]
         tsh /= npks
         sh[i] = tsh
     tt = tt[mask]
