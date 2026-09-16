@@ -67,7 +67,7 @@ class Wavelet:
     Notes
     -----
         This function based on the IDL code WAVELET.PRO written by C. Torrence, 
-        and Python code waveletFuncitions.py written by E. Predybayalo.
+        and Python code waveletFuncitions.py written by E. Predybayalo..
     
     References
     ----------
