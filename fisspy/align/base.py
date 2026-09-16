@@ -85,6 +85,7 @@ def alignOffset(image0, template0, cor= None):
     # DFT-IDFT relation
 
     s=np.where((corr.T==corr.max(axis=(-1,-2))).T)
+    s = np.array(s).squeeze()
     x0=s[-1]-nx*(s[-1]>nx/2)
     y0=s[-2]-ny*(s[-2]>ny/2)
 

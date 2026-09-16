@@ -593,7 +593,7 @@ class IMLSI:
             self.fiss2 = fiss2 = FISS(f2)
             normalizeProfile(self.fiss2)
             ny = np.minimum(fiss1.ny, fiss2.ny)
-            self.sh = alignOffset(fiss2.data[:ny,2:-2,50], fiss1.data[:ny,2:-2,50])[:,0]
+            self.sh = alignOffset(fiss2.data[:ny,2:-2,50], fiss1.data[:ny,2:-2,50])
             self.dwv2 = self.fiss2.Rwave[1] - self.fiss2.Rwave[0]
             self.xp2, self.yp2 = self._Mm2Pix(self.x, self.y, cam=1)
             self.x2, self.y2 = self._pix2Mm(self.xp2, self.yp2, cam=1)

@@ -9,7 +9,7 @@ from os import getcwd
 
 __author__ = "Juhyung Kang"
 __email__ = "jhkang0301@gmail.com"
-__all__= ["calAlignPars", "alignCams", "writeAlignPars", "readAlignPars", "alignAll", "alignDataCube", 'alignTwoDataCubes', 'saveAlignCube', 'makeExample']
+__all__= ["calAlignPars", "alignCams", "writeAlignPars", "readAlignPars", "alignAll", "alignDataCube", 'alignTwoDataCubes', 'saveAlignCube', 'makeExample', 'align3DtwoCams', 'align3D']
 
 def calAlignPars(lfiles, refFrame=None):
     """
@@ -606,7 +606,7 @@ def align3D(flist, saveDir, fapar, xmargin=None, ymargin=None, cubic=False):
     ones = np.ones(shape2)
     ww = np.arange(nw)[None,None,:] * ones
 
-    for i,f in enumerate(flist[0:1]):
+    for i,f in enumerate(flist):
         a = FISS(f)
 
         xt, yt = getTransformPos(nx, ny, apar, i, xm, ym)

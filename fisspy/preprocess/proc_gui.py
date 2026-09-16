@@ -3096,10 +3096,13 @@ class prepGUI:
                     self.p_s7_prof.remove()
                     self.ax[7][4].cla()
                     self.im_s7_spec.remove()
-                    self.im_s7_R1.remove()
-                    self.im_s7_R2.remove()
-                    self.im_s7_R3.remove()
-                    self.im_s7_R4.remove()
+                    try:
+                        self.im_s7_R1.remove()
+                        self.im_s7_R2.remove()
+                        self.im_s7_R3.remove()
+                        self.im_s7_R4.remove()
+                    except:
+                        pass
                     self.p_s7_prof = None
                     qSleep(1)
 
@@ -3183,9 +3186,10 @@ class prepGUI:
 
                         cd2 = proc_base.curvature_correction(cd1, [p2_0, p2_1, p2_2, p2_3])
                         cd2 /= flat
-                        cd2 = cd2[:,5:-5,5:-5].astype('int16')
+                        cd2 = cd2[...,5:-5,5:-5].astype('int16')
                         self.cd2 = cd2
                         shape = cd2.shape
+                        ndim = cd2.ndim
 
                         if self.p_s7_prof is None:
                             p0 = int(ch['crpix1']-5)
@@ -3212,61 +3216,89 @@ class prepGUI:
                                 p_0_5 = int(p0 - 0.5/ch['cdelt1'])
                                 self.ax[7][1].set_title('-0.5 $\\AA$')
                                 self.ax[7][3].set_title('+0.5 $\\AA$')
-                            self.p_s7_prof = self.ax[7][4].plot(cd2[shape[0]//2,shape[1]//2])[0]
-                            self.ax[7][4].set_xlim(-0.5, shape[2]-0.5)
-                            self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cmRaster[idx], origin='lower')
-
-                            self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cmRaster[idx], origin='lower')
-
-                            self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cmRaster[idx], origin='lower')
-                            m = cd2[:,:,p_0_5].mean()
-                            std = cd2[:,:,p_0_5].std()
-                            self.im_s7_R2.set_clim(m-std*2,m+std*2)
-
-                            self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cmRaster[idx], origin='lower')
-                            m = cd2[:,:,p0].mean()
-                            std = cd2[:,:,p0].std()
-                            self.im_s7_R3.set_clim(m-std*2,m+std*2)
-
-                            self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cmRaster[idx], origin='lower')
-                            m = cd2[:,:,p0_5].mean()
-                            std = cd2[:,:,p0_5].std()
-                            self.im_s7_R4.set_clim(m-std*2,m+std*2)
-                            init = False
-                        else:
-                            
-                            self.p_s7_prof.set_ydata(cd2[shape[0]//2,shape[1]//2])
-                            self.im_s7_spec.set_data(cd2[shape[0]//2])
-                            self.im_s7_R1.set_data(cd2[:,:,p_4].T)
-                            self.im_s7_R2.set_data(cd2[:,:,p_0_5].T)
-                            self.im_s7_R3.set_data(cd2[:,:,p0].T)
-                            self.im_s7_R4.set_data(cd2[:,:,p0_5].T)
-
-                            if chclim:
-                                prof = cd2[shape[0]//2,shape[1]//2]
-                                self.ax[7][4].set_ylim(prof.min()*0.95, prof.max()*1.05)
-                                self.im_s7_spec.set_clim(cd2[shape[0]//2].min(), cd2[shape[0]//2].max())
-                                
-                                self.im_s7_R1.set_clim(cd2[:,:,p_4].min(), cd2[:,:,p_4].max())
+                            if ndim == 2:
+                                self.p_s7_prof = self.ax[7][4].plot(cd2[shape[0]//2])[0]
+                                self.im_s7_spec = self.ax[7][5].imshow(cd2, cmRaster[idx], origin='lower')
+                            else:
+                                self.p_s7_prof = self.ax[7][4].plot(cd2[shape[0]//2,shape[1]//2])[0]
+                                self.im_s7_spec = self.ax[7][5].imshow(cd2[shape[0]//2], cmRaster[idx], origin='lower')
+                                self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cmRaster[idx], origin='lower')
+                                self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cmRaster[idx], origin='lower')
                                 m = cd2[:,:,p_0_5].mean()
                                 std = cd2[:,:,p_0_5].std()
                                 self.im_s7_R2.set_clim(m-std*2,m+std*2)
+
+                                self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cmRaster[idx], origin='lower')
                                 m = cd2[:,:,p0].mean()
                                 std = cd2[:,:,p0].std()
                                 self.im_s7_R3.set_clim(m-std*2,m+std*2)
+
+                                self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cmRaster[idx], origin='lower')
                                 m = cd2[:,:,p0_5].mean()
                                 std = cd2[:,:,p0_5].std()
                                 self.im_s7_R4.set_clim(m-std*2,m+std*2)
+                            self.ax[7][4].set_xlim(-0.5, shape[-1]-0.5)
 
-                                self.im_s7_R1.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
-                                self.im_s7_R2.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
-                                self.im_s7_R3.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
-                                self.im_s7_R4.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
-                                self.ax[7][0].set_xlim(-0.5, shape[0]-0.5)
+
+                            init = False
+                        else:
+                            if ndim == 2:
+                                self.p_s7_prof.set_ydata(cd2[shape[0]//2])
+                                self.im_s7_spec.set_data(cd2)
+                            else:
+                                if pndim!=ndim:
+                                    self.im_s7_R1 = self.ax[7][0].imshow(cd2[:,:,p_4].T, cmRaster[idx], origin='lower')
+                                    self.im_s7_R2 = self.ax[7][1].imshow(cd2[:,:,p_0_5].T, cmRaster[idx], origin='lower')
+                                    m = cd2[:,:,p_0_5].mean()
+                                    std = cd2[:,:,p_0_5].std()
+                                    self.im_s7_R2.set_clim(m-std*2,m+std*2)
+    
+                                    self.im_s7_R3 = self.ax[7][2].imshow(cd2[:,:,p0].T, cmRaster[idx], origin='lower')
+                                    m = cd2[:,:,p0].mean()
+                                    std = cd2[:,:,p0].std()
+                                    self.im_s7_R3.set_clim(m-std*2,m+std*2)
+    
+                                    self.im_s7_R4 = self.ax[7][3].imshow(cd2[:,:,p0_5].T, cmRaster[idx], origin='lower')
+                                    m = cd2[:,:,p0_5].mean()
+                                    std = cd2[:,:,p0_5].std()
+                                    self.im_s7_R4.set_clim(m-std*2,m+std*2)
+                                    
+                                self.p_s7_prof.set_ydata(cd2[shape[0]//2,shape[1]//2])
+                                self.im_s7_spec.set_data(cd2[shape[0]//2])
+                                self.im_s7_R1.set_data(cd2[:,:,p_4].T)
+                                self.im_s7_R2.set_data(cd2[:,:,p_0_5].T)
+                                self.im_s7_R3.set_data(cd2[:,:,p0].T)
+                                self.im_s7_R4.set_data(cd2[:,:,p0_5].T)
+
+                            if chclim:
+                                if ndim == 2:
+                                    prof = cd2[shape[0]//2]
+                                    self.im_s7_spec.set_clim(cd2.min(), cd2.max())
+                                else:
+                                    prof = cd2[shape[0]//2,shape[1]//2]
+                                    self.im_s7_spec.set_clim(cd2[shape[0]//2].min(), cd2[shape[0]//2].max())
+                                    self.im_s7_R1.set_clim(cd2[:,:,p_4].min(), cd2[:,:,p_4].max())
+                                    m = cd2[:,:,p_0_5].mean()
+                                    std = cd2[:,:,p_0_5].std()
+                                    self.im_s7_R2.set_clim(m-std*2,m+std*2)
+                                    m = cd2[:,:,p0].mean()
+                                    std = cd2[:,:,p0].std()
+                                    self.im_s7_R3.set_clim(m-std*2,m+std*2)
+                                    m = cd2[:,:,p0_5].mean()
+                                    std = cd2[:,:,p0_5].std()
+                                    self.im_s7_R4.set_clim(m-std*2,m+std*2)
+
+                                    self.im_s7_R1.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
+                                    self.im_s7_R2.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
+                                    self.im_s7_R3.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
+                                    self.im_s7_R4.set_extent([-0.5, shape[0]-0.5, -0.5, shape[1]-0.5])
+                                    self.ax[7][0].set_xlim(-0.5, shape[0]-0.5)
+                                self.ax[7][4].set_ylim(prof.min()*0.95, prof.max()*1.05)
+                                
                                 self._writeLog()
                                 chclim = False
                             
-                            
+                        pndim = ndim
                         self.ax[7][4].set_title(f'Profile ({i+1}/{nlf})')
                         
                         
@@ -3427,7 +3459,10 @@ class prepGUI:
                         f = f.replace('.fts', '1.fts')
 
                         if makePfile:
-                            Evec, spec, odata, ev = proc_base.PCA_compression_new(f, ret=True, tol=tol)
+                            ret = proc_base.PCA_compression_new(f, ret=True, tol=tol)
+                            if type(ret) == int:
+                                continue
+                            Evec, spec, odata, ev = ret
                             ncoeff = Evec.shape[0]
                             # if ncoeff == 50:
                             #     maxnum = 10
@@ -3447,6 +3482,8 @@ class prepGUI:
                         else:
                             res = proc_base.PCA_compression_new(f, Evec=Evec, pfile=pfile, tol=tol, ret=True)
                             if type(res) == int:
+                                if res == -1:
+                                    continue
                                 # make p file
                                 Evec, spec, odata, ev = proc_base.PCA_compression_new(f, ret=True, tol=tol)
                                 ncoeff = Evec.shape[0]
@@ -3470,7 +3507,7 @@ class prepGUI:
                             
                         num += 1 
 
-                qSleep(5)
+                qSleep(2)
         if self.stop:
             self.log += "> Stop.<br>"
         else:
